@@ -7,60 +7,54 @@
 # Comparar:     python3 compare_profiles.py --watch
 # Detener todo: pkill -f 'trading_bot_v3.py'
 
+# En Docker: STATE_DIR=/app/data (volumen persistente). En local: directorio actual.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+STATE_DIR="${STATE_DIR:-$SCRIPT_DIR}"
+mkdir -p "$STATE_DIR"
+cd "$STATE_DIR"
+
+BOT="python3 $SCRIPT_DIR/trading_bot_v3.py"
 TIMEFRAME="15m"
-INTERVAL=60   # segundos entre ciclos
+INTERVAL=60
 MS=55; SL=1.5; TP=4.0; EA=10; REGIME=bull
 
 echo "Lanzando bots para 6 pares..."
-echo "Logs: paper_*.log  |  Estados: paper_*_state.json"
+echo "Logs: $STATE_DIR/paper_*.log"
 echo "Para comparar: python3 compare_profiles.py --watch"
 echo ""
 
-python3 trading_bot_v3.py \
-  --pair BTC/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair BTC/USDT  --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name btc \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name btc  > /dev/null 2>&1 &
 echo "  [PID $!] BTC/USDT"
 
-python3 trading_bot_v3.py \
-  --pair ETH/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair ETH/USDT  --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name eth \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name eth  > /dev/null 2>&1 &
 echo "  [PID $!] ETH/USDT"
 
-python3 trading_bot_v3.py \
-  --pair SOL/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair SOL/USDT  --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name sol \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name sol  > /dev/null 2>&1 &
 echo "  [PID $!] SOL/USDT"
 
-python3 trading_bot_v3.py \
-  --pair HYPE/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair HYPE/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name hype \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name hype > /dev/null 2>&1 &
 echo "  [PID $!] HYPE/USDT"
 
-python3 trading_bot_v3.py \
-  --pair AAVE/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair AAVE/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name aave \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name aave > /dev/null 2>&1 &
 echo "  [PID $!] AAVE/USDT"
 
-python3 trading_bot_v3.py \
-  --pair XRP/USDT --timeframe $TIMEFRAME --interval $INTERVAL \
+$BOT --pair XRP/USDT  --timeframe $TIMEFRAME --interval $INTERVAL \
   --regime $REGIME --min-score $MS --stop-loss $SL --take-profit $TP \
-  --entry-advantage $EA --name xrp \
-  > /dev/null 2>&1 &
+  --entry-advantage $EA --name xrp  > /dev/null 2>&1 &
 echo "  [PID $!] XRP/USDT"
 
 echo ""
-echo "Todos arrancados. Para ver comparativa:"
-echo "  python3 compare_profiles.py --watch"
+echo "Todos arrancados."
 
 # Notificación Telegram de arranque
 if [ -n "$TELEGRAM_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
@@ -73,5 +67,5 @@ Parámetros: ms=55 sl=1.5x tp=4.0x regime=bull
 Esperando señales..." > /dev/null
 fi
 
-# Mantener el proceso vivo (necesario en Docker para que no reinicie el contenedor)
+# Mantener el proceso vivo (necesario en Docker)
 wait
