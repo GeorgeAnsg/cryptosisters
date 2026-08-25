@@ -7,9 +7,6 @@
 # Comparar:     python3 compare_profiles.py --watch
 # Detener todo: pkill -f 'trading_bot_v3.py'
 
-# Activar entorno virtual
-source "$(dirname "$0")/venv/bin/activate"
-
 TIMEFRAME="15m"
 INTERVAL=60   # segundos entre ciclos
 MS=55; SL=1.5; TP=4.0; EA=10; REGIME=bull
@@ -64,3 +61,6 @@ echo "  [PID $!] XRP/USDT"
 echo ""
 echo "Todos arrancados. Para ver comparativa:"
 echo "  python3 compare_profiles.py --watch"
+
+# Mantener el proceso vivo (necesario en Docker para que no reinicie el contenedor)
+wait
