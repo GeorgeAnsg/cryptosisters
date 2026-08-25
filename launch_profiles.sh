@@ -62,5 +62,16 @@ echo ""
 echo "Todos arrancados. Para ver comparativa:"
 echo "  python3 compare_profiles.py --watch"
 
+# Notificación Telegram de arranque
+if [ -n "$TELEGRAM_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+  curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
+    -d chat_id="${TELEGRAM_CHAT_ID}" \
+    -d parse_mode="HTML" \
+    -d text="🟢 <b>Bot arrancado</b>
+6 pares activos: BTC · ETH · SOL · HYPE · AAVE · XRP
+Parámetros: ms=55 sl=1.5x tp=4.0x regime=bull
+Esperando señales..." > /dev/null
+fi
+
 # Mantener el proceso vivo (necesario en Docker para que no reinicie el contenedor)
 wait
