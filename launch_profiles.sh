@@ -13,7 +13,7 @@ STATE_DIR="${STATE_DIR:-$SCRIPT_DIR}"
 mkdir -p "$STATE_DIR"
 cd "$STATE_DIR"
 
-BOT="python3 $SCRIPT_DIR/trading_bot_v3.py"
+BOT="python3 $SCRIPT_DIR/trading_bot_v4.py"
 TIMEFRAME="15m"
 INTERVAL=60
 MS=55; SL=1.5; TP=4.0; EA=10; REGIME=bull
@@ -61,9 +61,10 @@ if [ -n "$TELEGRAM_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
     -d chat_id="${TELEGRAM_CHAT_ID}" \
     -d parse_mode="HTML" \
-    -d text="🟢 <b>Bot arrancado</b>
+    -d text="🟢 <b>Bot v4 arrancado</b>
 6 pares activos: BTC · ETH · SOL · HYPE · AAVE · XRP
-Parámetros: ms=55 sl=1.5x tp=4.0x regime=bull
+Régimen: auto (EMA20/50 diarias) | ms=55 sl=1.5x tp=4.0x
+Nuevo: HTF activo · doble techo/suelo · canal · funding · order book
 Esperando señales..." > /dev/null
 fi
 
