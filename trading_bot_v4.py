@@ -1337,16 +1337,33 @@ def send_telegram(message: str):
         pass   # fallo silencioso: las notificaciones no deben romper el bot
 
 
-def _tg_open(side: str, pair: str, price: float, sl: float, tp: float, score: int, atr: float):
+def _tg_open(side: str, pair: str, price: float, sl: float, tp: float, score: int, atr: float,
+             trade_type: str = "intraday", amount_usdt: float = 0, balance: float = 0):
     emoji = "📈" if side == "LONG" else "📉"
     dir_es = "LONG (compra)" if side == "LONG" else "SHORT (venta)"
+    swing_tag = " 🔥 <b>[SWING]</b>" if trade_type == "swing" else ""
+    size_line = ""
+    if amount_usdt > 0 and balance > 0:
+        pct = amount_usdt / balance * 100
+        size_line = f"Inversión: <b>{amount_usdt:,.2f} USDT ({pct:.1f}% del balance)</b>\n"
     send_telegram(
-        f"{emoji} <b>SEÑAL {dir_es}</b>\n"
+        f"{emoji} <b>SEÑAL {dir_es}</b>{swing_tag}\n"
         f"Par: <b>{pair}</b>\n"
         f"Precio entrada: <b>{price:,.2f} USDT</b>\n"
-        f"Stop Loss:      {sl:,.2f} USDT  ({abs(price-sl)/price*100:.2f}%)\n"
-        f"Take Profit:    {tp:,.2f} USDT  ({abs(tp-price)/price*100:.2f}%)\n"
+        f"{size_line}"
+        f"Stop Loss:   {sl:,.2f} USDT  ({abs(price-sl)/price*100:.2f}%)\n"
+        f"Take Profit: {tp:,.2f} USDT  ({abs(tp-price)/price*100:.2f}%)\n"
         f"Score: {score} | ATR: {atr:.0f}"
+    )
+
+
+def _tg_update(pair: str, side: str, msg: str, sl: float, tp: float):
+    """Notificación de cambio en posición abierta (SL movido, TP extendido, swing activado)."""
+    send_telegram(
+        f"⚙️ <b>ACTUALIZACIÓN {side} {pair}</b>\n"
+        f"{msg}\n"
+        f"Nuevo SL: {sl:,.2f} USDT\n"
+        f"Nuevo TP: {tp:,.2f} USDT"
     )
 
 
@@ -1509,7 +1526,9 @@ def open_position(state: dict, pair: str, side: str, price: float,
         "amount": amount, "score": score, "time": now,
     })
 
-    _tg_open(side, pair, price, stop_loss, take_profit, score, atr)
+    _tg_open(side, pair, price, stop_loss, take_profit, score, atr,
+             trade_type=state.get("position", {}).get("trade_type", "intraday"),
+             amount_usdt=cost, balance=state["balance_usdt"] + cost)
     return (
         f"ABRIR {side} {pair} | {amount:.6f} @ {price:.2f} | "
         f"SL: {stop_loss:.2f} | TP: {take_profit:.2f} | Score: {score}"
@@ -1613,6 +1632,7 @@ def check_sl_tp(state: dict, pair: str, current_price: float, risk_profile: dict
                         pos["stop_loss"] = round(entry, 2)
                         sl = entry
                     pos["breakeven_set"] = True
+                    _tg_update(pair, side, "🛡️ SL movido a break-even (trade asegurado)", sl, pos["take_profit"])
 
                 if current_price > pos.get("highest_price", current_price):
                     pos["highest_price"] = current_price
@@ -1620,12 +1640,14 @@ def check_sl_tp(state: dict, pair: str, current_price: float, risk_profile: dict
                     if new_sl > sl:
                         pos["stop_loss"] = round(new_sl, 2)
                         sl = new_sl
+                        _tg_update(pair, side, f"📈 Trailing SL subido (precio: {current_price:,.2f})", sl, pos["take_profit"])
             else:  # SHORT
                 if not pos.get("breakeven_set") and current_price <= entry - sl_distance * be_mult:
                     if entry < sl:
                         pos["stop_loss"] = round(entry, 2)
                         sl = entry
                     pos["breakeven_set"] = True
+                    _tg_update(pair, side, "🛡️ SL movido a break-even (trade asegurado)", sl, pos["take_profit"])
 
                 if current_price < pos.get("lowest_price", current_price):
                     pos["lowest_price"] = current_price
@@ -1633,6 +1655,7 @@ def check_sl_tp(state: dict, pair: str, current_price: float, risk_profile: dict
                     if new_sl < sl:
                         pos["stop_loss"] = round(new_sl, 2)
                         sl = new_sl
+                        _tg_update(pair, side, f"📉 Trailing SL bajado (precio: {current_price:,.2f})", sl, pos["take_profit"])
 
     # --- Stop loss ---
     if side == "LONG" and current_price <= sl:
@@ -1677,6 +1700,9 @@ def check_sl_tp(state: dict, pair: str, current_price: float, risk_profile: dict
             pos["take_profit"]  = round(new_tp, 2)
             pos["tp_extensions"] = extensions + 1
             score_val = scores.get("bullish_total", 0) if side == "LONG" else scores.get("bearish_total", 0)
+            _tg_update(pair, side,
+                       f"🚀 TP extendido x{extensions+1} (score={score_val}, señal sigue fuerte)",
+                       pos["stop_loss"], pos["take_profit"])
             return (f"[TP+{extensions+1}] Senal sigue fuerte (score={score_val}), "
                     f"TP extendido a {new_tp:.2f} | SL asegurado en {pos['stop_loss']:.2f}")
 
