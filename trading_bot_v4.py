@@ -2,7 +2,7 @@
 Bot de Trading Cripto v3.0 - Long & Short + Backtesting
 =========================================================
 - Detecta y ejecuta LONGS y SHORTS
-- Scoring separado alcista/bajista
+- Scoring separado alcista / bajista
 - Backtesting con datos historicos (hasta 1 ano)
 - Logs detallados para diagnostico
 - Perfil de riesgo seleccionable al arrancar
@@ -481,18 +481,10 @@ def precompute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df["double_top"]    = _dt
     df["double_bottom"] = _db
 
-    # Canal de precio: regresion lineal sobre highs/lows de las ultimas 40 velas (~10h)
+    # Canal de precio: rolling max/min de 40 velas (~10h) como techo y suelo del canal
     _cw = 40
-    _ch_top = np.full(len(df), np.nan)
-    _ch_bot = np.full(len(df), np.nan)
-    _x = np.arange(_cw)
-    for _i in range(_cw, len(df)):
-        _coef_h = np.polyfit(_x, df["high"].values[_i-_cw:_i], 1)
-        _coef_l = np.polyfit(_x, df["low"].values[_i-_cw:_i], 1)
-        _ch_top[_i] = _coef_h[0] * _cw + _coef_h[1]
-        _ch_bot[_i] = _coef_l[0] * _cw + _coef_l[1]
-    df["ch_top"] = _ch_top
-    df["ch_bot"] = _ch_bot
+    df["ch_top"] = df["high"].rolling(_cw).max()
+    df["ch_bot"] = df["low"].rolling(_cw).min()
     _ch_valid = (df["ch_top"] - df["ch_bot"]) > df["atr"]
     df["near_channel_top"] = ((df["close"] >= df["ch_top"] - 0.5 * df["atr"]) & _ch_valid).astype(float)
     df["near_channel_bot"] = ((df["close"] <= df["ch_bot"] + 0.5 * df["atr"]) & _ch_valid).astype(float)
@@ -1006,6 +998,21 @@ def is_weekend(timestamp) -> bool:
     if hasattr(timestamp, "weekday"):
         return timestamp.weekday() >= 5  # 5=sabado, 6=domingo
     return False
+
+
+def is_volatile_session(timestamp) -> bool:
+    """Devuelve True durante las ventanas de alta volatilidad en apertura de mercados.
+    Solo bloquea nuevas entradas — las posiciones abiertas se siguen gestionando.
+    - NYSE open: 14:30-15:10 UTC (primeros 40 min, fakeouts frecuentes)
+    - London open: 08:00-08:30 UTC (menor impacto en crypto pero notable)
+    """
+    if not hasattr(timestamp, "hour"):
+        return False
+    h, m = timestamp.hour, timestamp.minute
+    total_min = h * 60 + m
+    nyse_open   = (14 * 60 + 30) <= total_min < (15 * 60 + 10)  # 14:30-15:10 UTC
+    london_open = (8  * 60)      <= total_min < (8  * 60 + 30)  # 08:00-08:30 UTC
+    return nyse_open or london_open
 
 
 def check_weekend_entry(technical: dict, side: str) -> bool:
@@ -1546,6 +1553,9 @@ def close_position(state: dict, pair: str, price: float, reason: str) -> Optiona
 
     if state["balance_usdt"] > state.get("peak_balance", 0):
         state["peak_balance"] = state["balance_usdt"]
+    current_dd = (state["peak_balance"] - state["balance_usdt"]) / state["peak_balance"] * 100
+    if current_dd > state.get("max_drawdown_seen", 0.0):
+        state["max_drawdown_seen"] = current_dd
 
     state["trades"].append({
         "pair": pair, "action": f"CLOSE_{side}", "price": price,
@@ -1718,6 +1728,11 @@ def make_decision(state: dict, pair: str, price: float, atr: float,
         # FLAT — aplica filtro fin de semana si hay timestamp disponible
         ts = timestamp if timestamp is not None else datetime.now()
         tech = technical or {}
+
+        # Filtro de sesion: bloquear entradas en apertura NYSE y Londres
+        if is_volatile_session(ts):
+            return None
+
         can_long, long_min  = apply_weekend_filter(tech, "LONG",  bull_score, bear_score, risk_profile, ts)
         can_short, short_min = apply_weekend_filter(tech, "SHORT", bull_score, bear_score, risk_profile, ts)
 
@@ -1919,6 +1934,10 @@ def run_backtest(exchange, pair: str, timeframe: str, days: int, risk_profile: d
             if i < sl_cooldown:
                 continue
 
+            # Filtro de sesion: no entrar en apertura NYSE (14:30-15:10 UTC) ni Londres (08:00-08:30 UTC)
+            if is_volatile_session(current_time):
+                continue
+
             # Filtro fin de semana: ajusta min_score y exige condicion de rango BB
             can_long, long_min = apply_weekend_filter(
                 technical, "LONG", bull_score, bear_score, risk_profile, current_time)
@@ -2021,7 +2040,7 @@ def run_backtest(exchange, pair: str, timeframe: str, days: int, risk_profile: d
     logger.log(f"  Rendimiento:     {total_return:+.2f}%")
     logger.log(f"  PnL total:       {stats['total_pnl']:+.2f} USDT")
     logger.log(f"  Peak balance:    {state['peak_balance']:.2f} USDT")
-    max_dd = ((state['peak_balance'] - min(final_balance, state['peak_balance'])) / state['peak_balance']) * 100
+    max_dd = state.get("max_drawdown_seen", 0.0)
     logger.log(f"  Max drawdown:    {max_dd:.1f}%")
     logger.log(f"")
     logger.log(f"  Total trades:    {total_trades}")
