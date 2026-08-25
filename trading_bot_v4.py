@@ -1321,10 +1321,15 @@ def fetch_fear_greed() -> dict:
 # TELEGRAM — Notificaciones de señales
 # =============================================================================
 
+TELEGRAM_SILENT = False   # True cuando --silent: suprime notificaciones por trade
+
+
 def send_telegram(message: str):
     """Envía un mensaje al chat de Telegram configurado.
     Requiere variables de entorno TELEGRAM_TOKEN y TELEGRAM_CHAT_ID.
     Si no están definidas, no hace nada (modo silencioso)."""
+    if TELEGRAM_SILENT:
+        return
     token   = os.environ.get("TELEGRAM_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
@@ -2413,7 +2418,13 @@ def main():
                         help="JSON de noticias historicas (de fetch_historical_news.py) para el backtest")
     parser.add_argument("--name", default=None,
                         help="Nombre del perfil (paper trading): identifica estado y log. Ej: --name bull_mod")
+    parser.add_argument("--silent", action="store_true",
+                        help="Suprime notificaciones Telegram por trade (usar con modo multi-bot)")
     args = parser.parse_args()
+
+    if args.silent:
+        global TELEGRAM_SILENT
+        TELEGRAM_SILENT = True
 
     # Risk con overrides
     auto_regime = args.regime == "auto"
