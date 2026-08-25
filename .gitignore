@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+paper_*_state.json
+paper_*.log
+backtest_*.json
+cache_ohlcv_*.csv
+optimization_results.json
+optimizer_*.log
