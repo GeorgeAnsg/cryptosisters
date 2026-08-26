@@ -1,0 +1,30 @@
+{
+  "('SHORT', 'neutral', 'mid')": {
+    "wr": 0.667,
+    "n": 6
+  },
+  "('SHORT', 'neutral', 'low')": {
+    "wr": 0.143,
+    "n": 14
+  },
+  "('LONG', 'neutral', 'mid')": {
+    "wr": 0.423,
+    "n": 26
+  },
+  "('LONG', 'neutral', 'high')": {
+    "wr": 0.353,
+    "n": 17
+  },
+  "('LONG', 'bull', 'mid')": {
+    "wr": 0.326,
+    "n": 46
+  },
+  "('LONG', 'bull', 'high')": {
+    "wr": 0.448,
+    "n": 29
+  },
+  "('SHORT', 'bull', 'low')": {
+    "wr": 0.368,
+    "n": 19
+  }
+}

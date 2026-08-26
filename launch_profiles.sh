@@ -1,20 +1,21 @@
 #!/bin/bash
 # launch_profiles.sh — 6 bots (BTC + ETH + HYPE) × (moderate + aggressive)
 # Params optimizados para BULL MARKET
+# v5: grid bot automatico cuando auto-regimen detecta mercado neutral/lateral
 #
-# moderate   : MS=50 EA=10 SL=2.5 TP=3.0
-# aggressive : MS=50 EA=25 SL=2.5 TP=5.0
+# moderate   : MS=50 EA=25 SL=1.5 TP=3.0
+# aggressive : MS=45 EA=25 SL=2.0 TP=4.0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BOT="python3 $SCRIPT_DIR/trading_bot_v4.py"
+BOT="python3 $SCRIPT_DIR/trading_bot_v5.py"
 REGIME="${REGIME:-auto}"
 PAIRS=("BTC/USDT" "ETH/USDT" "HYPE/USDT")
 PROFILES=("moderate" "aggressive")
 
-declare -A MS=([moderate]=50  [aggressive]=50)
-declare -A EA=([moderate]=10  [aggressive]=25)
-declare -A SL=([moderate]=2.5 [aggressive]=2.5)
-declare -A TP=([moderate]=3.0 [aggressive]=5.0)
+declare -A MS=([moderate]=50  [aggressive]=45)
+declare -A EA=([moderate]=25  [aggressive]=25)
+declare -A SL=([moderate]=1.5 [aggressive]=2.0)
+declare -A TP=([moderate]=3.0 [aggressive]=4.0)
 
 # Limpieza de archivos de bots anteriores (pares ya no usados)
 DATA_DIR="${STATE_DIR:-.}"
@@ -37,11 +38,11 @@ import os, requests
 token   = os.environ["TELEGRAM_TOKEN"]
 chat_id = os.environ["TELEGRAM_CHAT_ID"]
 msg = (
-    "🤖 <b>Bot v4 arrancado — 6 bots</b>\n"
+    "🤖 <b>Bot v5 arrancado — 6 bots</b>\n"
     "📊 BTC · ETH · HYPE/USDT × moderate + aggressive\n"
     "⚡ Régimen: " + os.environ.get("REGIME", "auto") + "\n"
     "🔔 Resumen diario a las 20:00 UTC\n"
-    "Funcionalidades: HTF 4h · Doble techo/suelo · Canal · Funding · Order book · Auto-régimen"
+    "Funcionalidades: HTF 4h · Doble techo/suelo · Canal · Funding · OB · Auto-régimen · Grid bot"
 )
 requests.post(
     f"https://api.telegram.org/bot{token}/sendMessage",
