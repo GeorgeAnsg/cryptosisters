@@ -16,6 +16,15 @@ declare -A EA=([moderate]=10  [aggressive]=25)
 declare -A SL=([moderate]=2.5 [aggressive]=2.5)
 declare -A TP=([moderate]=3.0 [aggressive]=5.0)
 
+# Limpieza de archivos de bots anteriores (pares ya no usados)
+DATA_DIR="${STATE_DIR:-.}"
+echo "🧹 Limpiando archivos antiguos en $DATA_DIR..."
+find "$DATA_DIR" -maxdepth 1 -name "paper_*.json" -o -name "paper_*.log" \
+    -o -name "*.log" ! -name "daily_summary.log" | while read f; do
+    echo "   Borrando: $(basename $f)"
+    rm -f "$f"
+done
+
 echo "============================================================"
 echo "  🚀 Lanzando 6 bots — Régimen: $REGIME"
 echo "  BTC/USDT + ETH/USDT + HYPE/USDT × moderate + aggressive"
