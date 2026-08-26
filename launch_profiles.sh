@@ -53,7 +53,10 @@ for PAIR in "${PAIRS[@]}"; do
             sleep 30
         fi
         echo "▶  $NAME"
-        $BOT \
+        # aggressive: notificaciones Telegram activadas; moderate: silencioso
+        SILENT_FLAG="--silent"
+        [ "$PROFILE" = "aggressive" ] && SILENT_FLAG=""
+        (cd "${STATE_DIR:-.}" && $BOT \
             --pair "$PAIR" \
             --risk "$PROFILE" \
             --regime "$REGIME" \
@@ -62,8 +65,8 @@ for PAIR in "${PAIRS[@]}"; do
             --stop-loss "${SL[$PROFILE]}" \
             --take-profit "${TP[$PROFILE]}" \
             --name "$NAME" \
-            --silent \
-            >> "${STATE_DIR:-.}/${NAME}.log" 2>&1 &
+            $SILENT_FLAG \
+            >> "${STATE_DIR:-.}/${NAME}.log" 2>&1) &
         BOT_NUM=$((BOT_NUM + 1))
     done
 done
