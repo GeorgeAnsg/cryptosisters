@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY trading_bot_v3.py trading_bot_v4.py compare_profiles.py launch_profiles.sh daily_summary.py news_btc_1y.json ./
+COPY trading_bot_v4.py compare_profiles.py launch_profiles.sh daily_summary.py news_btc_1y.json ./
 
 RUN chmod +x launch_profiles.sh && mkdir -p /app/data
 
