@@ -2339,6 +2339,7 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
                 close_threshold=close_threshold,
                 min_hold_candles=min_hold_candles,
                 current_candle_index=state["current_candle_index"],
+                technical=technical,
             )
             if msg:
                 logger.log(f">> {msg}")

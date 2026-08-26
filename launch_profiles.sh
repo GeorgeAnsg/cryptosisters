@@ -7,7 +7,7 @@
 # aggressive : MS=45 EA=25 SL=2.0 TP=4.0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BOT="python3 $SCRIPT_DIR/trading_bot_v5.py"
+BOT="python3 $SCRIPT_DIR/trading_bot_v4.py"
 REGIME="${REGIME:-auto}"
 PAIRS=("BTC/USDT" "ETH/USDT" "HYPE/USDT")
 PROFILES=("moderate" "aggressive")
