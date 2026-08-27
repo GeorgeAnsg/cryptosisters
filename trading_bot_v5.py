@@ -526,6 +526,151 @@ def _add_htf_columns(df: pd.DataFrame) -> pd.DataFrame:
     )
 
 
+def _add_1h_pattern_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Resamplea 15m → 1h, calcula 6 patrones y une al 15m via merge_asof.
+    Cada vela 15m recibe los patrones de la última vela 1h COMPLETADA.
+
+    Patrones calculados:
+      rsi_div_1h       : 'bullish' / 'bearish' / None  — divergencia RSI
+      double_top_1h    : 1/0  — doble techo (sustituye al de 15m)
+      double_bottom_1h : 1/0  — doble suelo
+      flag_1h          : 'bull' / 'bear' / None  — bandera de continuación
+      sr_retest_1h     : 'bullish' / 'bearish' / None  — breakout + retest
+      vwap_cross_1h    : 'bullish' / 'bearish' / None  — cruce de VWAP
+      fvg_1h           : 'bullish' / 'bearish' / None  — Fair Value Gap
+    """
+    import numpy as np
+
+    df_1h = (
+        df.set_index("timestamp")
+        .resample("1h")
+        .agg({"open": "first", "high": "max", "low": "min",
+              "close": "last", "volume": "sum"})
+        .dropna(subset=["close"])
+        .reset_index()
+    )
+    df_1h["rsi_1h"] = ta.rsi(df_1h["close"], length=14)
+    df_1h["atr_1h"] = ta.atr(df_1h["high"], df_1h["low"], df_1h["close"], length=14)
+    # VWAP diario en 1h
+    df_1h["_date_1h"] = df_1h["timestamp"].dt.date
+    df_1h["vwap_1h"] = (
+        df_1h.groupby("_date_1h", group_keys=False)
+        .apply(lambda g: (g["close"] * g["volume"]).cumsum() / g["volume"].cumsum())
+        .reset_index(level=0, drop=True)
+    )
+    df_1h = df_1h.drop(columns=["_date_1h"])
+
+    n = len(df_1h)
+    rsi_div   = [None] * n
+    dbl_top   = np.zeros(n)
+    dbl_bot   = np.zeros(n)
+    flag_sig  = [None] * n
+    sr_ret    = [None] * n
+    vwap_cross= [None] * n
+    fvg_sig   = [None] * n
+
+    hi  = df_1h["high"].values
+    lo  = df_1h["low"].values
+    cl  = df_1h["close"].values
+    op  = df_1h["open"].values
+    rsi = df_1h["rsi_1h"].values
+    atr = df_1h["atr_1h"].values
+    vwap= df_1h["vwap_1h"].values
+
+    for i in range(30, n):
+        # --- 1. DIVERGENCIA RSI (ventana 20 velas) ---
+        w = 20
+        seg_hi  = hi[i-w:i+1]
+        seg_lo  = lo[i-w:i+1]
+        seg_rsi = rsi[i-w:i+1]
+        # Buscar últimos dos pivots locales de precio
+        ph_idx = [k for k in range(1, w) if seg_hi[k] > seg_hi[k-1] and seg_hi[k] > seg_hi[k+1]]
+        pl_idx = [k for k in range(1, w) if seg_lo[k] < seg_lo[k-1] and seg_lo[k] < seg_lo[k+1]]
+        if len(ph_idx) >= 2 and not any(np.isnan(seg_rsi[ph_idx[-2:]])):
+            p1, p2 = ph_idx[-2], ph_idx[-1]
+            if seg_hi[p2] > seg_hi[p1] and seg_rsi[p2] < seg_rsi[p1] - 3:  # precio sube, RSI baja ≥3pts
+                rsi_div[i] = "bearish"
+        if len(pl_idx) >= 2 and not any(np.isnan(seg_rsi[pl_idx[-2:]])):
+            p1, p2 = pl_idx[-2], pl_idx[-1]
+            if seg_lo[p2] < seg_lo[p1] and seg_rsi[p2] > seg_rsi[p1] + 3:  # precio baja, RSI sube ≥3pts
+                rsi_div[i] = "bullish"
+
+        # --- 2. DOBLE TECHO / DOBLE SUELO (ventana 40 velas, sustituye al de 15m) ---
+        lb = 40
+        start = max(0, i - lb)
+        seg_h2 = hi[start:i+1]; seg_l2 = lo[start:i+1]
+        at = atr[i] if not np.isnan(atr[i]) and atr[i] > 0 else 0
+        phs = [k for k in range(1, len(seg_h2)-1)
+               if seg_h2[k] >= seg_h2[k-1] and seg_h2[k] >= seg_h2[k+1]]
+        pls = [k for k in range(1, len(seg_l2)-1)
+               if seg_l2[k] <= seg_l2[k-1] and seg_l2[k] <= seg_l2[k+1]]
+        if len(phs) >= 2 and at > 0:
+            j1, j2 = phs[-2], phs[-1]
+            if (j2 - j1) >= 4 and abs(seg_h2[j2] - seg_h2[j1]) / seg_h2[j1] < 0.015:
+                valley = seg_l2[j1:j2+1].min()
+                if (seg_h2[j2] - valley) > 2 * at:
+                    dbl_top[i] = 1
+        if len(pls) >= 2 and at > 0:
+            j1, j2 = pls[-2], pls[-1]
+            if (j2 - j1) >= 4 and abs(seg_l2[j2] - seg_l2[j1]) / seg_l2[j1] < 0.015:
+                peak = seg_h2[j1:j2+1].max()
+                if (peak - seg_l2[j2]) > 2 * at:
+                    dbl_bot[i] = 1
+
+        # --- 3. BULL / BEAR FLAG (mástil 5 velas + consolidación 3 velas) ---
+        if i >= 8:
+            pole  = cl[i-7:i-2]  # 5 velas del mástil
+            flags = hi[i-2:i+1]; flagl = lo[i-2:i+1]  # 3 velas de consolidación
+            if len(pole) == 5 and pole[0] > 0:
+                pole_move = (pole[-1] - pole[0]) / pole[0] * 100
+                flag_range = (flags.max() - flagl.min()) / cl[i] * 100 if cl[i] > 0 else 99
+                if abs(pole_move) >= 2.5 and flag_range < 1.2:
+                    flag_sig[i] = "bull" if pole_move > 0 else "bear"
+
+        # --- 4. BREAKOUT + RETEST (S/R de 20 velas, roto en últimas 10, retest ahora) ---
+        if i >= 30:
+            sr_window = hi[i-30:i-10]
+            resistance = sr_window.max()
+            support    = lo[i-30:i-10].min()
+            recent_cl  = cl[i-10:i]
+            tol = cl[i] * 0.005  # 0.5%
+            if recent_cl.max() > resistance and abs(cl[i] - resistance) < tol:
+                sr_ret[i] = "bullish"
+            elif recent_cl.min() < support and abs(cl[i] - support) < tol:
+                sr_ret[i] = "bearish"
+
+        # --- 5. CRUCE DE VWAP ---
+        if i >= 2 and not np.isnan(vwap[i]) and not np.isnan(vwap[i-1]):
+            if cl[i-1] < vwap[i-1] and cl[i] > vwap[i]:
+                vwap_cross[i] = "bullish"
+            elif cl[i-1] > vwap[i-1] and cl[i] < vwap[i]:
+                vwap_cross[i] = "bearish"
+
+        # --- 6. FAIR VALUE GAP ---
+        if i >= 2:
+            if hi[i-2] < lo[i]:   # hueco alcista: high de hace 2 < low actual
+                fvg_sig[i] = "bullish"
+            elif lo[i-2] > hi[i]:  # hueco bajista: low de hace 2 > high actual
+                fvg_sig[i] = "bearish"
+
+    df_1h["rsi_div_1h"]       = rsi_div
+    df_1h["double_top_1h"]    = dbl_top
+    df_1h["double_bottom_1h"] = dbl_bot
+    df_1h["flag_1h"]          = flag_sig
+    df_1h["sr_retest_1h"]     = sr_ret
+    df_1h["vwap_cross_1h"]    = vwap_cross
+    df_1h["fvg_1h"]           = fvg_sig
+
+    pat_cols = ["timestamp", "rsi_div_1h", "double_top_1h", "double_bottom_1h",
+                "flag_1h", "sr_retest_1h", "vwap_cross_1h", "fvg_1h"]
+    return pd.merge_asof(
+        df.sort_values("timestamp"),
+        df_1h[pat_cols].sort_values("timestamp"),
+        on="timestamp",
+        direction="backward",
+    )
+
+
 def precompute_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """Pre-calcula todos los indicadores tecnicos sobre el DataFrame completo.
     Llamar UNA sola vez antes del loop del backtest para evitar recalcular
@@ -681,6 +826,9 @@ def precompute_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
     # Contexto 4h: cada vela 15m tiene acceso a la ultima vela 4h completada
     df = _add_htf_columns(df)
+
+    # Patrones en 1h: más fiables que en 15m (menos ruido)
+    df = _add_1h_pattern_columns(df)
 
     # EMA diaria para detección automática de régimen (--regime auto)
     # EMA20 y EMA50 diarias: válidas con solo 50 días de datos (vs 200 semanas del weekly EMA200)
@@ -937,22 +1085,22 @@ def analyze_technical(df: pd.DataFrame, row=None, prev_row=None) -> dict:
             bearish += 5
             details["pa_impulso"] = f"bear {body/atr_pa:.1f}xATR"
 
-    # Breakout S/R corto plazo ~5h (+5) o largo plazo ~25h (+4)
+    # Breakout S/R largo plazo ~25h (+5) o corto plazo ~5h (+4)
     r20  = last.get("rolling_high_20")
     l20  = last.get("rolling_low_20")
     r100 = last.get("rolling_high_100")
     l100 = last.get("rolling_low_100")
     if r100 is not None and pd.notna(r100) and price > r100:
-        bullish += 4
+        bullish += 5
         details["sr_break"] = "resist diaria rota"
     elif l100 is not None and pd.notna(l100) and price < l100:
-        bearish += 4
+        bearish += 5
         details["sr_break"] = "soporte diario roto"
     elif r20 is not None and pd.notna(r20) and price > r20:
-        bullish += 5
+        bullish += 4
         details["sr_break"] = "resist 5h rota"
     elif l20 is not None and pd.notna(l20) and price < l20:
-        bearish += 5
+        bearish += 4
         details["sr_break"] = "soporte 5h roto"
 
     # Contraccion ATR: mercado en rango → registrar, el loop puede usarlo para filtrar
@@ -1033,13 +1181,58 @@ def analyze_technical(df: pd.DataFrame, row=None, prev_row=None) -> dict:
         elif rsi_4h > 60:
             bearish += 3
 
-    # --- Doble techo / Doble suelo (8 pts) ---
-    if last.get("double_top", 0):
+    # --- Doble techo / Doble suelo en 1h (±8 pts, más fiable que en 15m) ---
+    if last.get("double_top_1h", 0):
         bearish += 8
-        details["pattern_multi"] = "doble_techo"
-    elif last.get("double_bottom", 0):
+        details["pattern_multi"] = "doble_techo_1h"
+    elif last.get("double_bottom_1h", 0):
         bullish += 8
-        details["pattern_multi"] = "doble_suelo"
+        details["pattern_multi"] = "doble_suelo_1h"
+
+    # --- Divergencia RSI en 1h (±9 pts — señal de agotamiento anticipada) ---
+    rsi_div = last.get("rsi_div_1h")
+    if rsi_div == "bearish":
+        bearish += 9
+        details["rsi_div"] = "div_bajista_1h"
+    elif rsi_div == "bullish":
+        bullish += 9
+        details["rsi_div"] = "div_alcista_1h"
+
+    # --- Bull/Bear Flag en 1h (±7 pts — continuación de tendencia) ---
+    flag = last.get("flag_1h")
+    if flag == "bull":
+        bullish += 7
+        details["flag"] = "bull_flag_1h"
+    elif flag == "bear":
+        bearish += 7
+        details["flag"] = "bear_flag_1h"
+
+    # --- Breakout + Retest en 1h (±7 pts — alta probabilidad de continuación) ---
+    sr_ret = last.get("sr_retest_1h")
+    if sr_ret == "bullish":
+        bullish += 7
+        details["sr_retest"] = "retest_alcista_1h"
+    elif sr_ret == "bearish":
+        bearish += 7
+        details["sr_retest"] = "retest_bajista_1h"
+
+    # --- Cruce de VWAP en 1h (±6 pts — referencia institucional) ---
+    vwap_cross = last.get("vwap_cross_1h")
+    if vwap_cross == "bullish":
+        bullish += 6
+        details["vwap_cross"] = "reclaim_alcista_1h"
+    elif vwap_cross == "bearish":
+        bearish += 6
+        details["vwap_cross"] = "ruptura_bajista_1h"
+
+    # --- Fair Value Gap en 1h (±5 pts — smart money / imbalance) ---
+    fvg = last.get("fvg_1h")
+    if fvg == "bullish":
+        bullish += 5
+        details["fvg"] = "fvg_alcista_1h"
+    elif fvg == "bearish":
+        bearish += 5
+        details["fvg"] = "fvg_bajista_1h"
 
     # --- Canal de precio (5 pts) ---
     if last.get("near_channel_bot", 0):
@@ -1629,8 +1822,8 @@ def fetch_macro_correlations() -> dict:
                 # Dólar fuerte → BTC débil
                 if chg >= 1.2:    bear_mod += 4
                 elif chg >= 0.8:  bear_mod += 2
-                elif chg <= -0.8: bull_mod += 2
                 elif chg <= -1.2: bull_mod += 3
+                elif chg <= -0.8: bull_mod += 2
 
             elif name == "SP500":
                 # S&P correlación positiva con BTC
@@ -1700,8 +1893,8 @@ def load_macro_correlations_historical(start_date: str, end_date: str) -> dict:
                 if name == "DXY":
                     if chg >= 1.2:    bear_mod += 4
                     elif chg >= 0.8:  bear_mod += 2
-                    elif chg <= -0.8: bull_mod += 2
                     elif chg <= -1.2: bull_mod += 3
+                    elif chg <= -0.8: bull_mod += 2
                 elif name == "SP500":
                     if chg >= 1.5:    bull_mod += 3
                     elif chg >= 0.8:  bull_mod += 1
@@ -1976,6 +2169,20 @@ def load_winrate_table(path: str = "winrate_table.json") -> dict:
         return {}
 
 
+def _merge_winrate_tables(initial: dict, live: dict, min_live_trades: int = 8) -> dict:
+    """Combina la tabla inicial (entrenamiento) con la tabla live (experiencia real).
+
+    Para cada bucket: si live tiene >= min_live_trades trades, usa el WR live.
+    Si no, mantiene el WR inicial. Los buckets nuevos que solo existen en live
+    se incluyen si tienen suficientes trades.
+    """
+    merged = dict(initial)
+    for key, entry in live.items():
+        if entry.get("n", 0) >= min_live_trades:
+            merged[key] = entry
+    return merged
+
+
 # =============================================================================
 # GESTION DE POSICIONES (LONG + SHORT)
 # =============================================================================
@@ -2002,9 +2209,6 @@ def open_position(state: dict, pair: str, side: str, price: float,
         return None
 
     if state["daily_trades"] >= risk_profile["max_daily_trades"]:
-        return None
-
-    if score < risk_profile["min_score"]:
         return None
 
     # Drawdown check
@@ -2622,7 +2826,8 @@ def run_backtest(exchange, pair: str, timeframe: str, days: int, risk_profile: d
                  auto_regime: bool = False,
                  fg_file: Optional[str] = None,
                  _daily_macro_corr: Optional[dict] = None,
-                 _winrate_table: Optional[dict] = None):
+                 _winrate_table: Optional[dict] = None,
+                 continuous_learning: bool = False):
     """Backtesting con datos historicos.
     data_file: CSV precacheado. _df_override: DataFrame ya cargado (uso interno
     del optimizer para evitar I/O en cada combinacion)."""
@@ -2681,6 +2886,8 @@ def run_backtest(exchange, pair: str, timeframe: str, days: int, risk_profile: d
     macro_corr_neutral = {"bull_mod": 0, "bear_mod": 0}
     if _winrate_table is None:
         _winrate_table = {}
+    _initial_winrate_table = dict(_winrate_table)  # referencia para el merge continuo
+    _prev_close_count = 0  # para detectar nuevos cierres y reconstruir tabla
 
     # Cargar correlaciones macro históricas si MACRO_CORR_ENABLED
     daily_macro_corr: dict = {}
@@ -2897,6 +3104,15 @@ def run_backtest(exchange, pair: str, timeframe: str, days: int, risk_profile: d
         if result:
             logger.log(f"  [{current_time}] Bull:{bull_score:3d} Bear:{bear_score:3d} | {result}")
 
+        # Aprendizaje continuo: reconstruir tabla tras cada cierre
+        if continuous_learning:
+            close_trades_so_far = [t for t in state["trades"] if t["action"].startswith("CLOSE_")]
+            n_closed = len(close_trades_so_far)
+            if n_closed > _prev_close_count and n_closed >= 5:
+                _live_table = build_winrate_table(close_trades_so_far, min_trades=5)
+                _winrate_table = _merge_winrate_tables(_initial_winrate_table, _live_table)
+                _prev_close_count = n_closed
+
         # Progreso cada 1000 velas
         if (i - start_idx) % 1000 == 0 and i > start_idx:
             pct = (i - start_idx) / (total_candles - start_idx) * 100
@@ -3052,6 +3268,96 @@ def fetch_orderbook_signals(exchange, pair: str, current_price: float) -> dict:
         return {"support_walls": [], "resistance_walls": [], "bull_mod": 0, "bear_mod": 0}
 
 
+def fetch_1h_patterns(exchange, pair: str) -> dict:
+    """Descarga las últimas 60 velas de 1h y devuelve los patrones actuales para live."""
+    _empty = {"rsi_div_1h": None, "double_top_1h": 0, "double_bottom_1h": 0,
+              "flag_1h": None, "sr_retest_1h": None, "vwap_cross_1h": None, "fvg_1h": None}
+    try:
+        import numpy as np
+        ohlcv = exchange.fetch_ohlcv(pair, "1h", limit=60)
+        df = pd.DataFrame(ohlcv, columns=["timestamp", "open", "high", "low", "close", "volume"])
+        df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+        df["rsi_1h"] = ta.rsi(df["close"], length=14)
+        df["atr_1h"] = ta.atr(df["high"], df["low"], df["close"], length=14)
+        df["_date"]  = df["timestamp"].dt.date
+        df["vwap_1h"] = (
+            df.groupby("_date", group_keys=False)
+            .apply(lambda g: (g["close"] * g["volume"]).cumsum() / g["volume"].cumsum())
+            .reset_index(level=0, drop=True)
+        )
+        hi = df["high"].values; lo = df["low"].values
+        cl = df["close"].values; rsi = df["rsi_1h"].values
+        vwap = df["vwap_1h"].values; atr = df["atr_1h"].values
+        i = len(df) - 1
+        res = dict(_empty)
+
+        # Divergencia RSI
+        w = min(20, i)
+        seg_hi = hi[i-w:i+1]; seg_lo = lo[i-w:i+1]; seg_rsi = rsi[i-w:i+1]
+        ph_idx = [k for k in range(1, w) if seg_hi[k] > seg_hi[k-1] and seg_hi[k] > seg_hi[k+1]]
+        pl_idx = [k for k in range(1, w) if seg_lo[k] < seg_lo[k-1] and seg_lo[k] < seg_lo[k+1]]
+        if len(ph_idx) >= 2 and not any(np.isnan(seg_rsi[ph_idx[-2:]])):
+            p1, p2 = ph_idx[-2], ph_idx[-1]
+            if seg_hi[p2] > seg_hi[p1] and seg_rsi[p2] < seg_rsi[p1] - 3:
+                res["rsi_div_1h"] = "bearish"
+        if len(pl_idx) >= 2 and not any(np.isnan(seg_rsi[pl_idx[-2:]])):
+            p1, p2 = pl_idx[-2], pl_idx[-1]
+            if seg_lo[p2] < seg_lo[p1] and seg_rsi[p2] > seg_rsi[p1] + 3:
+                res["rsi_div_1h"] = "bullish"
+
+        # Doble techo/suelo
+        lb = min(40, i)
+        seg_h2 = hi[i-lb:i+1]; seg_l2 = lo[i-lb:i+1]
+        at = atr[i] if not np.isnan(atr[i]) and atr[i] > 0 else 0
+        phs = [k for k in range(1, len(seg_h2)-1) if seg_h2[k] >= seg_h2[k-1] and seg_h2[k] >= seg_h2[k+1]]
+        pls = [k for k in range(1, len(seg_l2)-1) if seg_l2[k] <= seg_l2[k-1] and seg_l2[k] <= seg_l2[k+1]]
+        if len(phs) >= 2 and at > 0:
+            j1, j2 = phs[-2], phs[-1]
+            if (j2-j1) >= 4 and abs(seg_h2[j2]-seg_h2[j1])/seg_h2[j1] < 0.015 and (seg_h2[j2]-seg_l2[j1:j2+1].min()) > 2*at:
+                res["double_top_1h"] = 1
+        if len(pls) >= 2 and at > 0:
+            j1, j2 = pls[-2], pls[-1]
+            if (j2-j1) >= 4 and abs(seg_l2[j2]-seg_l2[j1])/seg_l2[j1] < 0.015 and (seg_h2[j1:j2+1].max()-seg_l2[j2]) > 2*at:
+                res["double_bottom_1h"] = 1
+
+        # Flag
+        if i >= 8:
+            pole = cl[i-7:i-2]; flags_h = hi[i-2:i+1]; flags_l = lo[i-2:i+1]
+            if len(pole) == 5 and pole[0] > 0:
+                pm = (pole[-1]-pole[0])/pole[0]*100
+                fr = (flags_h.max()-flags_l.min())/cl[i]*100 if cl[i] > 0 else 99
+                if abs(pm) >= 2.5 and fr < 1.2:
+                    res["flag_1h"] = "bull" if pm > 0 else "bear"
+
+        # Breakout + retest
+        if i >= 30:
+            sr_w = hi[i-30:i-10]; tol = cl[i]*0.005
+            resistance = sr_w.max(); support = lo[i-30:i-10].min()
+            recent_cl = cl[i-10:i]
+            if recent_cl.max() > resistance and abs(cl[i]-resistance) < tol:
+                res["sr_retest_1h"] = "bullish"
+            elif recent_cl.min() < support and abs(cl[i]-support) < tol:
+                res["sr_retest_1h"] = "bearish"
+
+        # VWAP cross
+        if i >= 2 and not np.isnan(vwap[i]) and not np.isnan(vwap[i-1]):
+            if cl[i-1] < vwap[i-1] and cl[i] > vwap[i]:
+                res["vwap_cross_1h"] = "bullish"
+            elif cl[i-1] > vwap[i-1] and cl[i] < vwap[i]:
+                res["vwap_cross_1h"] = "bearish"
+
+        # FVG
+        if i >= 2:
+            if hi[i-2] < lo[i]:
+                res["fvg_1h"] = "bullish"
+            elif lo[i-2] > hi[i]:
+                res["fvg_1h"] = "bearish"
+
+        return res
+    except Exception:
+        return _empty
+
+
 def fetch_htf_context(exchange, pair: str) -> dict:
     """Descarga las ultimas 60 velas de 4h y devuelve la tendencia HTF para el modo live."""
     try:
@@ -3087,8 +3393,19 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
     state_file = f"paper_{slug}_state.json"
     state = load_state(state_file)
 
-    # Cargar tabla de win-rates si existe (generada por walk-forward o backtest anterior)
-    _live_winrate_table = load_winrate_table(f"winrate_{slug}.json")
+    # Cargar tabla de win-rates: priorizar datos live acumulados en STATE_DIR,
+    # si no existen usar tabla inicial de entrenamiento (/app o directorio actual)
+    _state_dir    = os.getenv("STATE_DIR", ".")
+    _live_wrt_path    = os.path.join(_state_dir, f"winrate_{slug}.json")
+    _initial_wrt_path = f"winrate_{slug}.json"
+    _initial_winrate_table = load_winrate_table(_initial_wrt_path)
+    if os.path.exists(_live_wrt_path) and _live_wrt_path != _initial_wrt_path:
+        _live_winrate_table = load_winrate_table(_live_wrt_path)
+        logger.log(f"[LEARN] Tabla live cargada desde {_live_wrt_path} ({len(_live_winrate_table)} buckets)")
+    else:
+        _live_winrate_table = dict(_initial_winrate_table)
+        logger.log(f"[LEARN] Tabla inicial cargada ({len(_live_winrate_table)} buckets)")
+    _prev_live_close_count = len([t for t in state.get("trades", []) if t["action"].startswith("CLOSE_")])
 
     # Log especifico por perfil para poder comparar varios en paralelo
     if profile_name:
@@ -3123,12 +3440,15 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
     sentiment_cache  = {"bullish_score": 0, "bearish_score": 0, "sentiment": "neutral", "news": []}
     fear_greed_cache = {"value": 50, "label": "neutral", "bull_mod": 5, "bear_mod": 5}
     htf_cache        = {"htf_trend": "lateral", "htf_rsi": 50}
+    pat_1h_cache     = {"rsi_div_1h": None, "double_top_1h": 0, "double_bottom_1h": 0,
+                        "flag_1h": None, "sr_retest_1h": None, "vwap_cross_1h": None, "fvg_1h": None}
     funding_cache    = {"funding_rate": 0.0, "bull_mod": 3, "bear_mod": 3}
     ob_cache         = {"support_walls": [], "resistance_walls": [], "bull_mod": 0, "bear_mod": 0}
     macro_corr_cache = {"bull_mod": 0, "bear_mod": 0, "detail": {}}
     last_sentiment = datetime.min
     last_fg        = datetime.min
     last_htf       = datetime.min
+    last_1h_pat    = datetime.min
     last_funding   = datetime.min
     last_ob        = datetime.min
     last_macro_corr = datetime.min
@@ -3142,6 +3462,14 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
                 htf_cache = fetch_htf_context(exchange, pair)
                 last_htf  = now
                 logger.log(f"[HTF-4h] Tendencia: {htf_cache['htf_trend']} | RSI: {htf_cache['htf_rsi']}")
+
+            # Patrones 1h (cada hora)
+            if now - last_1h_pat > timedelta(hours=1):
+                pat_1h_cache = fetch_1h_patterns(exchange, pair)
+                last_1h_pat  = now
+                active_pats = {k: v for k, v in pat_1h_cache.items() if v and v != 0}
+                if active_pats:
+                    logger.log(f"[1H-PAT] {active_pats}")
 
             # Fear & Greed (cada 10 min)
             if now - last_fg > timedelta(minutes=10):
@@ -3181,7 +3509,6 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
             df = fetch_ohlcv(exchange, pair, timeframe)
             state["current_candle_index"] = int(df["timestamp"].iloc[-1].timestamp())
             current_price = float(df["close"].iloc[-1])
-            state["current_candle_index"] = int(df["timestamp"].iloc[-1].timestamp())
 
             # Order Book (cada ciclo, datos en tiempo real)
             if now - last_ob > timedelta(minutes=1):
@@ -3198,6 +3525,9 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
             # Inyectar contexto HTF (viene del cache de 4h, no del df de 15m)
             technical["details"]["htf_trend"] = htf_cache["htf_trend"]
             technical["details"]["htf_rsi"]   = htf_cache["htf_rsi"]
+            # Inyectar patrones 1h (vienen del cache horario)
+            for _pk, _pv in pat_1h_cache.items():
+                technical["details"][_pk] = _pv
             scores = calculate_scores(technical, sentiment_cache, fear_greed_cache, funding_cache, ob_cache, macro_corr_cache)
             atr = technical.get("details", {}).get("atr", 0)
 
@@ -3294,9 +3624,20 @@ def run_live(exchange, pair: str, timeframe: str, interval: int, risk_profile: d
                     min_hold_candles=min_hold_candles,
                     current_candle_index=state["current_candle_index"],
                     winrate_table=_live_winrate_table,
+                    technical=technical,
                 )
                 if msg:
                     logger.log(f">> {msg}")
+
+            # Aprendizaje continuo: reconstruir tabla tras cada cierre en live
+            _close_trades_live = [t for t in state.get("trades", []) if t["action"].startswith("CLOSE_")]
+            _n_closed_live = len(_close_trades_live)
+            if _n_closed_live > _prev_live_close_count and _n_closed_live >= 5:
+                _new_live_table = build_winrate_table(_close_trades_live, min_trades=5)
+                _live_winrate_table = _merge_winrate_tables(_initial_winrate_table, _new_live_table)
+                save_winrate_table(_live_winrate_table, _live_wrt_path)
+                _prev_live_close_count = _n_closed_live
+                logger.log(f"[LEARN] Tabla actualizada ({len(_live_winrate_table)} buckets, {_n_closed_live} trades live)")
 
             save_state(state, state_file)
 

@@ -1,0 +1,25 @@
+{
+  "side": "SHORT",
+  "model_type": "XGB",
+  "model_path": "/Users/jorgeansotegui/Desktop/tr/v7/models/v7_clf_short.pkl",
+  "feature_cols": [
+    "htf_rsi",
+    "ema200_ratio",
+    "adx_dmn_norm",
+    "hurst_acf1",
+    "bull_score",
+    "adx",
+    "vol_ratio",
+    "stochrsi_d",
+    "stochrsi_k",
+    "ema50_ratio",
+    "rsi",
+    "macd_h_norm",
+    "bear_score",
+    "ema21_ratio",
+    "ms_bear"
+  ],
+  "threshold": 0.4,
+  "oos_auc": 0.661,
+  "train_end": "2025-01-01"
+}

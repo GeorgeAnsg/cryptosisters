@@ -1,0 +1,23 @@
+{
+  "model_type": "XGB",
+  "model_path": "/Users/jorgeansotegui/Desktop/tr/v7/models/v7_classifier_xgb.pkl",
+  "feature_cols": [
+    "htf_rsi",
+    "ema200_ratio",
+    "adx_dmp_norm",
+    "hurst_acf1",
+    "bear_score",
+    "adx",
+    "vol_ratio",
+    "stochrsi_d",
+    "stochrsi_k",
+    "ema50_ratio"
+  ],
+  "threshold": 0.55,
+  "n_train": 1883,
+  "train_wr": 38.3,
+  "cv_auc_mean": 0.65,
+  "cv_wr55_mean": 54.1,
+  "cv_cov55_mean": 25.6,
+  "trained_on": "2023-2026"
+}

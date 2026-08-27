@@ -1,0 +1,21 @@
+{
+  "model_type": "XGB",
+  "model_path": "/Users/jorgeansotegui/Desktop/tr/v7/models/v7_classifier_oos.pkl",
+  "feature_cols": [
+    "htf_rsi",
+    "ema200_ratio",
+    "adx_dmp_norm",
+    "hurst_acf1",
+    "bear_score",
+    "adx",
+    "vol_ratio",
+    "stochrsi_d",
+    "stochrsi_k",
+    "ema50_ratio"
+  ],
+  "threshold": 0.55,
+  "train_period": "2023-01-01 \u2192 2025-01-01",
+  "test_period": "2025-01-01 \u2192 2026-08-24",
+  "trained_on": "20250101",
+  "cv_wr55_mean": 54.1
+}

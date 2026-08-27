@@ -7,14 +7,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY trading_bot_v4.py launch_profiles.sh daily_summary.py news_btc_1y.json ./
+# Código fuente
+COPY v6/ ./v6/
+COPY v7/ ./v7/
+COPY v8/ ./v8/
+COPY v9/ ./v9/
 
-RUN chmod +x launch_profiles.sh && mkdir -p /app/data
+# Script de arranque (V8 live + V9 shadow con 30s de desfase)
+COPY start.sh ./start.sh
+RUN chmod +x start.sh
+
+# Datos de miedo/avaricia y otros auxiliares
+COPY data/fear_greed_historical.json ./data/
+COPY data/funding_rate_historical.csv ./data/
 
 # Estados y logs van a /app/data (montado como volumen persistente en Coolify)
 ENV STATE_DIR=/app/data
 
 # Variables de entorno obligatorias (definir en Coolify):
+# BYBIT_API_KEY, BYBIT_API_SECRET
 # TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
+# HEATMAP_URL  — URL base del endpoint de orderbook heatmap
+#                ej: http://tu0mtnondcwqlyno8q2ewx5p.46.224.182.44.sslip.io
+# WALL_MIN_NOTIONAL — notional mínimo para considerar muro (default: 1000000)
 
-CMD ["bash", "launch_profiles.sh"]
+CMD ["bash", "start.sh"]
