@@ -58,7 +58,8 @@ V9_RISK = {
     "max_drawdown_pct":       0.10,
     "max_daily_loss_pct":     0.03,
     "trailing_stop":          True,
-    "max_tp_extensions":      2,
+    "trailing_step_mult":     1.0,   # igual que V11
+    "max_tp_extensions":      1,     # igual que V11
     "weekend_mode":           "range",
     "weekend_min_score_bonus": 10,
     "min_vol_ratio":          0.0,
@@ -104,7 +105,7 @@ def _tp_price_from_atr(entry: float, side: str, atr: float, mult: float) -> floa
 def shadow_loop(pair: str, label: str):
     """
     Loop shadow para un par. Lee datos reales de mercado, genera señales
-    con la misma lógica que V8, aplica el filtro de orderbook encima,
+    con la misma lógica que V11, aplica el filtro de orderbook encima,
     y logea diferencias — pero NO ejecuta órdenes.
     """
     print(f"[{label}] V9 shadow iniciado — {pair}")
@@ -219,24 +220,28 @@ def shadow_loop(pair: str, label: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="V9 shadow — V8 + orderbook filter")
+    parser = argparse.ArgumentParser(description="V9 shadow — V11 params + orderbook filter")
     parser.add_argument("--btc-only", action="store_true")
     parser.add_argument("--eth-only", action="store_true")
+    parser.add_argument("--sol-only", action="store_true")
     args = parser.parse_args()
 
-    print("=" * 55)
-    print("  V9 Shadow Bot — V8 + Orderbook Heatmap Filter")
+    print("=" * 60)
+    print("  V9 Shadow Bot — V11 params + Orderbook Heatmap Filter")
+    print(f"  Pares: BTC + ETH + SOL | step_mult=1.0 | max_tp_ext=1")
     print(f"  Log: {SHADOW_LOG}")
     print(f"  Muro mínimo: ${float(os.getenv('WALL_MIN_NOTIONAL', '1000000')):,.0f} notional")
-    print("=" * 55)
+    print("=" * 60)
 
     _maybe_retrain()
 
     pairs = []
-    if not args.eth_only:
+    if not args.eth_only and not args.sol_only:
         pairs.append(("BTC/USDT:USDT", "BTC"))
-    if not args.btc_only:
+    if not args.btc_only and not args.sol_only:
         pairs.append(("ETH/USDT:USDT", "ETH"))
+    if not args.btc_only and not args.eth_only:
+        pairs.append(("SOL/USDT:USDT", "SOL"))
 
     if len(pairs) == 1:
         shadow_loop(*pairs[0])

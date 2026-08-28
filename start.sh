@@ -10,8 +10,8 @@ V8_PID=$!
 echo "[start] Esperando 30s antes de arrancar V9 shadow..."
 sleep 30
 
-echo "[start] Arrancando V9 shadow..."
-python -m v9.main &
+echo "[start] Arrancando V11 shadow (heatmap filter)..."
+python -m v11.shadow &
 
 echo "[start] V8 PID=$V8_PID — esperando..."
 

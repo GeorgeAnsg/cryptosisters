@@ -68,6 +68,27 @@ STATE_DIR.mkdir(parents=True, exist_ok=True)
 EXCHANGE_MODE      = os.getenv("EXCHANGE_MODE", "quantfury").lower()
 QUANTFURY_DEPOSIT  = float(os.getenv("QUANTFURY_DEPOSIT",  "100"))
 QUANTFURY_RISK_PCT = float(os.getenv("QUANTFURY_RISK_PCT", "2"))
+RISK_PROFILE_NAME  = os.getenv("RISK_PROFILE", "agresivo").lower()
+
+# Perfiles de riesgo: (score_min, risk_pct, max_cost_pct)
+_RISK_PROFILES = {
+    "conservador": {
+        "tiers":          [(0, 0.02, 0.35)],
+        "qf_options":     [(2, "🟢")],
+        "max_drawdown":   0.10,
+    },
+    "moderado": {
+        "tiers":          [(75, 0.07, 1.0), (65, 0.05, 0.87), (0, 0.03, 0.52)],
+        "qf_options":     [(3, "🟡"), (5, "🟠"), (7, "🔴")],
+        "max_drawdown":   0.15,
+    },
+    "agresivo": {
+        "tiers":          [(75, 0.12, 1.0), (65, 0.08, 1.0), (0, 0.05, 0.87)],
+        "qf_options":     [(5, "🟡"), (8, "🟠"), (12, "🔴")],
+        "max_drawdown":   0.25,
+    },
+}
+_ACTIVE_PROFILE = _RISK_PROFILES.get(RISK_PROFILE_NAME, _RISK_PROFILES["agresivo"])
 
 # ── Filtro de horas ────────────────────────────────────────────────────────────
 TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "false").lower() == "true"
@@ -78,15 +99,23 @@ TRADING_HOUR_END      = int(os.getenv("TRADING_HOUR_END",   "23"))
 TRAILING_STEP_MULT = float(os.getenv("TRAILING_STEP_MULT", "1.0"))
 MAX_TP_EXTENSIONS  = int(os.getenv("MAX_TP_EXTENSIONS",    "1"))
 
+def _tier_for_score(score: float) -> tuple:
+    """Devuelve (risk_pct, max_cost_pct) del perfil activo según el score."""
+    for min_score, risk, cap in _ACTIVE_PROFILE["tiers"]:
+        if score >= min_score:
+            return risk, cap
+    return _ACTIVE_PROFILE["tiers"][-1][1], _ACTIVE_PROFILE["tiers"][-1][2]
+
+
 V11_RISK = {
-    "risk_pct":                0.02,
-    "max_cost_pct":            0.35,
+    "risk_pct":                _ACTIVE_PROFILE["tiers"][-1][1],
+    "max_cost_pct":            _ACTIVE_PROFILE["tiers"][-1][2],
     "stop_loss_atr_mult":      2.5,
     "take_profit_atr_mult":    4.5,
     "min_score":               58,
     "entry_advantage":         15,
     "max_daily_trades":        6,
-    "max_drawdown_pct":        0.10,
+    "max_drawdown_pct":        _ACTIVE_PROFILE["max_drawdown"],
     "max_daily_loss_pct":      0.03,
     "trailing_stop":           True,
     "trailing_step_mult":      TRAILING_STEP_MULT,
@@ -98,18 +127,45 @@ V11_RISK = {
 RISK_PROFILE = V11_RISK
 
 
-# ── Modo QuantFury: añade línea de sizing al Telegram de apertura ─────────────
-def _quantfury_power_line(price: float, sl: float) -> str:
-    """Calcula cuánto poder de trading usar en QuantFury para este trade."""
+# ── Modo QuantFury: añade opciones de sizing al Telegram de apertura ──────────
+def _quantfury_sizing_msg(side: str, pair: str, price: float, sl: float, tp: float, score: float) -> str:
+    """Genera mensaje con opciones de riesgo del perfil activo + recomendación por score."""
     sl_pct = abs(price - sl) / price
     if sl_pct <= 0:
         return ""
-    risk_eur        = QUANTFURY_DEPOSIT * QUANTFURY_RISK_PCT / 100
-    power_to_use    = risk_eur / sl_pct
-    return (
-        f"\n💶 <b>QuantFury</b>: usa <b>{power_to_use:,.0f}€</b> de poder\n"
-        f"   ({risk_eur:.1f}€ en riesgo = {QUANTFURY_RISK_PCT}% de {QUANTFURY_DEPOSIT:.0f}€ depósito)"
-    )
+
+    options = _ACTIVE_PROFILE["qf_options"]
+    tiers   = _ACTIVE_PROFILE["tiers"]
+
+    # Recomendación: tier más alto que el score alcanza
+    recommended_risk = tiers[-1][1]  # fallback: tier más bajo
+    for min_score, risk, _ in tiers:
+        if score >= min_score:
+            recommended_risk = risk
+            break
+
+    recommended_pct = int(recommended_risk * 100)
+    if score >= 75:
+        rec_reason = f"señal muy fuerte (score {score:.0f})"
+    elif score >= 65:
+        rec_reason = f"señal sólida (score {score:.0f})"
+    else:
+        rec_reason = f"señal moderada (score {score:.0f})"
+
+    rr = abs(tp - price) / abs(price - sl) if abs(price - sl) > 0 else 0
+
+    profile_label = RISK_PROFILE_NAME.capitalize()
+    lines = [
+        f"💶 <b>QuantFury sizing</b> [{profile_label}] — {side.upper()} {pair}",
+        f"SL distancia: {sl_pct*100:.2f}%  |  R/R: {rr:.1f}x\n",
+    ]
+    for risk_pct, emoji in options:
+        risk_eur = QUANTFURY_DEPOSIT * risk_pct / 100
+        power    = risk_eur / sl_pct
+        tag = "  ← <b>recomendado</b>" if risk_pct == recommended_pct else ""
+        lines.append(f"{emoji} <b>{risk_pct}% riesgo</b>: {power:,.0f}€ poder  ({risk_eur:.1f}€ en juego){tag}")
+    lines.append(f"\n💡 {rec_reason}")
+    return "\n".join(lines)
 
 if EXCHANGE_MODE == "quantfury":
     _orig_tg_open = _bc._tg_open
@@ -117,16 +173,9 @@ if EXCHANGE_MODE == "quantfury":
     def _tg_open_qf(side, pair, price, sl, tp, score, atr,
                     trade_type="intraday", amount_usdt=0, balance=0):
         _orig_tg_open(side, pair, price, sl, tp, score, atr, trade_type, amount_usdt, balance)
-        # Enviar línea de QuantFury como mensaje de seguimiento
-        qf_line = _quantfury_power_line(price, sl)
-        if qf_line:
-            _bc.send_telegram(
-                f"💶 <b>QuantFury sizing</b> — {side} {pair}\n"
-                f"Poder a usar: <b>{abs(price-sl)/price and QUANTFURY_DEPOSIT*QUANTFURY_RISK_PCT/100/abs(price-sl)*price:,.0f}€</b>\n"
-                f"Riesgo: {QUANTFURY_DEPOSIT*QUANTFURY_RISK_PCT/100:.1f}€ "
-                f"({QUANTFURY_RISK_PCT}% de {QUANTFURY_DEPOSIT:.0f}€ depositados)\n"
-                f"SL distancia: {abs(price-sl)/price*100:.2f}%"
-            )
+        msg = _quantfury_sizing_msg(side, pair, price, sl, tp, score)
+        if msg:
+            _bc.send_telegram(msg)
 
     _bc._tg_open = _tg_open_qf
 
@@ -197,12 +246,21 @@ def main():
     parser.add_argument("--sol-only", action="store_true")
     args = parser.parse_args()
 
+    tiers   = _ACTIVE_PROFILE["tiers"]
+    options = _ACTIVE_PROFILE["qf_options"]
+    tier_str = "/".join(f"{int(r*100)}%" for _, r, _ in reversed(tiers))
+
     print("=" * 62)
     print("  V11 Trading Bot — Configuración activa")
     print("=" * 62)
     print(f"  Modo exchange     {EXCHANGE_MODE.upper()}")
     if EXCHANGE_MODE == "quantfury":
-        print(f"  Depósito QF       {QUANTFURY_DEPOSIT:.0f}€  →  riesgo {QUANTFURY_RISK_PCT}%/trade = {QUANTFURY_DEPOSIT*QUANTFURY_RISK_PCT/100:.1f}€")
+        print(f"  Depósito QF       {QUANTFURY_DEPOSIT:.0f}€")
+    print(f"  Perfil de riesgo  {RISK_PROFILE_NAME.upper()}")
+    print(f"    Riesgo/trade    {tier_str} (por score de señal)")
+    print(f"    Max drawdown    {int(_ACTIVE_PROFILE['max_drawdown']*100)}%")
+    opt_str = "  /  ".join(f"{r}% ({e})" for r, e in options)
+    print(f"    Opciones QF     {opt_str}")
     if TRADING_HOURS_ENABLED:
         print(f"  Horario           {TRADING_HOUR_START:02d}:00 – {TRADING_HOUR_END:02d}:00 Madrid")
     else:
@@ -212,14 +270,14 @@ def main():
     print("=" * 62)
     print()
     print("  Variables de entorno disponibles:")
-    print("    EXCHANGE_MODE          quantfury|bybit   (default: quantfury)")
-    print("    QUANTFURY_DEPOSIT      euros depositados (default: 100)")
-    print("    QUANTFURY_RISK_PCT     % riesgo/trade    (default: 2)")
-    print("    TRADING_HOURS_ENABLED  true|false        (default: false)")
-    print("    TRADING_HOUR_START     hora inicio       (default: 8)")
-    print("    TRADING_HOUR_END       hora fin          (default: 23)")
-    print("    TRAILING_STEP_MULT     0.0–2.0           (default: 1.0)")
-    print("    MAX_TP_EXTENSIONS      0,1,2…            (default: 1)")
+    print("    EXCHANGE_MODE          quantfury|bybit         (default: quantfury)")
+    print("    QUANTFURY_DEPOSIT      euros depositados       (default: 100)")
+    print("    RISK_PROFILE           conservador|moderado|agresivo (default: agresivo)")
+    print("    TRADING_HOURS_ENABLED  true|false              (default: false)")
+    print("    TRADING_HOUR_START     hora inicio             (default: 8)")
+    print("    TRADING_HOUR_END       hora fin                (default: 23)")
+    print("    TRAILING_STEP_MULT     0.0–2.0                 (default: 1.0)")
+    print("    MAX_TP_EXTENSIONS      0,1,2…                  (default: 1)")
     print("=" * 62)
 
     if not (MODEL_DIR / "v7_classifier_oos.pkl").exists():
