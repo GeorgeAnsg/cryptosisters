@@ -3,8 +3,8 @@
 # V8 es el proceso principal — si muere, el contenedor sale y Coolify lo reinicia.
 # V9 shadow es secundario — si falla, el contenedor sigue vivo (solo deja de logear).
 
-echo "[start] Arrancando V8 live..."
-python -m v8.main &
+echo "[start] Arrancando V10 live..."
+python -m v10.main &
 V8_PID=$!
 
 echo "[start] Esperando 30s antes de arrancar V9 shadow..."
