@@ -440,7 +440,8 @@ def check_sl_tp(state: dict, pair: str, current_price: float,
             if current_price > pos.get("highest_price", current_price):
                 pos["highest_price"] = current_price
                 new_sl = current_price - sl_dist
-                if new_sl > sl:
+                trail_step = sl_dist * risk_profile.get("trailing_step_mult", 0.0)
+                if new_sl > sl + trail_step:
                     pos["stop_loss"] = round(new_sl, 2)
                     sl = new_sl
                     _tg_update(pair, side, f"📈 Trailing SL subido ({current_price:,.2f})", sl, pos["take_profit"], pnl_float=_pnl_f)
@@ -455,7 +456,8 @@ def check_sl_tp(state: dict, pair: str, current_price: float,
             if current_price < pos.get("lowest_price", current_price):
                 pos["lowest_price"] = current_price
                 new_sl = current_price + sl_dist
-                if new_sl < sl:
+                trail_step = sl_dist * risk_profile.get("trailing_step_mult", 0.0)
+                if new_sl < sl - trail_step:
                     pos["stop_loss"] = round(new_sl, 2)
                     sl = new_sl
                     _tg_update(pair, side, f"📉 Trailing SL bajado ({current_price:,.2f})", sl, pos["take_profit"], pnl_float=_pnl_f)

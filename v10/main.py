@@ -59,7 +59,9 @@ STATE_DIR.mkdir(parents=True, exist_ok=True)
 TRADING_HOUR_START = int(os.getenv("TRADING_HOUR_START", "8"))
 TRADING_HOUR_END   = int(os.getenv("TRADING_HOUR_END",   "23"))
 
-# Parámetros V10: SL/TP fijos, sin trailing, sin extensiones de TP
+# Parámetros V10: trailing suavizado (1-2 avisos/trade) + 1 extensión TP
+# trailing_step_mult=1.0 → el SL solo se mueve cuando mejora ≥1× distancia
+# inicial (≈1 ATR). Eso reduce los avisos de 5+ a 1-2 por trade.
 V10_RISK = {
     "risk_pct":                0.02,
     "max_cost_pct":            0.35,
@@ -70,8 +72,9 @@ V10_RISK = {
     "max_daily_trades":        6,
     "max_drawdown_pct":        0.10,
     "max_daily_loss_pct":      0.03,
-    "trailing_stop":           False,   # ← SL fijo
-    "max_tp_extensions":       0,       # ← TP fijo
+    "trailing_stop":           True,    # ← activo pero con paso grande
+    "trailing_step_mult":      1.0,     # ← mueve SL solo si mejora ≥1× ATR
+    "max_tp_extensions":       1,       # ← máximo 1 extensión de TP
     "weekend_mode":            "range",
     "weekend_min_score_bonus": 10,
     "min_vol_ratio":           0.0,
@@ -131,7 +134,7 @@ def run_pair(pair: str, label: str):
     """Loop de producción para un par."""
     print(f"[{label}] V10 iniciando — {pair}")
     print(f"[{label}] Horario: {TRADING_HOUR_START:02d}:00-{TRADING_HOUR_END:02d}:00 Madrid | "
-          f"trailing=OFF | max_tp_ext=0")
+          f"trailing_step=1.0×ATR | max_tp_ext=1")
     exchange = make_exchange()
     strategy = make_strategy()
     profile_name = f"v10_{pair.replace('/', '_').replace(':', '_')}"
@@ -161,7 +164,7 @@ def main():
     print("=" * 55)
     print("  V10 Trading Bot — Ejecución manual QuantFury")
     print(f"  Horario: {TRADING_HOUR_START:02d}:00-{TRADING_HOUR_END:02d}:00 Madrid")
-    print("  SL/TP fijos | Sin trailing | Sin TP extensions")
+    print("  Trailing suavizado (≥1 ATR) | Máx 1 extensión TP")
     print("=" * 55)
 
     if not (MODEL_DIR / "v7_classifier_oos.pkl").exists():
