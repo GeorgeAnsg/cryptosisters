@@ -14,8 +14,9 @@ COPY v8/ ./v8/
 COPY v9/ ./v9/
 COPY v10/ ./v10/
 COPY v11/ ./v11/
+COPY v12/ ./v12/
 
-# Script de arranque (V11 live + V9 shadow con 30s de desfase)
+# Script de arranque (V12 live + V12 shadow con 30s de desfase)
 COPY start.sh ./start.sh
 RUN chmod +x start.sh
 
