@@ -70,6 +70,7 @@ QUANTFURY_DEPOSIT  = float(os.getenv("QUANTFURY_DEPOSIT", "100"))   # fallback
 RISK_PROFILE_NAME  = os.getenv("RISK_PROFILE", "agresivo").lower()
 
 PARTIAL_TP_MULT    = float(os.getenv("PARTIAL_TP_MULT", "0"))       # 0 = desactivado (pendiente backtest)
+BALANCE_ADMIN_ID   = int(os.getenv("BALANCE_ADMIN_ID", "0"))        # único user_id autorizado para /balance
 
 TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "false").lower() == "true"
 TRADING_HOUR_START    = int(os.getenv("TRADING_HOUR_START", "8"))
@@ -184,6 +185,10 @@ def _telegram_listener():
                 msg = update.get("message", {})
                 text = (msg.get("text") or "").strip()
                 if text.lower().startswith("/balance"):
+                    sender_id = msg.get("from", {}).get("id", 0)
+                    if BALANCE_ADMIN_ID and sender_id != BALANCE_ADMIN_ID:
+                        send_telegram("⛔ Solo el administrador puede actualizar el balance.")
+                        continue
                     parts = text.split()
                     if len(parts) >= 2:
                         try:
