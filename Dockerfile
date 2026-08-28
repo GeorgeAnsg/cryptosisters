@@ -13,8 +13,9 @@ COPY v7/ ./v7/
 COPY v8/ ./v8/
 COPY v9/ ./v9/
 COPY v10/ ./v10/
+COPY v11/ ./v11/
 
-# Script de arranque (V8 live + V9 shadow con 30s de desfase)
+# Script de arranque (V11 live + V9 shadow con 30s de desfase)
 COPY start.sh ./start.sh
 RUN chmod +x start.sh
 
@@ -31,5 +32,8 @@ ENV STATE_DIR=/app/data
 # HEATMAP_URL  — URL base del endpoint de orderbook heatmap
 #                ej: http://tu0mtnondcwqlyno8q2ewx5p.46.224.182.44.sslip.io
 # WALL_MIN_NOTIONAL — notional mínimo para considerar muro (default: 1000000)
+# EXCHANGE_MODE     — quantfury (default) | bybit
+# QUANTFURY_DEPOSIT — euros depositados en QuantFury (default: 100)
+# QUANTFURY_RISK_PCT— % del depósito a arriesgar por trade (default: 2)
 
 CMD ["bash", "start.sh"]

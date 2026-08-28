@@ -1,10 +1,10 @@
 #!/bin/bash
-# Arranca V8 (live) y V9 (shadow) con desfase para evitar sobrecarga al inicio.
-# V8 es el proceso principal — si muere, el contenedor sale y Coolify lo reinicia.
+# Arranca V11 (live) y V9 (shadow) con desfase para evitar sobrecarga al inicio.
+# V11 es el proceso principal — si muere, el contenedor sale y Coolify lo reinicia.
 # V9 shadow es secundario — si falla, el contenedor sigue vivo (solo deja de logear).
 
-echo "[start] Arrancando V10 live..."
-python -m v10.main &
+echo "[start] Arrancando V11 live (BTC+ETH+SOL, modo QuantFury)..."
+python -m v11.main &
 V8_PID=$!
 
 echo "[start] Esperando 30s antes de arrancar V9 shadow..."

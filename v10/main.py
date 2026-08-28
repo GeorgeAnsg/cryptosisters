@@ -59,7 +59,7 @@ STATE_DIR.mkdir(parents=True, exist_ok=True)
 # ── Configuración por variables de entorno ─────────────────────────────────
 # Horas de trading (Madrid). Desactivar con TRADING_HOURS_ENABLED=false
 # para exchanges automáticos que operan 24h.
-TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "true").lower() == "true"
+TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "false").lower() == "true"
 TRADING_HOUR_START    = int(os.getenv("TRADING_HOUR_START", "8"))
 TRADING_HOUR_END      = int(os.getenv("TRADING_HOUR_END",   "23"))
 

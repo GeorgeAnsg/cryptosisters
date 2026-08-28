@@ -136,15 +136,39 @@ def run_single(df, strategy, pair, risk, apply_hours_filter=False):
     if state.get("position"):
         close_position(state, pair, float(df.iloc[-1]["close"]), "END")
 
-    total = state["stats"]["wins"] + state["stats"]["losses"]
-    wr    = state["stats"]["wins"] / total * 100 if total else 0
+    st    = state["stats"]
+    total = st["wins"] + st["losses"]
+    wr    = st["wins"] / total * 100 if total else 0
+
+    trades = [t for t in state["trades"] if t["action"].startswith("CLOSE_")]
+    pnls   = [t["pnl"] for t in trades if "pnl" in t]
+    wins_pnl  = [p for p in pnls if p > 0]
+    loses_pnl = [p for p in pnls if p <= 0]
+    avg_win  = sum(wins_pnl)  / len(wins_pnl)  if wins_pnl  else 0
+    avg_loss = sum(loses_pnl) / len(loses_pnl) if loses_pnl else 0
+    profit_factor = abs(sum(wins_pnl) / sum(loses_pnl)) if sum(loses_pnl) != 0 else float("inf")
+
+    long_wr  = st["long_wins"]  / st["total_longs"]  * 100 if st["total_longs"]  else 0
+    short_wr = st["short_wins"] / st["total_shorts"] * 100 if st["total_shorts"] else 0
+
     return {
-        "pnl":    round(state["balance_usdt"] - 1000, 2),
-        "wr":     round(wr, 1),
-        "trades": total,
-        "dd":     round(max_dd, 1),
-        "trail_moves": trail_moves,
-        "tp_exts":     tp_exts,
+        "pnl":          round(state["balance_usdt"] - 1000, 2),
+        "wr":           round(wr, 1),
+        "trades":       total,
+        "wins":         st["wins"],
+        "losses":       st["losses"],
+        "dd":           round(max_dd, 1),
+        "best_trade":   round(st["best_trade"], 2),
+        "worst_trade":  round(st["worst_trade"], 2),
+        "avg_win":      round(avg_win, 2),
+        "avg_loss":     round(avg_loss, 2),
+        "profit_factor":round(profit_factor, 2),
+        "long_trades":  st["total_longs"],
+        "long_wr":      round(long_wr, 1),
+        "short_trades": st["total_shorts"],
+        "short_wr":     round(short_wr, 1),
+        "trail_moves":  trail_moves,
+        "tp_exts":      tp_exts,
         "notifs_per_trade": round((trail_moves + tp_exts) / total, 1) if total else 0,
     }
 
@@ -168,21 +192,52 @@ if __name__ == "__main__":
 
     strat = make_strategy()
 
+    # Config intermedia: solo horario (trailing igual que V8)
+    HOURS_ONLY_RISK = {**V8_RISK, "trailing_step_mult": 0.0, "max_tp_extensions": 2}
+    # Config intermedia: solo trailing suavizado (sin filtro horario)
+    TRAIL_ONLY_RISK = {**V10_RISK}
+
     configs = [
-        ("V8 BTC  (baseline)",       df_btc, "BTC/USDT:USDT", V8_RISK,  False),
-        ("V10 BTC (trail+horas)",    df_btc, "BTC/USDT:USDT", V10_RISK, True),
-        ("V8 ETH  (baseline)",       df_eth, "ETH/USDT:USDT", V8_RISK,  False),
-        ("V10 ETH (trail+horas)",    df_eth, "ETH/USDT:USDT", V10_RISK, True),
+        ("V8  BTC  baseline",        df_btc, "BTC/USDT:USDT", V8_RISK,        False),
+        ("    BTC  solo horario",     df_btc, "BTC/USDT:USDT", HOURS_ONLY_RISK, True),
+        ("    BTC  solo trailing",    df_btc, "BTC/USDT:USDT", TRAIL_ONLY_RISK, False),
+        ("V10 BTC  trail+horas",      df_btc, "BTC/USDT:USDT", V10_RISK,        True),
+        ("V8  ETH  baseline",        df_eth, "ETH/USDT:USDT", V8_RISK,        False),
+        ("    ETH  solo horario",     df_eth, "ETH/USDT:USDT", HOURS_ONLY_RISK, True),
+        ("    ETH  solo trailing",    df_eth, "ETH/USDT:USDT", TRAIL_ONLY_RISK, False),
+        ("V10 ETH  trail+horas",      df_eth, "ETH/USDT:USDT", V10_RISK,        True),
     ]
 
-    print(f"  {'Config':<28} {'PnL':>8} {'WR':>7} {'Trades':>7} {'DD':>6}  "
-          f"{'Trail/trade':>11}  {'TP ext':>6}")
-    print(f"  {'─'*80}")
-
+    results = {}
     for label, df, pair, risk, hours in configs:
-        r = run_single(df.copy(), make_strategy(), pair, risk, hours)
-        notif = f"{r['notifs_per_trade']:.1f}"
-        print(f"  {label:<28} {r['pnl']:>+8.0f} {r['wr']:>6.1f}% {r['trades']:>7}"
-              f"  {r['dd']:>5.1f}%  {notif:>11}  {r['tp_exts']:>6}")
+        print(f"  Calculando {label}...")
+        results[label] = run_single(df.copy(), make_strategy(), pair, risk, hours)
 
-    print(f"\n{'='*70}\n")
+    def show(label, r):
+        print(f"\n  ┌─ {label}")
+        print(f"  │  PnL total      {r['pnl']:>+8.0f} USDT")
+        print(f"  │  Win rate       {r['wr']:>7.1f}%  ({r['wins']}W / {r['losses']}L)")
+        print(f"  │  Long WR        {r['long_wr']:>7.1f}%  ({r['long_trades']} trades)")
+        print(f"  │  Short WR       {r['short_wr']:>7.1f}%  ({r['short_trades']} trades)")
+        print(f"  │  Trades totales {r['trades']:>7}")
+        print(f"  │  Max drawdown   {r['dd']:>7.1f}%")
+        print(f"  │  Mejor trade    {r['best_trade']:>+8.2f} USDT")
+        print(f"  │  Peor trade     {r['worst_trade']:>+8.2f} USDT")
+        print(f"  │  Avg ganancia   {r['avg_win']:>+8.2f} USDT")
+        print(f"  │  Avg pérdida    {r['avg_loss']:>+8.2f} USDT")
+        print(f"  │  Profit factor  {r['profit_factor']:>8.2f}")
+        print(f"  └  Avisos/trade   {r['notifs_per_trade']:>7.1f}  (trail={r['trail_moves']} TP_ext={r['tp_exts']})")
+
+    print(f"\n{'─'*55}")
+    for label in results:
+        show(label, results[label])
+
+    print(f"\n{'='*65}")
+    print(f"  ¿QUÉ AFECTA MÁS A LAS GANANCIAS?")
+    print(f"{'─'*65}")
+    print(f"  {'Config':<26} {'PnL':>8}  {'WR':>6}  {'Trades':>7}  {'DD':>5}  {'Avisos':>6}")
+    print(f"  {'─'*60}")
+    for label, r in results.items():
+        print(f"  {label:<26} {r['pnl']:>+8.0f}  {r['wr']:>5.1f}%  {r['trades']:>7}  "
+              f"{r['dd']:>4.1f}%  {r['notifs_per_trade']:>6.1f}")
+    print(f"{'='*65}\n")
