@@ -145,17 +145,15 @@ def set_balance(amount: float):
         _save_config(cfg)
 
 def _maybe_ask_balance_reminder():
+    today = date.today()
+    if today.weekday() != 0:  # 0 = lunes
+        return
     with _config_lock:
         cfg = _load_config()
         last_asked = cfg.get("last_asked")
-        today_str  = str(date.today())
-        if last_asked:
-            try:
-                delta = (date.today() - date.fromisoformat(last_asked)).days
-                if delta < 7:
-                    return
-            except Exception:
-                pass
+        today_str  = str(today)
+        if last_asked == today_str:
+            return  # ya preguntó hoy
         cfg["last_asked"] = today_str
         _save_config(cfg)
 
@@ -390,7 +388,12 @@ def main():
     t_listener = threading.Thread(target=_telegram_listener, daemon=True, name="tg-listener")
     t_listener.start()
 
-    # Mensaje de inicio — preguntar balance
+    # Mensaje de inicio — preguntar balance y marcar last_asked para evitar recordatorio inmediato
+    with _config_lock:
+        cfg = _load_config()
+        cfg["last_asked"] = str(date.today())
+        _save_config(cfg)
+
     send_telegram(
         f"🚀 <b>V12 iniciado</b> — BTC + ETH + SOL\n"
         f"Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>  |  "
