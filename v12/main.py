@@ -18,7 +18,7 @@ Variables de entorno:
   QUANTFURY_DEPOSIT        — balance inicial fallback si no hay /balance (default: 100)
   RISK_PROFILE             — conservador | moderado | agresivo (default: agresivo)
 
-  PARTIAL_TP_MULT          — fracción del recorrido TP para aviso parcial (default: 0.5)
+  PARTIAL_TP_MULT          — fracción del recorrido TP para aviso parcial (default: 0 = desactivado)
   TRADING_HOURS_ENABLED    — true/false (default: false)
   TRADING_HOUR_START       — hora inicio Madrid (default: 8)
   TRADING_HOUR_END         — hora fin Madrid (default: 23)
@@ -42,7 +42,7 @@ import ccxt
 import requests
 
 import v6.core.bot_core as _bc
-from v6.core.bot_core import RISK_PROFILES, run_live, send_telegram
+from v6.core.bot_core import run_live, send_telegram
 from v6.main import _maybe_retrain
 from v7.strategy_ml import StrategyML
 
@@ -69,7 +69,7 @@ EXCHANGE_MODE      = os.getenv("EXCHANGE_MODE", "quantfury").lower()
 QUANTFURY_DEPOSIT  = float(os.getenv("QUANTFURY_DEPOSIT", "100"))   # fallback
 RISK_PROFILE_NAME  = os.getenv("RISK_PROFILE", "agresivo").lower()
 
-PARTIAL_TP_MULT    = float(os.getenv("PARTIAL_TP_MULT", "0.5"))     # 50% del recorrido a TP
+PARTIAL_TP_MULT    = float(os.getenv("PARTIAL_TP_MULT", "0"))       # 0 = desactivado (pendiente backtest)
 
 TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "false").lower() == "true"
 TRADING_HOUR_START    = int(os.getenv("TRADING_HOUR_START", "8"))
@@ -96,12 +96,6 @@ _RISK_PROFILES = {
     },
 }
 _ACTIVE_PROFILE = _RISK_PROFILES.get(RISK_PROFILE_NAME, _RISK_PROFILES["agresivo"])
-
-TP_MAP = {
-    ("bull",    True):  5.0, ("bull",    False): 4.5,
-    ("neutral", True):  3.5, ("neutral", False): 3.5,
-    ("bear",    True):  4.5, ("bear",    False): 4.0,
-}
 
 V12_RISK = {
     "risk_pct":                _ACTIVE_PROFILE["tiers"][-1][1],
@@ -259,7 +253,7 @@ def _check_partial_tp(state: dict, pair: str, price: float, atr: float, rp: dict
     tp_mult = rp.get("take_profit_atr_mult", 4.5)
     partial_mult = tp_mult * PARTIAL_TP_MULT
 
-    if side == "long":
+    if side == "LONG":
         partial_price = entry + atr * partial_mult
         hit = price >= partial_price
     else:
@@ -323,16 +317,6 @@ def run_pair(pair: str, label: str):
     strategy = make_strategy()
     profile_name = f"v12_{pair.replace('/', '_').replace(':', '_')}"
 
-    # Inyectar check de cierre parcial en el loop de run_live
-    _orig_check = _bc.check_sl_tp
-
-    def _check_with_partial(state, p, price, rp, atr=0, scores=None):
-        _orig_check(state, p, price, rp, atr=atr, scores=scores)
-        if p == pair:
-            _check_partial_tp(state, p, price, atr, rp)
-
-    _bc.check_sl_tp = _check_with_partial
-
     while True:
         try:
             run_live(
@@ -347,8 +331,6 @@ def run_pair(pair: str, label: str):
         except Exception as e:
             print(f"[{label}] Error: {e}. Reiniciando en 60s...")
             time.sleep(60)
-        finally:
-            _bc.check_sl_tp = _orig_check
 
 
 def main():
@@ -371,7 +353,10 @@ def main():
     print(f"  Perfil de riesgo  {RISK_PROFILE_NAME.upper()}")
     print(f"    Riesgo/trade    {tier_str} (por score de señal)")
     print(f"    Max drawdown    {int(_ACTIVE_PROFILE['max_drawdown']*100)}%")
-    print(f"    Cierre parcial  al {int(PARTIAL_TP_MULT*100)}% del recorrido hacia TP")
+    if PARTIAL_TP_MULT > 0:
+        print(f"    Cierre parcial  al {int(PARTIAL_TP_MULT*100)}% del recorrido hacia TP")
+    else:
+        print(f"    Cierre parcial  DESACTIVADO")
     opt_str = "  /  ".join(f"{r}% ({e})" for r, e in options)
     print(f"    Opciones QF     {opt_str}")
     if TRADING_HOURS_ENABLED:
