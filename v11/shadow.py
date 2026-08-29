@@ -39,6 +39,7 @@ sys.path.insert(0, str(ROOT))
 import ccxt
 import pandas as pd
 
+import v6.core.bot_core as _bc
 from v6.core.bot_core import (
     load_state, save_state, apply_regime, reset_daily_counter,
     check_sl_tp, make_decision,
@@ -235,6 +236,12 @@ def main():
     print(f"  Log:   {SHADOW_LOG}")
     print(f"  Muro mínimo: ${float(os.getenv('WALL_MIN_NOTIONAL','1000000')):,.0f} notional")
     print("=" * 62)
+
+    # Shadow es silencioso — no envía Telegram, solo logs JSONL
+    _bc.send_telegram = lambda *a, **kw: None
+    _bc._tg_open      = lambda *a, **kw: None
+    _bc._tg_update    = lambda *a, **kw: None
+    _bc._tg_close     = lambda *a, **kw: None
 
     _maybe_retrain()
 
