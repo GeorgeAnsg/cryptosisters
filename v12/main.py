@@ -437,7 +437,7 @@ def main():
         _save_config(cfg)
 
     send_telegram(
-        f"🚀 <b>V12 iniciado</b> — BTC + ETH + SOL\n"
+        f"🚀 <b>V13 iniciado</b> — BTC + ETH + SOL\n"
         f"Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>  |  "
         f"Balance registrado: <b>{balance:.0f}€</b>\n\n"
         f"¿Ha cambiado tu balance en QuantFury?\n"
