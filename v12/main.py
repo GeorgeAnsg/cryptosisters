@@ -58,7 +58,7 @@ except Exception:
         return datetime.now(_MADRID_TZ)
 
 
-MODEL_DIR = ROOT / "v7" / "models"
+MODEL_DIR = ROOT / "v13" / "models"
 STATE_DIR = Path(os.getenv("STATE_DIR", str(ROOT / "data")))
 STATE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -344,9 +344,9 @@ def make_exchange():
 
 
 def make_strategy():
-    with open(MODEL_DIR / "v7_classifier_oos_meta.json") as f:
+    with open(MODEL_DIR / "v13_classifier_meta.json") as f:
         oos_meta = json.load(f)
-    inner = StrategyML(model_path=str(MODEL_DIR / "v7_classifier_oos.pkl"), threshold=0.55)
+    inner = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.55)
     inner.feature_cols = oos_meta["feature_cols"]
     return V12Strategy(inner)
 
@@ -407,7 +407,7 @@ def main():
     print(f"  Máx TP ext.       {MAX_TP_EXTENSIONS}")
     print("=" * 62)
 
-    if not (MODEL_DIR / "v7_classifier_oos.pkl").exists():
+    if not (MODEL_DIR / "v13_classifier.pkl").exists():
         print("ERROR: Modelo ML no encontrado.")
         sys.exit(1)
 

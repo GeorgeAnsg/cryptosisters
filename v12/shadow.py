@@ -49,7 +49,7 @@ from v6.main import _maybe_retrain
 from v7.strategy_ml import StrategyML
 from v9.orderbook_filter import adjust_tp_for_walls
 
-MODEL_DIR  = ROOT / "v7" / "models"
+MODEL_DIR  = ROOT / "v13" / "models"
 STATE_DIR  = Path(os.getenv("STATE_DIR",  str(ROOT / "data")))
 SHADOW_LOG = Path(os.getenv("SHADOW_LOG", str(STATE_DIR / "v12_shadow.jsonl")))
 STATE_DIR.mkdir(parents=True, exist_ok=True)
@@ -124,9 +124,9 @@ def make_exchange():
 
 
 def make_strategy():
-    with open(MODEL_DIR / "v7_classifier_oos_meta.json") as f:
+    with open(MODEL_DIR / "v13_classifier_meta.json") as f:
         meta = json.load(f)
-    s = StrategyML(model_path=str(MODEL_DIR / "v7_classifier_oos.pkl"), threshold=0.55)
+    s = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.55)
     s.feature_cols = meta["feature_cols"]
     return s
 
