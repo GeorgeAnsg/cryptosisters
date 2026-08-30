@@ -165,6 +165,17 @@ def shadow_loop(pair: str, label: str):
             rp["take_profit_atr_mult"] = _dynamic_tp(signal)
             atr    = signal.technical.get("details", {}).get("atr", 0) or 0
 
+            # Filtro de régimen para fin de semana
+            if ts.weekday() >= 5:
+                if signal.regime == "bull":
+                    rp["weekend_mode"]            = "trend"
+                    rp["weekend_min_score_bonus"] = 0
+                    rp["risk_pct"]                = 0.02
+                    signal.bear_score = 0  # solo LONG en bull market fin de semana
+                else:
+                    rp["weekend_mode"]            = "trend"
+                    rp["weekend_min_score_bonus"] = 0
+
             check_sl_tp(state, pair, price, rp, atr=atr,
                         scores={"bullish_total": signal.bull_score,
                                 "bearish_total": signal.bear_score})

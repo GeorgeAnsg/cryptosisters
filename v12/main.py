@@ -116,6 +116,7 @@ V12_RISK = {
     "min_vol_ratio":           0.0,
 }
 RISK_PROFILE = V12_RISK
+_BASE_RISK_PCT = V12_RISK["risk_pct"]  # riesgo base (sin modificar por fin de semana)
 
 
 # ── Balance dinámico ───────────────────────────────────────────────────────────
@@ -212,6 +213,25 @@ def _quantfury_sizing_msg(side: str, pair: str, price: float, sl: float, tp: flo
         return ""
 
     balance = get_balance()
+    rr = abs(tp - price) / abs(price - sl) if abs(price - sl) > 0 else 0
+    profile_label = RISK_PROFILE_NAME.capitalize()
+
+    now = datetime.now()
+    is_bull_weekend = now.weekday() >= 5 and RISK_PROFILE.get("risk_pct", _BASE_RISK_PCT) == 0.02
+
+    if is_bull_weekend:
+        # Bull market fin de semana: recomendar riesgo reducido (2%)
+        risk_eur = balance * 0.02
+        power    = risk_eur / sl_pct
+        lines = [
+            f"💶 <b>QuantFury sizing</b> [{profile_label}] — {side.upper()} {pair}",
+            f"Balance: <b>{balance:.0f}€</b>  |  SL: {sl_pct*100:.2f}%  |  R/R: {rr:.1f}x",
+            f"🌙 <b>Fin de semana bull market</b> — riesgo reducido\n",
+            f"🟢 <b>2% riesgo</b>: {power:,.0f}€ poder  ({risk_eur:.1f}€ en juego)  ← <b>recomendado</b>",
+            f"\n💡 Solo LONG — riesgo al 2% por cautela en bull weekend",
+        ]
+        return "\n".join(lines)
+
     options = _ACTIVE_PROFILE["qf_options"]
     tiers   = _ACTIVE_PROFILE["tiers"]
 
@@ -228,9 +248,6 @@ def _quantfury_sizing_msg(side: str, pair: str, price: float, sl: float, tp: flo
         rec_reason = f"señal sólida (score {score:.0f})"
     else:
         rec_reason = f"señal moderada (score {score:.0f})"
-
-    rr = abs(tp - price) / abs(price - sl) if abs(price - sl) > 0 else 0
-    profile_label = RISK_PROFILE_NAME.capitalize()
 
     lines = [
         f"💶 <b>QuantFury sizing</b> [{profile_label}] — {side.upper()} {pair}",
@@ -289,6 +306,26 @@ class V12Strategy:
         if TRADING_HOURS_ENABLED and not _is_trading_hours():
             signal.bull_score = 0
             signal.bear_score = 0
+
+        # Filtro de régimen para fin de semana
+        # run_live pasa RISK_PROFILE (= V12_RISK) por referencia, así que
+        # modificarlo aquí afecta al make_decision que se llama justo después.
+        now = datetime.now()
+        if now.weekday() >= 5:  # sábado o domingo
+            if signal.regime == "bull":
+                RISK_PROFILE["weekend_mode"]            = "trend"
+                RISK_PROFILE["weekend_min_score_bonus"] = 0
+                RISK_PROFILE["risk_pct"]                = 0.02  # mitad del riesgo en bull wknd
+                signal.bear_score = 0  # solo LONG en bull market fin de semana
+            else:
+                RISK_PROFILE["weekend_mode"]            = "trend"
+                RISK_PROFILE["weekend_min_score_bonus"] = 0
+                RISK_PROFILE["risk_pct"]                = _BASE_RISK_PCT
+        else:
+            RISK_PROFILE["weekend_mode"]            = "range"
+            RISK_PROFILE["weekend_min_score_bonus"] = 10
+            RISK_PROFILE["risk_pct"]                = _BASE_RISK_PCT
+
         return signal
 
 
