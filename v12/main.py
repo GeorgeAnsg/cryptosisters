@@ -35,6 +35,8 @@ import time
 from datetime import datetime, date
 from pathlib import Path
 
+_thread_local = threading.local()  # risk_pct efectivo por thread
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -217,7 +219,8 @@ def _quantfury_sizing_msg(side: str, pair: str, price: float, sl: float, tp: flo
     profile_label = RISK_PROFILE_NAME.capitalize()
 
     now = datetime.now()
-    is_bull_weekend = now.weekday() >= 5 and RISK_PROFILE.get("risk_pct", _BASE_RISK_PCT) == 0.02
+    effective_risk_pct = getattr(_thread_local, "current_risk_pct", _BASE_RISK_PCT)
+    is_bull_weekend = now.weekday() >= 5 and effective_risk_pct == 0.02
 
     if is_bull_weekend:
         # Bull market fin de semana: recomendar riesgo reducido (2%)
@@ -325,6 +328,7 @@ class V12Strategy:
             self._rp["weekend_min_score_bonus"] = 10
             self._rp["risk_pct"]                = _BASE_RISK_PCT
 
+        _thread_local.current_risk_pct = self._rp["risk_pct"]
         return signal
 
 

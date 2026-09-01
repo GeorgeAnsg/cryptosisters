@@ -149,7 +149,7 @@ def shadow_loop(pair: str, label: str):
             ts       = pd.Timestamp(df.iloc[-1]["timestamp"])
             date_str = str(ts.date())
             reset_daily_counter(state, date_str)
-            state["current_candle_index"] = len(df) - 1
+            state["current_candle_index"] = state.get("current_candle_index", 0) + 1
 
             price = float(df.iloc[-1]["close"])
             live_extras = {
@@ -183,7 +183,7 @@ def shadow_loop(pair: str, label: str):
             had_position = state.get("position") is not None
             make_decision(state, pair, price, atr, signal, rp,
                           verbose=False, min_hold_candles=3,
-                          current_candle_index=len(df) - 1,
+                          current_candle_index=state["current_candle_index"],
                           winrate_table={}, timestamp=ts)
             opened = not had_position and state.get("position") is not None
 
