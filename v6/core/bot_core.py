@@ -566,16 +566,22 @@ def make_decision(state: dict, pair: str, price: float, atr: float,
     # Cooldown post-SL
     sl_cooldown = state.get("sl_cooldown_until", 0)
     if current_candle_index and current_candle_index < sl_cooldown:
+        if verbose:
+            logger.decision(pair, bull, bear, ms, None, "HOLD — cooldown post-SL activo")
         return None
 
     # Filtro de sesión volátil (apertura NYSE/Londres)
     from v6.core.bot_indicators import is_volatile_session
     if is_volatile_session(ts):
+        if verbose:
+            logger.decision(pair, bull, bear, ms, None, "HOLD — sesión volátil (apertura NYSE/Londres)")
         return None
 
     # Filtro de volumen
     min_vol = risk_profile.get("min_vol_ratio", 0.0)
     if min_vol > 0 and tech.get("details", {}).get("vol_ratio", 1.0) < min_vol:
+        if verbose:
+            logger.decision(pair, bull, bear, ms, None, "HOLD — volumen insuficiente")
         return None
 
     # Ajustes de régimen sobre el umbral mínimo
@@ -629,7 +635,26 @@ def make_decision(state: dict, pair: str, price: float, atr: float,
                              _cond_key=_ckey, trade_type=trade_type)
 
     if verbose:
-        logger.decision(pair, bull, bear, ms, None, "HOLD — scores insuficientes")
+        # Diagnóstico específico del motivo de HOLD
+        reasons = []
+        if signal.htf_blocks_long and bull > bear:
+            reasons.append(f"HTF bloquea LONG")
+        if signal.htf_blocks_short and bear > bull:
+            reasons.append(f"HTF bloquea SHORT")
+        if not q_long and bull > bear:
+            reasons.append("calidad señal LONG insuficiente")
+        if not q_short and bear > bull:
+            reasons.append("calidad señal SHORT insuficiente")
+        if not reasons:
+            if bull < long_min and bear < short_min:
+                reasons.append(f"bull={bull}<{long_min} bear={bear}<{short_min}")
+            elif bull >= long_min and not (bull > bear + ea):
+                reasons.append(f"ventaja insuficiente (bull={bull} vs bear={bear}, need +{ea})")
+            elif bear >= short_min and not (bear > bull + ea):
+                reasons.append(f"ventaja insuficiente (bear={bear} vs bull={bull}, need +{ea})")
+            else:
+                reasons.append(f"bull={bull} bear={bear} min={ms}")
+        logger.decision(pair, bull, bear, ms, None, f"HOLD — {', '.join(reasons)}")
     return None
 
 
