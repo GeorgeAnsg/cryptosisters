@@ -439,10 +439,12 @@ def main():
         _save_config(cfg)
 
     send_telegram(
-        f"🚀 <b>V14 iniciado</b> — BTC + ETH + LINK + AAVE + INJ\n"
-        f"Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>  |  "
-        f"Balance registrado: <b>{balance:.0f}€</b>\n\n"
-        f"¿Ha cambiado tu balance en QuantFury?\n"
+        f"🐦‍⬛ <b>CORBUS v1.0</b> — en línea\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"⚡ BTC  ·  ETH  ·  LINK  ·  AAVE  ·  INJ\n"
+        f"📡 DVOL activo  |  Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>\n"
+        f"💶 Balance: <b>{balance:.0f}€</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"Responde <code>/balance N</code> para actualizar el sizing."
     )
 
