@@ -93,7 +93,7 @@ _TP_MAP = {
 
 def _dynamic_tp(signal) -> float:
     try:
-        adx = float(str(signal.technical.get("details", {}).get("adx", 0) or 0).split()[0])
+        adx = float(str(signal.technical.get("details", {}).get("adx", 0) or 0).split()[-1])
     except Exception:
         adx = 0.0
     return _TP_MAP.get((signal.regime, adx >= 25), 4.0)

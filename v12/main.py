@@ -295,8 +295,9 @@ def _check_partial_tp(state: dict, pair: str, price: float, atr: float, rp: dict
 
 # ── Estrategia con filtro de horas + cierre parcial ───────────────────────────
 class V12Strategy:
-    def __init__(self, inner: StrategyML):
+    def __init__(self, inner: StrategyML, risk_profile: dict):
         self._inner       = inner
+        self._rp          = risk_profile  # copia local por thread, no el global
         self.timeframe    = inner.timeframe
         self.htf          = getattr(inner, "htf", None)
         self.feature_cols = inner.feature_cols
@@ -307,24 +308,22 @@ class V12Strategy:
             signal.bull_score = 0
             signal.bear_score = 0
 
-        # Filtro de régimen para fin de semana
-        # run_live pasa RISK_PROFILE (= V12_RISK) por referencia, así que
-        # modificarlo aquí afecta al make_decision que se llama justo después.
+        # Filtro de régimen para fin de semana — muta la copia local del thread
         now = datetime.now()
         if now.weekday() >= 5:  # sábado o domingo
             if signal.regime == "bull":
-                RISK_PROFILE["weekend_mode"]            = "trend"
-                RISK_PROFILE["weekend_min_score_bonus"] = 0
-                RISK_PROFILE["risk_pct"]                = 0.02  # mitad del riesgo en bull wknd
+                self._rp["weekend_mode"]            = "trend"
+                self._rp["weekend_min_score_bonus"] = 0
+                self._rp["risk_pct"]                = 0.02
                 signal.bear_score = 0  # solo LONG en bull market fin de semana
             else:
-                RISK_PROFILE["weekend_mode"]            = "trend"
-                RISK_PROFILE["weekend_min_score_bonus"] = 0
-                RISK_PROFILE["risk_pct"]                = _BASE_RISK_PCT
+                self._rp["weekend_mode"]            = "trend"
+                self._rp["weekend_min_score_bonus"] = 0
+                self._rp["risk_pct"]                = _BASE_RISK_PCT
         else:
-            RISK_PROFILE["weekend_mode"]            = "range"
-            RISK_PROFILE["weekend_min_score_bonus"] = 10
-            RISK_PROFILE["risk_pct"]                = _BASE_RISK_PCT
+            self._rp["weekend_mode"]            = "range"
+            self._rp["weekend_min_score_bonus"] = 10
+            self._rp["risk_pct"]                = _BASE_RISK_PCT
 
         return signal
 
@@ -343,18 +342,19 @@ def make_exchange():
     })
 
 
-def make_strategy():
+def make_strategy(risk_profile: dict):
     with open(MODEL_DIR / "v13_classifier_meta.json") as f:
         oos_meta = json.load(f)
     inner = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.55)
     inner.feature_cols = oos_meta["feature_cols"]
-    return V12Strategy(inner)
+    return V12Strategy(inner, risk_profile)
 
 
 def run_pair(pair: str, label: str):
     print(f"[{label}] V12 iniciando — {pair}")
     exchange = make_exchange()
-    strategy = make_strategy()
+    local_profile = dict(V12_RISK)  # copia por thread para evitar race condition
+    strategy = make_strategy(local_profile)
     profile_name = f"v12_{pair.replace('/', '_').replace(':', '_')}"
 
     while True:
@@ -363,7 +363,7 @@ def run_pair(pair: str, label: str):
                 exchange         = exchange,
                 pair             = pair,
                 interval         = 900,
-                risk_profile     = RISK_PROFILE,
+                risk_profile     = local_profile,
                 strategy         = strategy,
                 min_hold_candles = 3,
                 profile_name     = profile_name,

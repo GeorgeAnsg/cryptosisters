@@ -199,9 +199,10 @@ def fetch_fear_greed() -> dict:
             "label": ds["label"],
             "bull_mod": ds["bull_mod"],
             "bear_mod": ds["bear_mod"],
+            "risk_factor": ds["risk_factor"],
         }
     except Exception:
-        return {"value": 55, "label": "normal", "bull_mod": 5, "bear_mod": 5}
+        return {"value": 55, "label": "normal", "bull_mod": 5, "bear_mod": 5, "risk_factor": 1.0}
 
 
 def load_fear_greed_sentiment(fg_file: str) -> dict:

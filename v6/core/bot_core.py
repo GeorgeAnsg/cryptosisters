@@ -816,7 +816,7 @@ def run_live(exchange, pair: str, interval: int, risk_profile: dict,
 
             # Datos LTF y señal de la estrategia
             df_ltf = fetch_ohlcv(exchange, pair, timeframe, limit=300)
-            state["current_candle_index"] = int(df_ltf["timestamp"].iloc[-1].timestamp())
+            state["current_candle_index"] = state.get("current_candle_index", 0) + 1
             current_price = float(df_ltf["close"].iloc[-1])
 
             # Order book (cada minuto)
@@ -833,11 +833,17 @@ def run_live(exchange, pair: str, interval: int, risk_profile: dict,
             }
             signal = strategy.get_signal(df_ltf, live_extras)
 
+            # Ajustes de régimen de mercado + factor de riesgo DVOL
+            rp = apply_regime(risk_profile, signal.regime)
+            dvol_risk_factor = fear_greed_cache.get("risk_factor", 1.0)
+            if dvol_risk_factor < 1.0:
+                rp["risk_pct"] = rp["risk_pct"] * dvol_risk_factor
+
             atr    = signal.technical.get("details", {}).get("atr", 0)
             scores = {"bullish_total": signal.bull_score, "bearish_total": signal.bear_score}
 
             # SL/TP primero (siempre se evalúan)
-            sl_tp_msg = check_sl_tp(state, pair, current_price, risk_profile, atr=atr, scores=scores)
+            sl_tp_msg = check_sl_tp(state, pair, current_price, rp, atr=atr, scores=scores)
             if sl_tp_msg:
                 logger.log(f">> {sl_tp_msg}")
 
@@ -851,7 +857,7 @@ def run_live(exchange, pair: str, interval: int, risk_profile: dict,
 
             # Decisión de trading
             decision = make_decision(
-                state, pair, current_price, atr, signal, risk_profile,
+                state, pair, current_price, atr, signal, rp,
                 min_hold_candles=min_hold_candles,
                 current_candle_index=state["current_candle_index"],
                 winrate_table=_live_wrt,
