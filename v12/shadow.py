@@ -100,7 +100,7 @@ def _dynamic_tp(signal) -> float:
 
 
 def _tp_from_atr(entry: float, side: str, atr: float, mult: float) -> float:
-    return entry + atr * mult if side == "long" else entry - atr * mult
+    return entry + atr * mult if side.upper() == "LONG" else entry - atr * mult
 
 
 _log_lock = threading.Lock()
