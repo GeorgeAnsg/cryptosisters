@@ -374,10 +374,12 @@ def run_pair(pair: str, label: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="V12 — Bot BTC+ETH+SOL")
-    parser.add_argument("--btc-only", action="store_true")
-    parser.add_argument("--eth-only", action="store_true")
-    parser.add_argument("--sol-only", action="store_true")
+    parser = argparse.ArgumentParser(description="V12 — Bot BTC+ETH+LINK+AAVE+INJ")
+    parser.add_argument("--btc-only",  action="store_true")
+    parser.add_argument("--eth-only",  action="store_true")
+    parser.add_argument("--link-only", action="store_true")
+    parser.add_argument("--aave-only", action="store_true")
+    parser.add_argument("--inj-only",  action="store_true")
     args = parser.parse_args()
 
     tiers      = _ACTIVE_PROFILE["tiers"]
@@ -437,7 +439,7 @@ def main():
         _save_config(cfg)
 
     send_telegram(
-        f"🚀 <b>V14 iniciado</b> — BTC + ETH + SOL\n"
+        f"🚀 <b>V14 iniciado</b> — BTC + ETH + LINK + AAVE + INJ\n"
         f"Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>  |  "
         f"Balance registrado: <b>{balance:.0f}€</b>\n\n"
         f"¿Ha cambiado tu balance en QuantFury?\n"
@@ -453,12 +455,17 @@ def main():
     threading.Thread(target=_weekly_reminder_loop, daemon=True, name="weekly-reminder").start()
 
     pairs = []
-    if not args.eth_only and not args.sol_only:
+    others = args.eth_only or args.link_only or args.aave_only or args.inj_only
+    if not others:
         pairs.append(("BTC/USDT:USDT", "BTC"))
-    if not args.btc_only and not args.sol_only:
+    if not args.btc_only and not args.link_only and not args.aave_only and not args.inj_only:
         pairs.append(("ETH/USDT:USDT", "ETH"))
-    if not args.btc_only and not args.eth_only:
-        pairs.append(("SOL/USDT:USDT", "SOL"))
+    if not args.btc_only and not args.eth_only and not args.aave_only and not args.inj_only:
+        pairs.append(("LINK/USDT:USDT", "LINK"))
+    if not args.btc_only and not args.eth_only and not args.link_only and not args.inj_only:
+        pairs.append(("AAVE/USDT:USDT", "AAVE"))
+    if not args.btc_only and not args.eth_only and not args.link_only and not args.aave_only:
+        pairs.append(("INJ/USDT:USDT", "INJ"))
 
     if len(pairs) == 1:
         run_pair(*pairs[0])
