@@ -730,11 +730,10 @@ def run_live(exchange, pair: str, interval: int, risk_profile: dict,
     )
 
     slug       = profile_name or pair.replace("/", "_")
-    state_file = f"paper_{slug}_state.json"
+    _state_dir       = os.getenv("STATE_DIR", ".")
+    state_file = os.path.join(_state_dir, f"paper_{slug}_state.json")
     state      = load_state(state_file)
     timeframe  = strategy.timeframe
-
-    _state_dir       = os.getenv("STATE_DIR", ".")
     _live_wrt_path   = os.path.join(_state_dir, f"winrate_{slug}.json")
     _init_wrt_path   = f"winrate_{slug}.json"
     _init_wrt        = load_winrate_table(_init_wrt_path)
