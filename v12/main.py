@@ -439,7 +439,15 @@ def main():
         _save_config(cfg)
 
     send_telegram(
-        f"🐦‍⬛ <b>CORBUS v1.0</b> — en línea\n"
+        f"<pre>"
+        f"    ___\n"
+        f"  _/ o \\\n"
+        f" /   ___&gt;\n"
+        f" \\__/\n"
+        f"   ||\n"
+        f"  /  \\\n"
+        f"</pre>"
+        f"🐦‍⬛ <b>CORVUS v1.0</b> — en línea\n"
         f"━━━━━━━━━━━━━━━━━━━━━\n"
         f"⚡ BTC  ·  ETH  ·  LINK  ·  AAVE  ·  INJ\n"
         f"📡 DVOL activo  |  Perfil: <b>{RISK_PROFILE_NAME.upper()}</b>\n"
