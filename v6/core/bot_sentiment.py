@@ -189,18 +189,19 @@ def load_daily_sentiment(news_file: str) -> dict:
 # =============================================================================
 
 def fetch_fear_greed() -> dict:
+    # V14: DVOL (Deribit implied volatility) reemplaza Fear & Greed
     try:
-        data = requests.get("https://api.alternative.me/fng/?limit=1", timeout=10).json()["data"][0]
-        value = int(data["value"])
-        label = data["value_classification"]
-        if value < 25:   bull_mod, bear_mod = 10, 0
-        elif value < 40: bull_mod, bear_mod = 7, 2
-        elif value > 75: bull_mod, bear_mod = 0, 10
-        elif value > 60: bull_mod, bear_mod = 2, 7
-        else:            bull_mod, bear_mod = 5, 5
-        return {"value": value, "label": label, "bull_mod": bull_mod, "bear_mod": bear_mod}
+        from v14.deribit_options import get_current_dvol, dvol_score
+        dvol = get_current_dvol(timeout=8)
+        ds = dvol_score(dvol)
+        return {
+            "value": round(dvol, 1) if dvol is not None else 55,
+            "label": ds["label"],
+            "bull_mod": ds["bull_mod"],
+            "bear_mod": ds["bear_mod"],
+        }
     except Exception:
-        return {"value": 50, "label": "neutral", "bull_mod": 5, "bear_mod": 5}
+        return {"value": 55, "label": "normal", "bull_mod": 5, "bear_mod": 5}
 
 
 def load_fear_greed_sentiment(fg_file: str) -> dict:
@@ -326,19 +327,8 @@ def load_macro_correlations_historical(start_date: str, end_date: str) -> dict:
 # =============================================================================
 
 def fetch_funding_oi(exchange, pair: str) -> dict:
-    try:
-        futures_pair = pair if ":" in pair else pair.replace("/USDT", "/USDT:USDT")
-        fr_data = exchange.fetch_funding_rate(futures_pair)
-        fr = fr_data.get("fundingRate", 0) or 0
-        if fr < -0.0002:   bull_mod, bear_mod = 8, 0
-        elif fr < -0.0001: bull_mod, bear_mod = 6, 1
-        elif fr < 0:       bull_mod, bear_mod = 4, 2
-        elif fr < 0.0002:  bull_mod, bear_mod = 3, 3
-        elif fr < 0.0005:  bull_mod, bear_mod = 1, 6
-        else:              bull_mod, bear_mod = 0, 8
-        return {"funding_rate": fr, "bull_mod": bull_mod, "bear_mod": bear_mod}
-    except Exception:
-        return {"funding_rate": 0.0, "bull_mod": 3, "bear_mod": 3}
+    # V14: funding en neutro fijo (backtest muestra que la señal real perjudica en OOS 2025-26)
+    return {"funding_rate": 0.0, "bull_mod": 3, "bear_mod": 3}
 
 
 # =============================================================================
