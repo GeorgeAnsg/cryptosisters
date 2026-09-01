@@ -52,6 +52,11 @@ def _maybe_retrain():
                   f"(próximo en {_RETRAIN_INTERVAL_DAYS - age_days} días)")
             return
 
+        data_file = ROOT / "data" / "btc_15m_full.csv"
+        if not data_file.exists():
+            print(f"[AutoRetrain] Modelo tiene {age_days} días pero datos no disponibles en producción — omitiendo.")
+            return
+
         print(f"[AutoRetrain] Modelo tiene {age_days} días (>{_RETRAIN_INTERVAL_DAYS}). "
               f"Lanzando reentrenamiento en segundo plano...")
 
