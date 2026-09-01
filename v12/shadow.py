@@ -30,7 +30,7 @@ import os
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -106,7 +106,7 @@ def _tp_from_atr(entry: float, side: str, atr: float, mult: float) -> float:
 _log_lock = threading.Lock()
 
 def _log(record: dict):
-    record["ts"] = datetime.utcnow().isoformat()
+    record["ts"] = datetime.now(UTC).isoformat()
     line = json.dumps(record, ensure_ascii=False)
     with _log_lock:
         with open(SHADOW_LOG, "a") as f:
