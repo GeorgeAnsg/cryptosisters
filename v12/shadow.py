@@ -232,18 +232,20 @@ def shadow_loop(pair: str, label: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="V12 Shadow — V12 + orderbook heatmap")
-    parser.add_argument("--btc-only", action="store_true")
-    parser.add_argument("--eth-only", action="store_true")
-    parser.add_argument("--sol-only", action="store_true")
+    parser = argparse.ArgumentParser(description="CORVUS Shadow — orderbook heatmap filter")
+    parser.add_argument("--btc-only",  action="store_true")
+    parser.add_argument("--eth-only",  action="store_true")
+    parser.add_argument("--link-only", action="store_true")
+    parser.add_argument("--aave-only", action="store_true")
+    parser.add_argument("--inj-only",  action="store_true")
     args = parser.parse_args()
 
     tier_str = "/".join(f"{int(r*100)}%" for _, r, _ in reversed(_ACTIVE_PROFILE["tiers"]))
     print("=" * 62)
-    print("  V12 Shadow — V12 live + Orderbook Heatmap Filter")
+    print("  CORVUS Shadow — live + Orderbook Heatmap Filter")
     print(f"  Perfil de riesgo  {RISK_PROFILE_NAME.upper()}  ({tier_str} por score)")
     print(f"  Max drawdown      {int(_ACTIVE_PROFILE['max_drawdown']*100)}%")
-    print(f"  Pares: BTC + ETH + SOL | step={TRAILING_STEP_MULT} | max_tp_ext={MAX_TP_EXTENSIONS}")
+    print(f"  Pares: BTC + ETH + LINK + AAVE + INJ | step={TRAILING_STEP_MULT} | max_tp_ext={MAX_TP_EXTENSIONS}")
     print(f"  Log:   {SHADOW_LOG}")
     print(f"  Muro mínimo: ${float(os.getenv('WALL_MIN_NOTIONAL','1000000')):,.0f} notional")
     print("=" * 62)
@@ -257,12 +259,17 @@ def main():
     _maybe_retrain()
 
     pairs = []
-    if not args.eth_only and not args.sol_only:
+    others = args.eth_only or args.link_only or args.aave_only or args.inj_only
+    if not others:
         pairs.append(("BTC/USDT:USDT", "BTC"))
-    if not args.btc_only and not args.sol_only:
+    if not args.btc_only and not args.link_only and not args.aave_only and not args.inj_only:
         pairs.append(("ETH/USDT:USDT", "ETH"))
-    if not args.btc_only and not args.eth_only:
-        pairs.append(("SOL/USDT:USDT", "SOL"))
+    if not args.btc_only and not args.eth_only and not args.aave_only and not args.inj_only:
+        pairs.append(("LINK/USDT:USDT", "LINK"))
+    if not args.btc_only and not args.eth_only and not args.link_only and not args.inj_only:
+        pairs.append(("AAVE/USDT:USDT", "AAVE"))
+    if not args.btc_only and not args.eth_only and not args.link_only and not args.aave_only:
+        pairs.append(("INJ/USDT:USDT", "INJ"))
 
     if len(pairs) == 1:
         shadow_loop(*pairs[0])
