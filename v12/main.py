@@ -24,6 +24,7 @@ Variables de entorno:
   TRADING_HOUR_END         — hora fin Madrid (default: 23)
   TRAILING_STEP_MULT       — 0.0–2.0 (default: 1.0)
   MAX_TP_EXTENSIONS        — 0, 1, 2… (default: 1)
+  TELEGRAM_USER_CHAT_ID    — chat_id privado del usuario para /status y resumen diario
 """
 
 import argparse
@@ -73,6 +74,7 @@ RISK_PROFILE_NAME  = os.getenv("RISK_PROFILE", "agresivo").lower()
 
 PARTIAL_TP_MULT    = float(os.getenv("PARTIAL_TP_MULT", "0"))       # 0 = desactivado (pendiente backtest)
 BALANCE_ADMIN_ID   = int(os.getenv("BALANCE_ADMIN_ID", "0"))        # único user_id autorizado para /balance
+TELEGRAM_USER_CHAT_ID = os.getenv("TELEGRAM_USER_CHAT_ID", "")     # chat privado del usuario para /status
 
 TRADING_HOURS_ENABLED = os.getenv("TRADING_HOURS_ENABLED", "false").lower() == "true"
 TRADING_HOUR_START    = int(os.getenv("TRADING_HOUR_START", "8"))
@@ -169,7 +171,94 @@ def _maybe_ask_balance_reminder():
     )
 
 
-# ── Telegram listener — recibe /balance N ─────────────────────────────────────
+# ── Telegram privado ──────────────────────────────────────────────────────────
+def send_private(message: str, chat_id: str = ""):
+    """Envía un mensaje al chat privado del usuario (TELEGRAM_USER_CHAT_ID)."""
+    token = os.environ.get("TELEGRAM_TOKEN", "")
+    target = chat_id or TELEGRAM_USER_CHAT_ID
+    if not token or not target:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": target, "text": message, "parse_mode": "HTML"},
+            timeout=10,
+        )
+    except Exception as e:
+        print(f"[send_private] Error: {e}")
+
+
+def _build_status_msg() -> str:
+    """Lee los state files de todos los pares y construye el resumen."""
+    now = _now_madrid()
+    balance_qf = get_balance()
+    lines = [
+        f"📊 <b>CORVUS — Estado</b>  {now.strftime('%d/%m %H:%M')}\n"
+        f"💶 Balance QF: <b>{balance_qf:.0f}€</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━"
+    ]
+
+    pair_labels = [
+        ("BTC", "BTC/USDT:USDT"),
+        ("ETH", "ETH/USDT:USDT"),
+        ("LINK", "LINK/USDT:USDT"),
+        ("AAVE", "AAVE/USDT:USDT"),
+        ("INJ", "INJ/USDT:USDT"),
+    ]
+
+    total_pnl = 0.0
+    total_trades_today = 0
+    capital_comprometido = 0.0
+
+    for label, pair in pair_labels:
+        slug = pair.replace("/", "_").replace(":", "_")
+        state_file = STATE_DIR / f"paper_v12_{slug}_state.json"
+        if not state_file.exists():
+            lines.append(f"  {label:<5} ❓ sin datos")
+            continue
+        try:
+            with open(state_file) as f:
+                st = json.load(f)
+        except Exception:
+            lines.append(f"  {label:<5} ❓ error leyendo estado")
+            continue
+
+        bal  = st.get("balance_usdt", 0.0)
+        pnl  = bal - 1000.0
+        stats = st.get("stats", {})
+        today_str = now.strftime("%Y-%m-%d")
+        trades_today = st.get("daily_trades", {}).get(today_str, 0)
+        pos  = st.get("position")
+        total_pnl += pnl
+        total_trades_today += trades_today
+
+        if pos:
+            side_icon = "🟢" if pos.get("side", "").upper() == "LONG" else "🔴"
+            entry = pos.get("entry_price", 0)
+            amount = pos.get("amount", 0)
+            notional = amount * entry
+            capital_comprometido += balance_qf * 0.05  # aprox 5% del balance QF
+            lines.append(
+                f"  {label:<5} {side_icon} <b>{pos.get('side','').upper()}</b> @ {entry:.4f}  "
+                f"Bal: {bal:.2f}€  PnL: {pnl:+.2f}€"
+            )
+        else:
+            pnl_str = f"{pnl:+.2f}€" if abs(pnl) > 0.01 else "±0.00€"
+            lines.append(
+                f"  {label:<5} ⚪ FLAT  Bal: {bal:.2f}€  PnL: {pnl_str}"
+                + (f"  ({trades_today} trades hoy)" if trades_today else "")
+            )
+
+    lines.append("━━━━━━━━━━━━━━━━━━━━━")
+    lines.append(f"  PnL total acumulado: <b>{total_pnl:+.2f}€</b>")
+    if capital_comprometido > 0:
+        lines.append(f"  Capital comprometido ahora: ~{capital_comprometido:.0f}€ ({capital_comprometido/balance_qf*100:.0f}% del balance)")
+    if total_trades_today:
+        lines.append(f"  Trades hoy: {total_trades_today}")
+    return "\n".join(lines)
+
+
+# ── Telegram listener — recibe /balance N y /status ───────────────────────────
 def _telegram_listener():
     token  = os.getenv("TELEGRAM_TOKEN", "")
     if not token:
@@ -187,7 +276,10 @@ def _telegram_listener():
                 offset = update["update_id"] + 1
                 msg = update.get("message", {})
                 text = (msg.get("text") or "").strip()
-                if text.lower().startswith("/balance"):
+                if text.lower().startswith("/status"):
+                    sender_chat_id = str(msg.get("chat", {}).get("id", ""))
+                    send_private(_build_status_msg(), chat_id=sender_chat_id)
+                elif text.lower().startswith("/balance"):
                     sender_id = msg.get("from", {}).get("id", 0)
                     if BALANCE_ADMIN_ID and sender_id != BALANCE_ADMIN_ID:
                         send_telegram("⛔ Solo el administrador puede actualizar el balance.")
@@ -459,6 +551,20 @@ def main():
             _maybe_ask_balance_reminder()
 
     threading.Thread(target=_weekly_reminder_loop, daemon=True, name="weekly-reminder").start()
+
+    # Resumen diario a las 08:00 Madrid → chat privado
+    def _daily_status_loop():
+        sent_today = None
+        while True:
+            time.sleep(60)
+            now = _now_madrid()
+            today = now.date()
+            if now.hour == 8 and now.minute < 5 and sent_today != today:
+                if TELEGRAM_USER_CHAT_ID:
+                    send_private(_build_status_msg())
+                    sent_today = today
+
+    threading.Thread(target=_daily_status_loop, daemon=True, name="daily-status").start()
 
     pairs = []
     others = args.eth_only or args.link_only or args.aave_only or args.inj_only
