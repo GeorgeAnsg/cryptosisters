@@ -116,7 +116,7 @@ class StrategyML(Strategy15m):
             self.feature_cols = meta["feature_cols"]
             self.threshold    = meta.get("threshold", 0.55)
             print(f"[StrategyML] Loaded {meta['model_type']} | threshold={self.threshold} | "
-                  f"features={len(self.feature_cols)} | CV WR@0.55={meta.get('cv_wr55_mean')}%")
+                  f"features={len(self.feature_cols)} | CV WR@{self.threshold}={meta.get('cv_wr55_mean')}%")
         except Exception as e:
             print(f"[StrategyML] WARNING: could not load model ({e}). Running without ML filter.")
 
