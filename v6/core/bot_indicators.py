@@ -1262,11 +1262,30 @@ def is_weekend(timestamp) -> bool:
 
 
 def is_volatile_session(timestamp) -> bool:
-    """True durante apertura NYSE (14:30-15:10 UTC) y Londres (08:00-08:30 UTC)."""
+    """True durante apertura NYSE y Londres, corrigiendo DST (EST/EDT y GMT/BST)."""
     if not hasattr(timestamp, "hour"):
         return False
-    total_min = timestamp.hour * 60 + timestamp.minute
-    return (870 <= total_min < 910) or (480 <= total_min < 510)
+    try:
+        from zoneinfo import ZoneInfo
+        import datetime as _dt
+        if timestamp.tzinfo is None:
+            ts_utc = timestamp.replace(tzinfo=_dt.timezone.utc)
+        else:
+            ts_utc = timestamp
+        nyse_open = ts_utc.astimezone(ZoneInfo("America/New_York")).replace(
+            hour=9, minute=30, second=0, microsecond=0)
+        nyse_open_utc = nyse_open.astimezone(_dt.timezone.utc)
+        nyse_min = nyse_open_utc.hour * 60 + nyse_open_utc.minute
+        lon_open = ts_utc.astimezone(ZoneInfo("Europe/London")).replace(
+            hour=8, minute=0, second=0, microsecond=0)
+        lon_open_utc = lon_open.astimezone(_dt.timezone.utc)
+        lon_min = lon_open_utc.hour * 60 + lon_open_utc.minute
+        total_min = ts_utc.hour * 60 + ts_utc.minute
+        return (nyse_min <= total_min < nyse_min + 40) or (lon_min <= total_min < lon_min + 30)
+    except Exception:
+        # fallback: EST/GMT (invierno)
+        total_min = timestamp.hour * 60 + timestamp.minute
+        return (870 <= total_min < 910) or (480 <= total_min < 510)
 
 
 def check_signal_quality(technical: dict, side: str, min_confirmations: int = 3) -> bool:
