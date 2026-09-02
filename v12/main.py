@@ -441,7 +441,7 @@ def make_exchange():
 def make_strategy(risk_profile: dict):
     with open(MODEL_DIR / "v13_classifier_meta.json") as f:
         oos_meta = json.load(f)
-    inner = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.55)
+    inner = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.53)
     inner.feature_cols = oos_meta["feature_cols"]
     return V12Strategy(inner, risk_profile)
 

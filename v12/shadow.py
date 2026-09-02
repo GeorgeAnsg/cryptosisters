@@ -126,7 +126,7 @@ def make_exchange():
 def make_strategy():
     with open(MODEL_DIR / "v13_classifier_meta.json") as f:
         meta = json.load(f)
-    s = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.55)
+    s = StrategyML(model_path=str(MODEL_DIR / "v13_classifier.pkl"), threshold=0.53)
     s.feature_cols = meta["feature_cols"]
     return s
 
