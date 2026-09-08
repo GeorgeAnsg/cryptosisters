@@ -70,9 +70,50 @@ tal como está planteado el proyecto ahora mismo (solo BTC), no sirve.
 **Siguiente:** pasar a Canal (Donchian) y Doble suelo, los próximos en la
 cola de `docs/00-PLAN-MAESTRO.md` §10.1.
 
-## 2. Canal (Donchian) y Doble suelo
+## 2a. Canal (Donchian) — RoturaCanalLargo
 
-Pendiente — siguiente en la cola.
+**Situación de partida, distinta de StochRSI:** esto no es un cribado a medio
+probar — es un motor ya construido como estrategia real de Freqtrade en
+`corvus2` (`user_data/strategies/rotura_canal.py` + `rotura_canal_largo.py`),
+con evidencia pre-registrada mucho más dura que un cribado por horizonte fijo.
+Código portado (adaptado a BTC-solo) en `laboratorio/canal.py`.
+
+Regla: compra cuando BTC rompe su máximo de 20 días Y está por encima de su
+media de 200 días; cierra cuando cae a su canal de 10 días O la media de 200
+días pasa a bajista (protección) — lo que ocurra antes.
+
+| Puerta | Qué comprueba | Resultado | Fuente |
+|---|---|---|---|
+| 1. Causalidad | ¿Usa datos del futuro? | **PASA** — re-confirmado en corvus4, 30 cortes sobre BTC 2017-2026, 0 diferencias. El código ya usaba `shift(1)` a propósito. | `tests/puerta1_causalidad.py`, 2026-09-08 |
+| 2. Paridad backtest-vivo | ¿Backtest y vivo son el mismo código? | **No evaluable todavía** — mismo motivo que StochRSI: no existe pieza "de vivo" separada hasta que exista `ejecucion/`. En corvus2 al menos backtest/dry-run/vivo comparten el mismo `IStrategy` de Freqtrade (Regla 1 de corvus2), que es la mitad de esta garantía. | — |
+| 3. Costes reales | ¿Sobrevive con costes? | **PASA (heredado)** — validación 2025: +15% neto de costes (PF 1,31) vs BTC -6,6%. Grupo B sellado: +37% neto de costes vs cesta -10,9%. | `corvus2/docs/preregistro_validacion_2025.md`, `preregistro_sellado.md` |
+| 4. Presupuesto de intentos (DSR) | ¿Es azar por cuántas veces se probó? | **PASA (heredado, con matiz)** — es una configuración fijada de antemano sin barrido de parámetros (20/10 días = "Donchian System 1" de los Turtles, valor de convención, no ajustado a los datos), lo que reduce mucho el riesgo de sobreajuste. No se ha recalculado un DSR formal en corvus4 todavía. | `corvus2/user_data/strategies/rotura_canal.py` (docstring) |
+| 5. Recursividad/calentamiento | ¿Cambia según cuánta historia tenga el bot en vivo? | **PASA** — probado en corvus4: con solo 1500 velas de historial (vs 19.794 totales), 0 diferencias en 30 puntos al azar. Es matemáticamente esperable: media móvil y máximos/mínimos de ventana fija no tienen memoria más allá de su ventana (a diferencia de EMA/RSI/ADX, que sí la tienen). | `tests/puerta5_recursividad.py`, 2026-09-08 |
+| 6. Riesgo de cartera | ¿Se comporta bien combinado con otras posiciones? | **No evaluable todavía** — hace falta al menos un segundo motor y `cartera/` construida para que esta pregunta tenga sentido; con una sola pieza no hay nada que combinar. | — |
+
+**Qué significa esto para decidir:** de las 6 puertas, 4 tienen veredicto
+positivo — dos re-confirmadas hoy mismo en corvus4 (1 y 5), dos heredadas de
+evidencia pre-registrada honesta de corvus2 (3 y 4). Las 2 que faltan (2 y 6)
+no es que hayan fallado — es que todavía no existe la pieza del sistema
+(`ejecucion/`, `cartera/`) necesaria para probarlas de verdad. **Canal es, con
+diferencia, el candidato más sólido de todo el proyecto hasta ahora.**
+
+**El matiz importante que no hay que perder:** esto es "beta con riesgo
+gestionado", no alfa — no le gana a comprar BTC y no tocarlo nunca durante un
+mercado alcista completo (2020-2025: +95% la estrategia vs +1.336% BTC solo).
+Su valor es otro: gestiona bien el capital que SÍ se mueve activamente,
+recortando caídas fuerte (27% vs 77% de comprar-y-aguantar en el peor caso
+visto). Pendiente de re-plantear con el usuario cómo encaja esto con la regla
+de riesgo ya cerrada (1%/operación, 3-4% pérdida diaria máxima).
+
+## 2b. Doble suelo
+
+**No es un motor terminado — está a medio construir.** El roadmap de corvus2
+lo marca explícitamente: *"⚙️ afinando: buena forma, aún no bate costes"*. No
+hay una versión validada que re-verificar; hay trabajo sin acabar. Se trata
+como una decisión aparte (¿merece la pena terminarlo, o se prioriza otra
+cosa?) en vez de meterlo en la cola de re-verificación como si ya existiera.
+Pendiente de decidir con el usuario.
 
 ## 3. Resto del catálogo heredado
 
