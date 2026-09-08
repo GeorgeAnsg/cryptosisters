@@ -248,6 +248,39 @@ serio, segundo junto a Canal. Pendiente: Puertas 2, 3 (formal), 4, 6.
    En cola, prioridad baja mientras no haya más de un mercado bajista con
    el que contrastar.
 
+## 2d. Puerta 4 formal (DSR) sobre los 3 candidatos — 8-sept-2026
+
+A petición del usuario, que planteó una duda legítima ("¿no estaremos
+teniendo suerte con tantos intentos?"), se ejecutó por primera vez la
+Puerta 4 de verdad (`tests/puerta4_dsr.py`, fórmula de Bailey & López de
+Prado) en vez de dejarla "pendiente de cálculo formal" en cada candidato.
+Presupuesto acumulado: **73 intentos** (64 heredados + 9 propios de
+corvus4). Listón por azar: t-stat > 2,42.
+
+| Candidato | t-stat | Veredicto |
+|---|---|---|
+| Doble suelo | 2,89 | **PASA** |
+| Doble techo | 3,98 | **PASA** |
+| Canal | 1,98 | **NO PASA — pero es la pregunta equivocada** |
+
+**Doble suelo y Doble techo superan el listón incluso corrigiendo por los
+73 intentos** — con matemáticas formales, no solo con un p-valor suelto
+(que por sí solos no sobrevivían la corrección de Bonferroni: 0,021 y
+0,011 respectivamente, muy por encima del 0,00068 que exigiría corregir a
+lo bruto por 73 intentos). El barrido de 108 configuraciones (100%
+positivas en los dos) más este resultado formal dan una base sólida.
+
+**Canal no pasa, pero por una razón de diseño de la prueba, no porque esté
+refutado:** este test solo usa su backtest en BTC solo 2020-2024 — los
+mismos datos con los que se construyó el motor original. No incorpora su
+evidencia más fuerte y más valiosa (2025 no visto: +15% vs BTC -6,6%;
+grupo sellado: +37% vs -10,9%), que es evidencia **fuera de muestra**, y
+por tanto categóricamente más fuerte que cualquier resultado dentro de la
+muestra de construcción. **Pendiente:** recuperar las operaciones
+individuales de esas dos pruebas de corvus2 y correr esta misma Puerta 4
+sobre esa evidencia real, en vez de sobre un backtest in-sample que nunca
+fue la base de su credibilidad.
+
 ## 3. Resto del catálogo heredado
 
 Pendiente.
