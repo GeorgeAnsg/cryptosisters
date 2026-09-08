@@ -70,7 +70,20 @@ tal como está planteado el proyecto ahora mismo (solo BTC), no sirve.
 **Siguiente:** pasar a Canal (Donchian) y Doble suelo, los próximos en la
 cola de `docs/00-PLAN-MAESTRO.md` §10.1.
 
-## 2a. Canal (Donchian) — RoturaCanalLargo
+## 2a. Canal (Donchian) — RoturaCanalLargo — ⚠️ REVISADO (8-sept-2026): sin evidencia real en BTC solo
+
+**Cambio de estado importante.** Se recuperaron las operaciones REALES
+(no un backtest nuevo) de la validación 2025 y el grupo sellado de
+corvus2, filtradas a BTC solo (ver §2d más abajo para el detalle
+completo). Resultado: **6 operaciones en la validación 2025, media
+-0,62%, pierde dinero; 0 operaciones en el grupo sellado (BTC no estaba
+en esa whitelist)**. El +15% y el +37% que hicieron de Canal "el
+candidato más sólido" venían casi enteramente de las OTRAS monedas de la
+cartera multi-activo de corvus2, no de BTC. **Es la misma trampa que mató
+a StochRSI+ADX:** evidencia real, pero multi-moneda, que no se sostiene
+aislada a BTC. El apartado de abajo queda como registro histórico de lo
+que se pensaba antes de este descubrimiento — la conclusión correcta y
+vigente es la de §2d.
 
 **Situación de partida, distinta de StochRSI:** esto no es un cribado a medio
 probar — es un motor ya construido como estrategia real de Freqtrade en
@@ -280,6 +293,31 @@ muestra de construcción. **Pendiente:** recuperar las operaciones
 individuales de esas dos pruebas de corvus2 y correr esta misma Puerta 4
 sobre esa evidencia real, en vez de sobre un backtest in-sample que nunca
 fue la base de su credibilidad.
+
+**Actualización — tarea resuelta (8-sept-2026):** se recuperaron las
+operaciones reales de `corvus2/user_data/backtest_results/` (los ficheros
+`.json` de Freqtrade, no un resumen), filtradas a `pair == BTC/USDT:USDT`:
+
+- **Validación 2025** (`backtest-result-2026-09-03_15-40-48.json`): de 62
+  operaciones totales, solo **6 son de BTC**. Media -0,62%, suma -3,73% —
+  **pierde dinero**. Nada que ver con el +15% de la cartera completa.
+- **Grupo sellado** (`backtest-result-2026-09-03_15-46-59.json`): de 209
+  operaciones totales, **0 son de BTC** — BTC no estaba en la whitelist
+  operable de ese grupo (solo servía de referencia para el filtro de
+  régimen). No hay ninguna evidencia de Canal en activos nunca vistos,
+  para BTC.
+
+**Puerta 4 con esta evidencia real (la correcta, no el backtest in-sample
+de antes): t=-0,22 — muy por debajo del listón de 2,42, y ni siquiera
+positivo.** NO PASA, de forma clara y sin ambigüedad.
+
+**Veredicto final sobre Canal:** su evidencia fuerte (validación 2025,
+grupo sellado) es real, pero es evidencia de una **cartera multi-moneda**,
+no de BTC. Para el proyecto tal como está planteado ahora (solo BTC), esa
+evidencia no aplica. Canal pasa a la misma categoría que StochRSI+ADX:
+**sin ventaja demostrable en BTC solo.** Se retira de la lista de
+candidatos aprobados. Quedan Doble suelo y Doble techo como los dos
+únicos candidatos con evidencia real en BTC solo.
 
 ## 3. Resto del catálogo heredado
 
