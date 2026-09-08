@@ -119,6 +119,24 @@ de riesgo ya cerrada (1%/operación, 3-4% pérdida diaria máxima).
    propios lo que ya decía la investigación: soporte/resistencia es la
    categoría peor evidenciada de todo el trading discrecional, incluso
    definida de forma objetiva y sin sesgo de mirar hacia atrás.
+
+   **Segunda vuelta, a petición del usuario (no conforme con una sola
+   configuración) — barrido de 108 combinaciones + verificación cruzada en
+   1h.** Correcto pedir esto: una sola configuración no basta para descartar
+   nada. Resultado, con tres comprobaciones independientes:
+   - **Inestable:** mediana de retorno total = -6,7% (media +7,3%, inflada
+     por pocos casos extremos — firma típica de sobreajuste, no de ventaja
+     real). Solo 30,6% de las 108 combinaciones superan +20%.
+   - **La mejor esquina se apaga con el tiempo:** retorno medio por
+     operación +0,45% (2020) → +0,37% (2021) → -0,04% (2022) → +0,10%
+     (2023) → +0,07% (2024). Patrón de "foto vieja" (regla 8 heredada de
+     corvus3): fuerte en el bull viejo, casi plano en lo reciente.
+   - **No se repite en 1h:** misma ventana equivalente en horas, retorno
+     total -21%, retorno medio ~0%, sin patrón por año.
+
+   **DESCARTADO, esta vez con base sólida** (no una config con suerte, sino
+   ausencia de robustez en tres ejes distintos). `registro/intentos.jsonl`
+   guarda las dos vueltas por separado.
 2. **Bloques de acumulación / soporte-resistencia** — propuesta del usuario:
    zonas donde el precio se acumula fuerte y rebota repetidamente entre dos
    bloques, hasta que algo lo rompe. Ya investigado en
