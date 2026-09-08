@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
+import pandas_ta as ta
 
 
 def calcular_atr(df: pd.DataFrame, n: int = 14) -> pd.Series:
@@ -38,6 +39,14 @@ def calcular_atr(df: pd.DataFrame, n: int = 14) -> pd.Series:
         (df["low"] - prev_close).abs(),
     ], axis=1).max(axis=1)
     return tr.rolling(n).mean()
+
+
+def calcular_tendencia_fuerte(df: pd.DataFrame, adx_umbral: float = 25.0) -> pd.Series:
+    """True cuando ADX>=umbral y +DI>-DI -- tendencia alcista confirmada
+    (misma definicion ya usada y validada en stochrsi_adx.py)."""
+    adx_df = ta.adx(df["high"], df["low"], df["close"], length=14)
+    trending = adx_df["ADX_14"] >= adx_umbral
+    return (trending & (adx_df["DMP_14"] > adx_df["DMN_14"])).fillna(False)
 
 
 @dataclass
@@ -67,19 +76,47 @@ def simular(
     velas_recentrado: int = 180,       # ~30 dias en 4h
     stop_bajo_rejilla: float = 2.0,    # en unidades de "espaciado de rejilla"
     ventana_atr: int = 14,
+    interruptor_tendencia: bool = False,
+    adx_umbral: float = 25.0,
+    k_atr_trailing: float = 3.0,
+    espaciado_dinamico: bool = False,
+    k_atr_espaciado_tendencia: float = 2.0,
 ) -> ResultadoGrid:
+    """
+    interruptor_tendencia: si True, mientras ADX>=adx_umbral y +DI>-DI
+    (tendencia alcista fuerte confirmada), las posiciones abiertas NO se
+    venden en su nivel fijo -- se les pone un trailing stop de
+    k_atr_trailing x ATR en su lugar, dejando correr la ganancia. En
+    cuanto la tendencia deja de estar confirmada, vuelven a venderse en
+    su nivel de rejilla normal (si siguen abiertas).
+
+    espaciado_dinamico: si True, el espaciado de la rejilla NO es fijo --
+    cada vez que se re-centra, se usa `k_atr_espaciado_tendencia` (mas
+    ancho) si hay tendencia fuerte en ese momento, o `k_atr_espaciado`
+    (mas estrecho) si el mercado esta lateral. Así la rejilla "aguanta
+    mas" en tendencia (menos operaciones, pero sobreviven mas tiempo) y
+    "aprieta" en lateral (mas operaciones pequeñas, que es donde el grid
+    rinde mejor).
+    """
     close = df["close"].to_numpy()
     low = df["low"].to_numpy()
     high = df["high"].to_numpy()
     atr = calcular_atr(df, ventana_atr).to_numpy()
     n = len(df)
 
+    tendencia_fuerte = (
+        calcular_tendencia_fuerte(df, adx_umbral).to_numpy()
+        if (interruptor_tendencia or espaciado_dinamico) else np.zeros(n, dtype=bool)
+    )
+    maximo_en_tendencia: dict[int, float] = {}
+
     resultado = ResultadoGrid()
 
     def nueva_rejilla(i):
-        espaciado = k_atr_espaciado * atr[i]
+        k = k_atr_espaciado_tendencia if (espaciado_dinamico and tendencia_fuerte[i]) else k_atr_espaciado
+        espaciado = k * atr[i]
         centro = close[i]
-        niveles_compra = [centro - espaciado * k for k in range(1, n_niveles + 1)]
+        niveles_compra = [centro - espaciado * kk for kk in range(1, n_niveles + 1)]
         return centro, espaciado, niveles_compra
 
     idx_ultimo_recentrado = ventana_atr  # esperar a tener ATR valido
@@ -105,8 +142,10 @@ def simular(
             idx_ultimo_recentrado = i
             continue
 
-        # 2. re-centrado periodico (si no hubo stop)
-        if i - idx_ultimo_recentrado >= velas_recentrado:
+        # 2. re-centrado periodico, o inmediato si cambia el regimen (solo con
+        #    espaciado dinamico -- si no, no tiene sentido recentrar por esto)
+        cambio_regimen = espaciado_dinamico and i > 0 and tendencia_fuerte[i] != tendencia_fuerte[i - 1]
+        if i - idx_ultimo_recentrado >= velas_recentrado or cambio_regimen:
             centro, espaciado, niveles_compra = nueva_rejilla(i)
             resultado.n_recentrados += 1
             idx_ultimo_recentrado = i
@@ -119,13 +158,23 @@ def simular(
                 posiciones_abiertas[idx_nivel] = (i, nivel)
 
         # 4. rellenar ventas: precio sube un escalon por encima del nivel de compra
+        #    -- salvo que el interruptor de tendencia este activo, en cuyo caso se
+        #    deja correr con un trailing stop en vez de vender en el nivel fijo.
         for idx_nivel in list(posiciones_abiertas.keys()):
-            _, precio_ent = posiciones_abiertas[idx_nivel]
+            idx_ent, precio_ent = posiciones_abiertas[idx_nivel]
+            if interruptor_tendencia and tendencia_fuerte[i]:
+                maximo_en_tendencia[idx_nivel] = max(maximo_en_tendencia.get(idx_nivel, precio_ent), close[i])
+                trailing = maximo_en_tendencia[idx_nivel] - k_atr_trailing * atr[i]
+                if close[i] < trailing and close[i] > precio_ent:
+                    resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "trailing_tendencia"))
+                    del posiciones_abiertas[idx_nivel]
+                    maximo_en_tendencia.pop(idx_nivel, None)
+                continue
             nivel_venta = precio_ent + espaciado
             if high[i] >= nivel_venta:
-                idx_ent, _ = posiciones_abiertas[idx_nivel]
                 resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, nivel_venta, "venta_nivel"))
                 del posiciones_abiertas[idx_nivel]
+                maximo_en_tendencia.pop(idx_nivel, None)
 
     # cerrar lo que quede abierto al final, al ultimo precio (marcar a mercado)
     for idx_nivel, (idx_ent, precio_ent) in posiciones_abiertas.items():
