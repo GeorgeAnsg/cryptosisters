@@ -421,3 +421,23 @@ cuatro primeras son las únicas que yo defendería gastar intentos del presupues
 **Lo que este anexo recomienda NO probar:** FVG, OTE/Fibonacci, Judas Swing/Silver
 Bullet, retesteo clásico de rotura (mismo mecanismo de "confirmar tarde" que el usuario
 ya descartó con datos), y el gap del CME (muerto por cambio estructural del mercado).
+
+### 3.2-ter Banderas y banderines (VERIFICADO 8-sept-2026)
+
+Búsqueda específica: **sin evidencia académica rigurosa**, igual que triángulo
+ascendente y taza con asa. La fuente más citada (Thomas Bulkowski,
+"Encyclopedia of Chart Patterns") se basa en confirmación visual de patrones,
+no en reglas cuantificadas ni backtests con metodología pública verificable.
+El resto de fuentes son contenido comercial (QuantifiedStrategies, blogs de
+trading). Se degrada a la misma categoría que soporte/resistencia y order
+blocks: mucho marketing, ninguna prueba independiente.
+
+**Síntesis de toda la investigación de patrones de gráfico (8-sept-2026):**
+de todo el catálogo clásico de figuras técnicas, solo doble suelo/doble techo
+tienen evidencia real (académica Y confirmada con datos propios de BTC en
+`docs/reverificacion.md`). Todo lo demás (soporte/resistencia, order blocks,
+hombro-cabeza-hombro, triángulos, taza con asa, banderas/banderines) o bien
+carece de evidencia rigurosa, o la evidencia que existe no se traduce en
+ventaja operable. Candidato natural siguiente por bajo coste de construcción:
+**triple suelo** (variante mecánica de doble suelo, exigiendo 3 toques en vez
+de 2 sobre la misma zona de soporte).
