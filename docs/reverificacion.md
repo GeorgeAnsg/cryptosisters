@@ -106,6 +106,30 @@ recortando caídas fuerte (27% vs 77% de comprar-y-aguantar en el peor caso
 visto). Pendiente de re-plantear con el usuario cómo encaja esto con la regla
 de riesgo ya cerrada (1%/operación, 3-4% pérdida diaria máxima).
 
+## 2a-bis. Ideas nuevas propuestas por el usuario (8-sept-2026), en cola
+
+1. **Canal diagonal (rebote dentro de un canal ascendente/descendente)** —
+   ❌ **DESCARTADO (8-sept-2026).** Código: `laboratorio/canal_diagonal_rebote.py`
+   (pivotes causales confirmados con ventana de 10 velas, líneas ajustadas
+   por regresión sobre los últimos 3 pivotes, sin dibujar a ojo). Puerta 1
+   (causalidad): PASA. Backtest real entrada→salida, Desarrollo 2020-2024,
+   229 operaciones: retorno medio +0,03% (~cero), retorno total compuesto
+   **-13,6%**, caída máxima -41%, t=0,12 p=0,91 contra cero — indistinguible
+   de ruido puro incluso antes de restar ningún coste. Confirma con datos
+   propios lo que ya decía la investigación: soporte/resistencia es la
+   categoría peor evidenciada de todo el trading discrecional, incluso
+   definida de forma objetiva y sin sesgo de mirar hacia atrás.
+2. **Bloques de acumulación / soporte-resistencia** — propuesta del usuario:
+   zonas donde el precio se acumula fuerte y rebota repetidamente entre dos
+   bloques, hasta que algo lo rompe. Ya investigado en
+   `investigacion/06-traders-discrecional.md`: es la categoría con **peor
+   evidencia real de todo el trading discrecional** (order blocks ICT:
+   0 de 648 backtests le ganó a comprar-y-esperar en un estudio serio; el
+   propio gurú más seguido de soporte/resistencia admite que "es muy difícil
+   de backtestear porque es subjetivo"). El sub-componente más objetivable
+   (Spring de Wyckoff: ruptura falsa + recuperación rápida) sigue en la cola
+   del catálogo con prioridad media. **Pendiente, en cola.**
+
 ## 2b. Doble suelo
 
 **No es un motor terminado — está a medio construir.** El roadmap de corvus2
