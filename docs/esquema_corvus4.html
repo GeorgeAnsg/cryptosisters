@@ -1,0 +1,560 @@
+<title>Esquema Corvus IV</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --bg:#12141a;
+  --bg-elev:#191c24;
+  --bg-elev-2:#1f232d;
+  --border:#2b2f3b;
+  --border-soft:#22252f;
+  --text:#e9e7e1;
+  --text-muted:#9aa0b2;
+  --text-faint:#6b7185;
+  --accent:#c9a15f;
+  --accent-soft:#c9a15f22;
+  --ok:#7cb88a;
+  --ok-soft:#7cb88a1c;
+  --bad:#c2685f;
+  --bad-soft:#c2685f1c;
+  --warn:#d3b35a;
+  --warn-soft:#d3b35a1c;
+  --built:#7ea3c9;
+  --built-soft:#7ea3c91c;
+  --serif:'Fraunces', Georgia, serif;
+  --sans:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:'IBM Plex Mono', 'SF Mono', Consolas, monospace;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#f7f5f0;
+    --bg-elev:#ffffff;
+    --bg-elev-2:#f0ede5;
+    --border:#ddd7c8;
+    --border-soft:#e6e1d5;
+    --text:#242018;
+    --text-muted:#5c5647;
+    --text-faint:#918a76;
+    --accent:#9c6f2e;
+    --accent-soft:#9c6f2e18;
+    --ok:#3f7a4e;
+    --ok-soft:#3f7a4e14;
+    --bad:#a8453b;
+    --bad-soft:#a8453b14;
+    --warn:#96792a;
+    --warn-soft:#96792a16;
+    --built:#3f6690;
+    --built-soft:#3f669014;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#f7f5f0;
+  --bg-elev:#ffffff;
+  --bg-elev-2:#f0ede5;
+  --border:#ddd7c8;
+  --border-soft:#e6e1d5;
+  --text:#242018;
+  --text-muted:#5c5647;
+  --text-faint:#918a76;
+  --accent:#9c6f2e;
+  --accent-soft:#9c6f2e18;
+  --ok:#3f7a4e;
+  --ok-soft:#3f7a4e14;
+  --bad:#a8453b;
+  --bad-soft:#a8453b14;
+  --warn:#96792a;
+  --warn-soft:#96792a16;
+  --built:#3f6690;
+  --built-soft:#3f669014;
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:15.5px;
+  line-height:1.6;
+  margin:0;
+}
+.page{
+  max-width:760px;
+  margin:0 auto;
+  padding:56px 24px 120px;
+}
+
+/* ---- header ---- */
+.masthead{
+  border-bottom:1px solid var(--border);
+  padding-bottom:28px;
+  margin-bottom:40px;
+}
+.kicker{
+  font-family:var(--mono);
+  font-size:11.5px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:14px;
+}
+h1{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:40px;
+  line-height:1.08;
+  margin:0 0 14px;
+  text-wrap:balance;
+  letter-spacing:-0.01em;
+}
+.subtitle{
+  color:var(--text-muted);
+  font-size:16.5px;
+  max-width:56ch;
+  line-height:1.55;
+}
+.meta-row{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-top:20px;
+  font-family:var(--mono);
+  font-size:12.5px;
+  color:var(--text-faint);
+}
+.meta-row b{ color:var(--text-muted); font-weight:500; }
+
+/* ---- section scaffolding ---- */
+section{ margin-bottom:52px; }
+.section-head{
+  display:flex;
+  align-items:baseline;
+  gap:12px;
+  margin-bottom:18px;
+}
+.section-num{
+  font-family:var(--mono);
+  color:var(--accent);
+  font-size:13px;
+  font-weight:600;
+}
+h2{
+  font-family:var(--serif);
+  font-weight:600;
+  font-size:24px;
+  margin:0;
+  letter-spacing:-0.01em;
+  text-wrap:balance;
+}
+h3{
+  font-family:var(--sans);
+  font-weight:700;
+  font-size:14.5px;
+  margin:28px 0 10px;
+  color:var(--text);
+}
+p{ margin:0 0 14px; color:var(--text); }
+p.lede{ color:var(--text-muted); margin-bottom:22px; }
+a{ color:var(--accent); text-decoration:underline; text-decoration-color:var(--border); text-underline-offset:2px; }
+code{
+  font-family:var(--mono);
+  font-size:0.89em;
+  background:var(--bg-elev-2);
+  border:1px solid var(--border-soft);
+  border-radius:4px;
+  padding:0.1em 0.4em;
+}
+
+/* ---- badges ---- */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font-family:var(--mono);
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  padding:3px 8px;
+  border-radius:5px;
+  white-space:nowrap;
+}
+.badge-ok{ background:var(--ok-soft); color:var(--ok); }
+.badge-bad{ background:var(--bad-soft); color:var(--bad); }
+.badge-warn{ background:var(--warn-soft); color:var(--warn); }
+.badge-built{ background:var(--built-soft); color:var(--built); }
+
+/* ---- rule cards ---- */
+.rule{
+  display:grid;
+  grid-template-columns:40px 1fr;
+  gap:16px;
+  padding:18px 0;
+  border-top:1px solid var(--border-soft);
+}
+.rule:first-of-type{ border-top:none; padding-top:0; }
+.rule-n{
+  font-family:var(--serif);
+  font-size:24px;
+  font-weight:600;
+  color:var(--accent);
+  line-height:1.3;
+}
+.rule-body b.rule-title{ display:block; font-size:15px; margin-bottom:6px; color:var(--text); }
+.rule-why{
+  margin-top:8px;
+  padding-left:12px;
+  border-left:2px solid var(--border);
+  color:var(--text-muted);
+  font-size:14px;
+}
+.rule-why b{ color:var(--text-faint); font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; font-weight:600; }
+
+/* ---- architecture table ---- */
+.arch-table{ width:100%; border-collapse:collapse; font-size:14px; }
+.arch-table th{
+  text-align:left;
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  color:var(--text-faint);
+  font-weight:600;
+  padding:0 12px 10px 0;
+  border-bottom:1px solid var(--border);
+}
+.arch-table td{
+  padding:14px 12px 14px 0;
+  border-bottom:1px solid var(--border-soft);
+  vertical-align:top;
+  color:var(--text-muted);
+}
+.arch-table td:first-child{ color:var(--text); font-weight:600; white-space:nowrap; }
+.arch-table code{ font-size:0.85em; }
+
+/* ---- status list (motor/filter inventory) ---- */
+.inv-group{ margin-bottom:28px; }
+.inv-group-title{
+  font-family:var(--mono);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  color:var(--text-faint);
+  margin-bottom:10px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.inv-group-title::after{ content:''; flex:1; height:1px; background:var(--border-soft); }
+.inv-item{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+  padding:11px 0;
+  border-bottom:1px solid var(--border-soft);
+}
+.inv-item:last-child{ border-bottom:none; }
+.inv-name{ font-weight:600; font-size:14px; }
+.inv-detail{ color:var(--text-muted); font-size:13px; margin-top:3px; }
+.inv-badge{ flex-shrink:0; }
+
+/* ---- discard table ---- */
+.discard-table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+.discard-table th{
+  text-align:left;
+  font-family:var(--mono);
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+  color:var(--text-faint);
+  font-weight:600;
+  padding:0 10px 8px 0;
+  border-bottom:1px solid var(--border);
+}
+.discard-table td{
+  padding:11px 10px 11px 0;
+  border-bottom:1px solid var(--border-soft);
+  vertical-align:top;
+  color:var(--text-muted);
+}
+.discard-table td:first-child{ color:var(--text); font-weight:600; }
+.discard-table tr:last-child td{ border-bottom:none; }
+
+/* ---- mechanism cards ---- */
+.mech{
+  background:var(--bg-elev);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:20px 22px;
+  margin-bottom:14px;
+}
+.mech-title{ font-weight:700; font-size:14.5px; margin-bottom:8px; display:flex; align-items:center; gap:10px; }
+.mech-icon{ font-family:var(--mono); color:var(--accent); font-size:13px; }
+.mech p{ color:var(--text-muted); font-size:14px; margin-bottom:0; }
+.mech p + p{ margin-top:8px; }
+
+/* ---- callout ---- */
+.callout{
+  background:var(--accent-soft);
+  border-left:3px solid var(--accent);
+  border-radius:0 8px 8px 0;
+  padding:16px 20px;
+  margin:20px 0;
+  font-size:14px;
+  color:var(--text);
+}
+.callout b{ color:var(--accent); }
+
+/* ---- footer ---- */
+footer{
+  border-top:1px solid var(--border);
+  padding-top:24px;
+  margin-top:60px;
+  color:var(--text-faint);
+  font-size:12.5px;
+  font-family:var(--mono);
+}
+
+/* ---- responsive tables ---- */
+.tbl-wrap{ overflow-x:auto; }
+
+::selection{ background:var(--accent-soft); color:var(--text); }
+</style><style>
+  .arch-table td, .discard-table td { font-variant-numeric: tabular-nums; }
+  .num-table td:nth-child(2), .num-table td:nth-child(3){ font-family:var(--mono); color:var(--text); }
+  .num-table tr.hot td{ color:var(--bad); font-weight:600; }
+  .decide{ display:grid; grid-template-columns:28px 1fr; gap:14px; padding:14px 0; border-top:1px solid var(--border-soft); }
+  .decide:first-of-type{ border-top:none; }
+  .decide-n{ font-family:var(--mono); color:var(--accent); font-size:12px; font-weight:600; padding-top:3px; }
+  .decide b{ display:block; margin-bottom:4px; }
+  .decide span{ color:var(--text-muted); font-size:14px; }
+  .lead{ color:var(--text-muted); font-size:15px; max-width:64ch; }
+</style>
+<div class="page">
+
+<header class="masthead">
+  <div class="kicker">Corvus IV · documento de decisiones</div>
+  <h1>El bot desde cero, y dónde puede estar la ventaja</h1>
+  <p class="subtitle">Mapa de todo lo investigado el 8 de septiembre de 2026 para construir un bot de Bitcoin: qué probar, en qué orden, con qué evidencia detrás — y qué está descartado antes de gastar un solo intento.</p>
+  <div class="meta-row">
+    <span><b>Investigación</b> 12 repos leídos · 6 anexos · ~200 búsquedas</span>
+    <span><b>Hereda</b> corvus2 · corvus3 · 43 intentos</span>
+    <span><b>Estado</b> antes de escribir una línea de código</span>
+  </div>
+</header>
+
+<section>
+  <div class="section-head"><span class="section-num">01</span><h2>El presupuesto de intentos</h2></div>
+  <p class="lead">El número más importante del documento, y el que condiciona todo lo demás. Si pruebas muchas configuraciones y te quedas con la mejor, esa mejor tiene un Sharpe alto <i>aunque ninguna tenga ventaja real</i>: es el máximo de N muestras de ruido. La fórmula de Bailey y López de Prado dice exactamente cuánto.</p>
+  <div class="tbl-wrap">
+    <table class="arch-table num-table">
+      <tr><th>Configuraciones probadas</th><th>Sharpe esperado por PURO AZAR</th><th>Años de datos que harían falta</th></tr>
+      <tr><td>10</td><td>0,70</td><td>2,5</td></tr>
+      <tr><td>20</td><td>0,85</td><td>3,6</td></tr>
+      <tr class="hot"><td>43 — donde estás hoy</td><td>0,99</td><td>4,9</td></tr>
+      <tr><td>100</td><td>1,13</td><td>6,4</td></tr>
+      <tr><td>1.000</td><td>1,46</td><td>10,6</td></tr>
+    </table>
+  </div>
+  <div class="callout">Con 5 años de datos de desarrollo (2020-2024), el máximo teórico son <b>~45 configuraciones independientes</b>. Tu <code>intentos.jsonl</code> tiene <b>43</b>. Cualquier idea nueva que dé un Sharpe alrededor de 1 sobre ese tramo es <b>indistinguible de la suerte</b>. El presupuesto está prácticamente agotado.</div>
+  <p class="lead">Solo hay dos salidas, y hay que elegirlas a propósito: <b>ampliar la evidencia</b> y <b>gastar lo que queda solo en hipótesis con evidencia previa</b>. Explorar a ver qué sale se ha vuelto carísimo. La primera ya está hecha.</p>
+
+  <div class="inv-group">
+    <div class="inv-group-title">Hecho la misma noche · descarga y auditoría</div>
+    <div class="inv-item"><div><div class="inv-name">BTC y ETH spot desde el 17 de agosto de 2017 · 1d, 4h, 1h, 15m</div><div class="inv-detail">Volcados oficiales de Binance. El diario — el que sostiene el salto de 45 a 420 — sale impecable en los nueve años: cero huecos, cero duplicados, cero incoherencias.</div></div><span class="badge badge-ok inv-badge">limpio</span></div>
+    <div class="inv-item"><div><div class="inv-name">Y la auditoría encontró un defecto real la primera noche</div><div class="inv-detail">En 1h y 15m hay <b>124 velas cuya marca de apertura no cae donde debería</b> — una vela "de 1h" que abre a las 03:28 —, todas en 2018, justo tras las caídas de Binance de aquel año: al reanudar, el exchange reabrió las velas en el minuto en que volvió. Una vela que dice durar una hora y dura 32 minutos rompe en silencio cualquier indicador. Decisión recomendada: usar 1h y 15m solo desde 2019. Rellenarlas jamás: inventar precio es inventar señal.</div></div><span class="badge badge-bad inv-badge">encontrado</span></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table class="arch-table num-table">
+      <tr><th>Histórico disponible</th><th>Techo de configuraciones</th><th></th></tr>
+      <tr><td>5 años · perpetuo de Bybit desde 2020</td><td>45</td><td>donde estabas, con 43 gastados</td></tr>
+      <tr><td>7 años</td><td>139</td><td></td></tr>
+      <tr><td>9 años · spot de Binance desde 2017</td><td>420</td><td>donde estás ahora</td></tr>
+    </table>
+  </div>
+  <div class="callout">Pasar de 5 a 9 años de histórico <b>multiplica por nueve</b> el número de ideas que puedes permitirte probar antes de que el resultado sea indistinguible de la suerte. Una descarga de diez minutos ha hecho más por la viabilidad del proyecto que cualquier indicador nuevo. Dos avisos: el techo <b>sube, no se reinicia</b> — los 43 siguen contando; y 2017-2019 es otro Bitcoin, útil por aportar un mercado bajista completo que tu tramo actual no tiene, pero lo reciente sigue pesando más.</div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">02</span><h2>Dónde puede estar la ventaja</h2></div>
+  <p class="lead">Anticipar el precio de Bitcoin, no. Anticipar tres cosas distintas del precio, sí. Todo lo que funciona en trading sistemático cae en una de estas cuatro familias — y en tu caso una está cerrada y otra es la que más rinde.</p>
+
+  <div class="mech">
+    <div class="mech-title"><span class="mech-icon">01</span> Cobrar una prima por un riesgo que otros no quieren</div>
+    <p>Funding, basis, prima de volatilidad. El mecanismo más sólido que existe: alguien paga de verdad por algo que quiere. <b>Cerrada para ti</b> — QuantFury no cobra ni paga funding, así que no puedes recibirlo. El funding se queda como <i>información sobre el posicionamiento ajeno</i>, no como ingreso.</p>
+  </div>
+  <div class="mech">
+    <div class="mech-title"><span class="mech-icon">02</span> Explotar comportamientos que se repiten</div>
+    <p>La información se difunde despacio (las tendencias persisten), el pánico exagera (rebotes tras cascadas de liquidación), las instituciones operan en horario de oficina, y hay flujos en fechas conocidas. <b>Tu familia principal.</b> También la que más se sobreajusta.</p>
+  </div>
+  <div class="mech">
+    <div class="mech-title"><span class="mech-icon">03</span> Saber algo antes que los demás</div>
+    <p>A escala de segundos pierdes siempre: esa carrera se gana con colocation y FPGA. A escala de días sí hay hueco, pero no por saber antes — por <b>agregar mejor</b> información pública tediosa de juntar (flujos de ETF, posicionamiento, reservas). El bot gana por constancia, no por velocidad.</p>
+  </div>
+  <div class="mech">
+    <div class="mech-title"><span class="mech-icon">04</span> Gestionar el riesgo mejor que la media</div>
+    <p>No es una señal, y produce más dinero que la mayoría de las señales. Entre dos personas con la misma señal, la diferencia a un año es casi toda ésta. Y un bot la ejecuta perfecta, que es justo lo que un humano no consigue. <b>Es por donde se empieza.</b></p>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">03</span><h2>Lo que QuantFury cambia</h2></div>
+  <p class="lead">Su centro de ayuda es explícito: ejecución al precio real del libro de Binance/Coinbase según el tamaño, sin comisión y <b>sin coste de apalancamiento ni de mantener la posición abierta</b>. Eso tiene tres consecuencias que cambian el diseño entero.</p>
+  <div class="inv-group">
+    <div class="inv-item">
+      <div><div class="inv-name">Tu coste es cruzar el spread, más tu retraso humano</div>
+      <div class="inv-detail">Bajo, pero no cero, y escondido dentro del precio de ejecución. La única forma seria de conocerlo es medirlo contra el punto medio de un exchange grande en el mismo instante.</div></div>
+      <span class="badge badge-warn inv-badge">medir</span>
+    </div>
+    <div class="inv-item">
+      <div><div class="inv-name">Mantener una posición abierta días o semanas te sale gratis</div>
+      <div class="inv-detail">En cualquier exchange de perpetuos, aguantar cuesta funding: 0,03 % cada 8 h ≈ 33 % anualizado. Tú no lo pagas. Es tu mayor ventaja estructural, y favorece de forma decisiva las estrategias lentas.</div></div>
+      <span class="badge badge-ok inv-badge">a favor</span>
+    </div>
+    <div class="inv-item">
+      <div><div class="inv-name">Pero tampoco lo cobras</div>
+      <div class="inv-detail">Ni carry, ni cash-and-carry (necesitarías spot y perpetuo a la vez en dos sitios). La familia entera de "cobrar prima" queda fuera.</div></div>
+      <span class="badge badge-bad inv-badge">cerrado</span>
+    </div>
+  </div>
+  <div class="callout">Pendiente de confirmar con su soporte: existía un artículo suyo titulado <i>"Trading Crypto on a Short Time Interval"</i> cuyo dominio antiguo ya no responde. <b>Antes de construir nada por debajo de 1 h, conviene preguntar si sigue vigente alguna regla sobre operaciones muy cortas.</b></div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">04</span><h2>Las seis puertas</h2></div>
+  <p class="lead">Ninguna idea llega a dinero real sin cruzarlas. Las cuatro primeras ya las tienes; las dos últimas salen de la investigación de hoy y tapan agujeros que hoy están abiertos.</p>
+  <div class="rule"><div class="rule-n">1</div><div class="rule-body"><b class="rule-title">Causalidad</b>Ningún indicador mira al futuro: calcular sobre las primeras <i>t</i> velas debe dar lo mismo que calcular sobre todo y quedarse con <i>t</i> filas.<div class="rule-why"><b>Nuevo</b> <code>freqtrade lookahead-analysis</code> lo automatiza: recorta el histórico señal a señal y compara.</div></div></div>
+  <div class="rule"><div class="rule-n">2</div><div class="rule-body"><b class="rule-title">Paridad</b>Backtest y vivo son el mismo código, no dos implementaciones que "deberían" coincidir.</div></div>
+  <div class="rule"><div class="rule-n">3</div><div class="rule-body"><b class="rule-title">Costes</b>Sobrevive al <b>doble</b> del coste estimado.<div class="rule-why"><b>Cambio</b> el coste pasa de estimado a medido: el registro de señales emitidas vs ejecutadas convierte tu retraso humano en un número real.</div></div></div>
+  <div class="rule"><div class="rule-n">4</div><div class="rule-body"><b class="rule-title">Intentos (Sharpe desinflado)</b>Corrige el resultado por cuántas configuraciones se probaron. Se registra todo intento, pase o no.<div class="rule-why"><b>Alerta</b> el presupuesto está en 43 de ~45. Ver sección 01.</div></div></div>
+  <div class="rule"><div class="rule-n">5</div><div class="rule-body"><b class="rule-title">Recursividad y calentamiento — nueva</b>EMA, RSI, ADX y ATR <b>no dan el mismo valor</b> calculados sobre 500 velas que sobre 5.000. En backtest tienes todo el histórico; en vivo el exchange te da un trozo. Es un fallo de paridad invisible leyendo el código.<div class="rule-why"><b>Herramienta</b> <code>freqtrade recursive-analysis</code></div></div></div>
+  <div class="rule"><div class="rule-n">6</div><div class="rule-body"><b class="rule-title">Riesgo de cartera — nueva</b>Ninguna operación se juzga sola: antes de emitir la señal N se mira la exposición total y la correlación con lo ya abierto. En cripto, cinco largos son una sola apuesta apalancada por cinco.<div class="rule-why"><b>Origen</b> el <code>risk_overlay</code> de pysystemtrade: un multiplicador global de 0 a 1 sobre toda la cartera.</div></div></div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">05</span><h2>La arquitectura</h2></div>
+  <p class="lead">Se conserva la cadena de montaje de corvus3 y se le añaden tres capas que hoy faltan. Regla que la sostiene: ninguna capa importa código de otra salvo por su interfaz.</p>
+  <div class="tbl-wrap">
+    <table class="arch-table">
+      <tr><th>Capa</th><th>Carpeta</th><th>Qué hace</th></tr>
+      <tr><td>Datos <span style="font-weight:400;color:var(--text-faint);font-size:12px">(nueva)</span></td><td><code>datos/</code></td><td>Todo lo que entra, con procedencia y fecha. Lo crudo no se toca nunca; lo que el proveedor revisa a posteriori guarda <i>cuándo se supo</i>.</td></tr>
+      <tr><td>Motores</td><td><code>motores/</code></td><td>Alfa. Histórico → candidatos con un pronóstico. No sabe de filtros, tamaño ni de los demás motores.</td></tr>
+      <tr><td>Filtros</td><td><code>filtros/</code></td><td>Riesgo por operación. Contexto de mercado → permitido o vetado. Añadir uno = un archivo nuevo.</td></tr>
+      <tr><td>Tamaño</td><td><code>tamano/</code></td><td>Cuánto apostar: pronóstico escalado × volatilidad objetivo × capital.</td></tr>
+      <tr><td>Salidas</td><td><code>salidas/</code></td><td>Cuándo cerrar. Se prueba y se sustituye; no es identidad del motor.</td></tr>
+      <tr><td>Cartera <span style="font-weight:400;color:var(--text-faint);font-size:12px">(nueva)</span></td><td><code>cartera/</code></td><td>Árbitro y riesgo global. Qué señales se toman y cuánto riesgo total se abre a la vez.</td></tr>
+      <tr><td>Ejecución <span style="font-weight:400;color:var(--text-faint);font-size:12px">(nueva)</span></td><td><code>ejecucion/</code></td><td>Freqtrade, aviso de Telegram y registro de lo que ejecutas de verdad. Hoy no existe, y es la mitad del sistema.</td></tr>
+      <tr><td>Laboratorio</td><td><code>laboratorio/</code></td><td>Cribados y experimentos. <b>Aislado: nadie importa nada de aquí.</b> Ese salto es por donde se coló <code>bb_extremo</code>.</td></tr>
+    </table>
+  </div>
+  <div class="callout"><b>El árbitro, resuelto.</b> La "fuerza" no falló por ser mala: falló porque se usaba para <i>elegir</i>. Su sitio es decidir <b>cuánto</b> apostar — escalada para que su valor medio sea comparable entre motores, y con un tope. Elegir cuál tomar es otra pregunta: prioridad fija por calidad demostrada. Y una banda muerta encima, que en ejecución manual es la diferencia entre 3 avisos al día y 40.</div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">06</span><h2>El catálogo, por capas</h2></div>
+  <p class="lead">Todo lo que se puede probar, ordenado por la evidencia que lo respalda — porque el presupuesto de intentos manda. Verde: evidencia publicada razonable. Ámbar: mecanismo creíble sin evidencia. Azul: ya construido y validado por ti.</p>
+
+  <div class="inv-group">
+    <div class="inv-group-title">Motores · grupo prioritario</div>
+    <div class="inv-item"><div><div class="inv-name">M1 · Momentum de 20-50 días en BTC diario, salida por ATR</div><div class="inv-detail">La familia con más evidencia académica de la historia. Y la salida dinámica es justo lo que no probaste: tus tests de rotura eran a 20 y 100 velas de 4 h, multi-moneda y con horizonte fijo.</div></div><span class="badge badge-ok inv-badge">evidencia</span></div>
+    <div class="inv-item"><div><div class="inv-name">M4 · StochRSI + ADX</div><div class="inv-detail">Tu propio candidato más fuerte, ya cribado con corrección por evento y por concentración. Le faltan solo las puertas 3 y 4.</div></div><span class="badge badge-built inv-badge">tuyo</span></div>
+    <div class="inv-item"><div><div class="inv-name">M3 · CVD y absorción (flujo de órdenes)</div><div class="inv-detail">El único candidato que mide flujo real en vez de geometría de velas. Freqtrade ya lo soporta con trades públicos gratuitos, sin romper la paridad.</div></div><span class="badge badge-warn inv-badge">mecanismo</span></div>
+    <div class="inv-item"><div><div class="inv-name">M2 · Reversión tras cascada de liquidaciones</div><div class="inv-detail">Funding en percentil extremo negativo más caída violenta. Mecanismo real: apalancamiento forzado a cerrar, no opinión. La evidencia sistemática es escasa.</div></div><span class="badge badge-warn inv-badge">mecanismo</span></div>
+  </div>
+
+  <div class="inv-group">
+    <div class="inv-group-title">Motores · grupo secundario</div>
+    <div class="inv-item"><div><div class="inv-name">M5 · Barrido de liquidez y reversión</div><div class="inv-detail">Mecha que supera el máximo o mínimo del día anterior y cierra dentro. Lo menos malo de todo el universo ICT: señal pequeña y consistente frente al azar, sin significancia formal.</div></div><span class="badge badge-warn inv-badge">mecanismo</span></div>
+    <div class="inv-item"><div><div class="inv-name">M6 · VWAP anclado a un evento</div><div class="inv-detail">El coste medio de quien entró en un suelo o techo concreto. Mecanismo claro, divulgado por un practicante que no vende señales, sin backtest público.</div></div><span class="badge badge-warn inv-badge">mecanismo</span></div>
+    <div class="inv-item"><div><div class="inv-name">M8 · Divergencia alcista de RSI</div><div class="inv-detail">Ya cribada por ti: +0,205 % frente a +0,064 % de referencia, n=20.652. Solo el lado alcista funciona.</div></div><span class="badge badge-built inv-badge">tuyo</span></div>
+    <div class="inv-item"><div><div class="inv-name">M7 · Spring de Wyckoff · M9 · Opening range · M10 · Hammer con RSI · M11 · Zonas de bajo volumen</div><div class="inv-detail">Plausibles, con mecanismo, sin evidencia publicada. Cola de la lista mientras el presupuesto de intentos siga apretado.</div></div><span class="badge badge-warn inv-badge">cola</span></div>
+  </div>
+
+  <div class="inv-group">
+    <div class="inv-group-title">Filtros · riesgo por operación</div>
+    <div class="inv-item"><div><div class="inv-name">Régimen BTC · sesión y fin de semana · funding extremo · DXY y bonos</div><div class="inv-detail">Los cuatro ya construidos y validados en corvus3. Se portan tal cual.</div></div><span class="badge badge-built inv-badge">construido</span></div>
+    <div class="inv-item"><div><div class="inv-name">F6 · Perfil horario</div><div class="inv-detail">Agrupar tu histórico por hora UTC y medir volatilidad y volumen. No es una estrategia: es el mapa de cuándo se permite operar. <b>La hipótesis más barata de todo el catálogo.</b></div></div><span class="badge badge-warn inv-badge">trivial</span></div>
+    <div class="inv-item"><div><div class="inv-name">F7 · Flujo de ETF como régimen</div><div class="inv-detail">La señal de "dinero real" más limpia y barata que existe: unos 54 puntos básicos de movimiento por cada 100 M$ de flujo neto, sin reversión posterior. Gratis, pero solo desde enero de 2024.</div></div><span class="badge badge-ok inv-badge">evidencia</span></div>
+    <div class="inv-item"><div><div class="inv-name">F5 · Régimen de volatilidad · F8 · MVRV-Z como interruptor de ciclo</div><div class="inv-detail">El primero tiene evidencia de que mejora sistemas de ruptura. El segundo mejoró el Sharpe de 0,45 a 1,28 en un estudio — pero sobre solo 3 ciclos, y su extremo clásico ha ocurrido 2 veces en la historia.</div></div><span class="badge badge-warn inv-badge">con reservas</span></div>
+    <div class="inv-item"><div><div class="inv-name">F9 · Ventana de evento macro</div><div class="inv-detail">Reducir el tamaño alrededor de CPI y FOMC, nunca tomar dirección: como señal direccional la muestra es de ~9 eventos.</div></div><span class="badge badge-warn inv-badge">solo tamaño</span></div>
+  </div>
+
+  <div class="inv-group">
+    <div class="inv-group-title">Tamaño, salidas y cartera</div>
+    <div class="inv-item"><div><div class="inv-name">Vol-targeting · Kelly fraccional (¼) · reducción por correlación · banda muerta</div><div class="inv-detail">En cripto se asume correlación de 0,7 a 0,9 por defecto salvo prueba en contra. El Kelly completo arruina; los fondos serios usan del orden de 0,4×.</div></div><span class="badge badge-ok inv-badge">evidencia</span></div>
+    <div class="inv-item"><div><div class="inv-name">El experimento de salidas</div><div class="inv-detail">Comparar la misma entrada con objetivo fijo, con trailing por ATR y con salida parcial. La literatura se contradice abiertamente: aquí tu propio backtest zanja mejor que cualquier fuente externa.</div></div><span class="badge badge-warn inv-badge">tu backtest decide</span></div>
+    <div class="inv-item"><div><div class="inv-name">Multiplicador global de riesgo y límite diario de pérdidas</div><div class="inv-detail">Defensivo, no genera alfa — y es la ventaja estructural más clara que un bot tiene sobre un humano: la ejecuta perfecta siempre.</div></div><span class="badge badge-ok inv-badge">prioritario</span></div>
+  </div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">07</span><h2>Descartado antes de gastar un intento</h2></div>
+  <p class="lead">La investigación de hoy no solo aporta ideas: quita. Cada línea de aquí es un intento que no hay que gastar, y con el presupuesto en 43 de 45 eso vale tanto como una idea buena.</p>
+  <div class="tbl-wrap">
+    <table class="discard-table">
+      <tr><th>Idea</th><th>Motivo</th></tr>
+      <tr><td>Fair Value Gap (FVG)</td><td>Backtest publicado con resultado <b>negativo</b>. No es que falte evidencia: la que hay va en contra.</td></tr>
+      <tr><td>Order blocks, OTE, Judas Swing, Silver Bullet</td><td>Evidencia débil o inexistente; el resto del vocabulario ICT es folclore sin test público.</td></tr>
+      <tr><td>Gap del CME</td><td><b>Estructuralmente muerto</b>: el CME opera futuros de cripto 24/7 desde el 29 de mayo de 2026. Ya no se forman huecos de fin de semana.</td></tr>
+      <tr><td>Max pain de opciones</td><td>Refutado académicamente: la predictibilidad se explica por reversión del precio, no por un efecto imán.</td></tr>
+      <tr><td>Halving como señal de timing</td><td>n = 4. No hay inferencia posible, y lo reconocen hasta quienes lo defienden.</td></tr>
+      <tr><td>Desequilibrio del libro de órdenes</td><td>El efecto es real y medible, pero <b>sub-económico</b> tras costes. Terreno de alta frecuencia con colocation.</td></tr>
+      <tr><td>Puntuar noticias históricas con un LLM</td><td>El modelo <b>ya sabe</b> lo que pasó después: el backtest está contaminado, y anonimizar las entidades no lo elimina del todo.</td></tr>
+      <tr><td>Sentimiento de Reddit</td><td>Evidencia contradictoria entre estudios serios: si los académicos no se ponen de acuerdo, el efecto es débil y sensible al método.</td></tr>
+      <tr><td>Grid puro · cash-and-carry · pairs con financiación</td><td>El primero falla estructuralmente en tendencia; los otros necesitan spot y perpetuo simultáneos, imposible en tu ejecución.</td></tr>
+      <tr><td>Datos institucionales (Kaiko L2, The Tie)</td><td>De 1.000 a 2.500 $ al mes. No se justifica frente al capital gestionado.</td></tr>
+      <tr><td>Copiar a los "traders de YouTube"</td><td>La búsqueda devolvió casi solo marketing. El criterio que separa una fuente útil de una inútil no es la fama: es si <b>publica también lo que no funcionó</b>.</td></tr>
+    </table>
+  </div>
+  <div class="callout"><b>El caso que mejor lo resume.</b> La estrategia comunitaria más usada del ecosistema Freqtrade tiene <b>79.038 líneas, 109 condiciones de entrada y 16.937 umbrales numéricos escritos a mano</b> — medido sobre el repo descargado hoy. Está viva y con commits diarios, así que funciona lo bastante para que cientos de personas la usen. Y es estadísticamente inauditable: con ese número de umbrales, el Sharpe desinflado no se puede ni calcular. Nadie sabe, ni su autor, cuánto es ventaja y cuánto es ajuste al pasado.</div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">08</span><h2>Los datos: qué bajar, y qué urge</h2></div>
+  <div class="tbl-wrap">
+    <table class="arch-table">
+      <tr><th>Nivel</th><th>Qué</th><th>Nota</th></tr>
+      <tr><td>1 · gratis</td><td>OHLCV, funding, trades públicos, DXY, bonos reales, oro, DVOL, hashrate</td><td><b>BTC spot de Binance 2017-2026: descargado y auditado esta noche</b> (1d, 4h, 1h, 15m), junto con el script de descarga y el de auditoría. Falta ETH y el funding con histórico completo.</td></tr>
+      <tr><td>2 · gratis</td><td>Flujos de ETF (Farside) · COT del CME (CFTC)</td><td>Diario y semanal. El primero es la mejor relación calidad/coste de toda la investigación.</td></tr>
+      <tr><td>3 · <span style="color:var(--bad)">urgente</span></td><td>Open interest · long/short ratio · liquidaciones</td><td>Las APIs de exchange <b>solo dan 30 días</b>. Lo que no se guarde desde hoy, no existirá nunca — o habrá que comprarlo.</td></tr>
+      <tr><td>4 · de pago</td><td>Glassnode, CryptoQuant, Kaiko</td><td>Decisión consciente de <b>no comprar</b>: las métricas on-chain de valoración sirven de mapa de ciclo, no de disparador.</td></tr>
+    </table>
+  </div>
+  <div class="callout">Y la regla que más dinero ahorra: las series que el proveedor <b>revisa a posteriori</b> (on-chain, macro) hay que guardarlas con la fecha en la que se supo cada valor. Si backtesteas con el valor ya corregido, estás usando el futuro sin darte cuenta.</div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">09</span><h2>El plan por fases</h2></div>
+  <div class="rule"><div class="rule-n">0</div><div class="rule-body"><b class="rule-title">Fundación</b>Repo, git, y las seis puertas implementadas <b>antes</b> que ninguna estrategia.<div class="rule-why"><b>Criterio de salida</b> puedo demostrar cada puerta con un caso que falla a propósito. Una puerta que nunca ha dicho que no, no está comprobada.</div></div></div>
+  <div class="rule"><div class="rule-n">1</div><div class="rule-body"><b class="rule-title">Datos y coste real</b>Recolector diario desde el primer día, historia ampliada, auditoría de huecos que falle ruidosamente, y medición del spread.<div class="rule-why"><b>Criterio de salida</b> una función de coste que use todo backtest, y un informe de calidad de datos sin huecos silenciosos.</div></div></div>
+  <div class="rule"><div class="rule-n">2</div><div class="rule-body"><b class="rule-title">Riesgo y tamaño</b>La fase que más dinero produce.<div class="rule-why"><b>Criterio de salida</b> con una señal deliberadamente mediocre, la gestión de riesgo ya mejora el Calmar frente a comprar y mantener.</div></div></div>
+  <div class="rule"><div class="rule-n">3</div><div class="rule-body"><b class="rule-title">El experimento de salidas</b>Sobre una señal que ya tienes validada. Es barato, no consume presupuesto de exploración y afecta a todos los motores futuros.</div></div>
+  <div class="rule"><div class="rule-n">4</div><div class="rule-body"><b class="rule-title">Motores, de uno en uno</b>Grupo prioritario, con las seis puertas y colapso por evento obligatorio.<div class="rule-why"><b>Criterio de salida</b> pasa las seis puertas y aguanta 2023-2024 por sí solo.</div></div></div>
+  <div class="rule"><div class="rule-n">5</div><div class="rule-body"><b class="rule-title">Contexto e información agregada</b>Flujos de ETF, régimen de volatilidad, perfil horario, ciclo.</div></div>
+  <div class="rule"><div class="rule-n">6</div><div class="rule-body"><b class="rule-title">Dry-run, tres meses mínimo</b>El bot emite, tú registras, nadie pone dinero. Aquí se mide tu slippage humano real.<div class="rule-why"><b>Criterio de salida</b> la diferencia entre lo simulado y lo registrado es explicable. Si no lo es, no se pasa a dinero real: se investiga.</div></div></div>
+  <div class="rule"><div class="rule-n">7</div><div class="rule-body"><b class="rule-title">Dinero real, pequeño</b>Con el examen de 2026 mirado una sola vez, justo antes.</div></div>
+</section>
+
+<section>
+  <div class="section-head"><span class="section-num">10</span><h2>Decisiones — cerradas el 8-sept-2026</h2></div>
+  <div class="inv-group">
+    <div class="inv-item"><div><div class="inv-name">Universo: solo BTC para construir</div><div class="inv-detail">ETH se guarda sellado, sin mirarlo, como prueba independiente para el final — misma lógica que la reserva de 2026.</div></div><span class="badge badge-ok inv-badge">cerrado</span></div>
+    <div class="inv-item"><div><div class="inv-name">Largos y cortos</div><div class="inv-detail">QuantFury permite las dos direcciones a la vez en monedas distintas. Duplica el catálogo utilizable — la mitad de la reversión solo servía en largo — pero cada motor necesita su versión corta testeada aparte, nunca asumida por simetría.</div></div><span class="badge badge-ok inv-badge">cerrado</span></div>
+    <div class="inv-item"><div><div class="inv-name">Riesgo: 1% por operación, 3-4% pérdida diaria máxima</div><div class="inv-detail">Estándar habitual en trading sistemático con capital propio. Se revisa con lo que salga del dry-run.</div></div><span class="badge badge-ok inv-badge">cerrado</span></div>
+  </div>
+
+  <h3>Los 43 intentos: se heredan enteros, y se re-verifican uno a uno</h3>
+  <p class="lead">La pregunta del usuario tenía razón: parte de esos 43 intentos pudo tener fallos de metodología — ya ha pasado, con el bug de resample de 4h. Confiar a ciegas es peligroso; pero descartar el número también lo es, porque el presupuesto de intentos mide cuántas veces se ha mirado el mismo bloque de datos, no si la conclusión que sacaste era correcta. Se separan las dos cosas.</p>
+  <div class="callout"><b>El número 43 se queda igual para el Sharpe desinflado.</b> Pero cada uno se re-verifica con el pipeline nuevo (las 6 puertas) antes de dar su veredicto por bueno. Si el fallo era un <b>bug de metodología</b>, se corrige el mismo registro — no cuenta como intento nuevo. Si surge la tentación de probar una variante distinta, <b>eso sí cuenta</b>, y se resiste colarlo como parte de la re-verificación.</div>
+  <div class="decide"><div class="decide-n">01</div><div><b>StochRSI + ADX</b><span>Tu candidato más fuerte. Le faltaban ya las puertas 3 y 4 — el caso natural para estrenar el pipeline completo.</span></div></div>
+  <div class="decide"><div class="decide-n">02</div><div><b>Canal (Donchian) y Doble suelo</b><span>"Validados en producción de facto", pero nunca pasaron por recursive-analysis ni por la puerta de riesgo de cartera. Se re-auditan antes de heredarlos como buenos.</span></div></div>
+  <div class="decide"><div class="decide-n">03</div><div><b>Resto del catálogo heredado</b><span>En el orden en que corvus3 los marcó como candidato fuerte o pendiente.</span></div></div>
+  <div class="decide"><div class="decide-n">04</div><div><b>Solo entonces, los motores nuevos</b><span>M1-M4 del catálogo (§06) — esos sí consumen presupuesto de verdad.</span></div></div>
+</section>
+
+<footer>
+  Corvus IV · 8 de septiembre de 2026 · Documento generado a partir de seis anexos de investigación, 12 repositorios descargados y leídos (ninguno ejecutado) y el histórico de corvus2 y corvus3. Se actualiza aquí, no se reescribe de cero.
+</footer>
+
+</div>

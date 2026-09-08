@@ -1,0 +1,15 @@
+# Datos crudos: se regeneran con datos/descarga/*.py, no se versionan (68MB+)
+datos/crudo/
+datos/limpio/
+
+# Repos clonados solo para lectura de referencia (2GB) — nunca se ejecutan, no son código propio
+investigacion/repos/
+
+# Basura de macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
