@@ -219,11 +219,30 @@ serio, segundo junto a Canal. Pendiente: Puertas 2, 3 (formal), 4, 6.
    baseline correcto: p=0,417, no significativo, con decaimiento claro por
    año (+7,99%/trade en 2020 → -2,22% en 2024). Descartado con la misma
    solidez que canal diagonal.
-2. **Doble techo** (espejo bajista de doble suelo) — **evidencia real pero
-   insuficiente, en cola.** Ya probado en corvus2: +341% en 2022, pero
-   **toda la ganancia depende del único año bajista disponible** (n=1,
-   misma limitación que el ciclo del halving). Exige cortos, que ya
-   sabemos que lo tienen difícil en cripto. No descartado, no confirmado.
+2. **Doble techo (corto, filtro downtrend estricto)** — ✅ **APROBADO
+   CONDICIONAL.** Corvus2 solo tenía el bear de 2022 para probarlo (n=1).
+   Con los 9 años de histórico BTC descargados para corvus4, se pudo
+   probar contra **tres mercados bajistas independientes**: 2018, marzo
+   2020 (COVID) y 2022 — ya no es n=1. Código: `laboratorio/doble_techo.py`
+   + `doble_techo_backtest.py` (espejo de doble_suelo, con filtro de
+   tendencia bajista estricta: precio bajo su media de 200 días Y esa
+   media cayendo, no un bajón pasajero).
+
+   | Puerta | Resultado |
+   |---|---|
+   | 1. Causalidad | **PASA** |
+   | 5. Recursividad | **PASA** (1600 velas de calentamiento) |
+   | 2, 3 (formal), 4, 6 | Pendientes |
+
+   BTC solo, 2017-2024 (excluyendo 2025 validación y 2026 reserva,
+   intactos): 7 operaciones repartidas en los 3 bears, +26,4% media,
+   **+380,2% total compuesto**, 85,7% ganadoras, caída máxima -13%.
+   Contra baseline correcto (vender al azar, misma duración): exceso
+   **+34,45pp, p=0,011**. Barrido de 108 combinaciones: **100% positivas**,
+   peor caso +39,2%, mediana +123,7% — incluso más robusto que doble
+   suelo. Muestra absoluta pequeña (7 trades) pero repartida en 3
+   regímenes bajistas distintos, no concentrada en uno solo. Tercer
+   candidato serio del proyecto.
 3. **Hombro-cabeza-hombro normal** (bajista) — mismo problema que doble
    techo (cortos + evidencia bajista limitada a un año). Nunca probado.
    En cola, prioridad baja mientras no haya más de un mercado bajista con
