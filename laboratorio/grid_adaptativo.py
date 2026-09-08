@@ -66,6 +66,7 @@ class TradeGrid:
     precio_salida: float
     motivo_salida: str  # "venta_nivel" o "stop_rejilla"
     direccion: str = "largo"
+    idx_nivel: int = 0  # 0 = nivel mas cercano al centro, mayor = mas profundo
 
     @property
     def retorno_pct(self) -> float:
@@ -94,7 +95,14 @@ def simular(
     espaciado_dinamico: bool = False,
     k_atr_espaciado_tendencia: float = 2.0,
     filtro_bear: bool = False,
+    mascara_bloqueo: np.ndarray | None = None,
 ) -> ResultadoGrid:
+    """
+    mascara_bloqueo: array booleano (misma longitud que df) -- mientras es
+    True, no se abren posiciones NUEVAS en el grid (las que ya estaban
+    abiertas se siguen gestionando con normalidad). Pensado para no pisar
+    a otros motores (p.ej. Doble suelo/techo) cuando ya tienen algo abierto.
+    """
     """
     interruptor_tendencia: si True, mientras ADX>=adx_umbral y +DI>-DI
     (tendencia alcista fuerte confirmada), las posiciones abiertas NO se
@@ -150,7 +158,7 @@ def simular(
         nivel_mas_bajo = min(niveles_compra)
         if close[i] < nivel_mas_bajo - stop_bajo_rejilla * espaciado and posiciones_abiertas:
             for idx_nivel, (idx_ent, precio_ent) in posiciones_abiertas.items():
-                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "stop_rejilla"))
+                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "stop_rejilla", idx_nivel=idx_nivel))
             posiciones_abiertas = {}
             resultado.n_stops_rejilla += 1
             centro, espaciado, niveles_compra = nueva_rejilla(i)
@@ -167,9 +175,11 @@ def simular(
             idx_ultimo_recentrado = i
 
         # 3. rellenar compras: nivel tocado y sin posicion abierta ahi
-        #    -- si filtro_bear esta activo y hay bear confirmado, no se abren
-        #    posiciones NUEVAS (las que ya estaban abiertas se siguen gestionando).
-        if not (filtro_bear and bear_confirmado[i]):
+        #    -- si filtro_bear esta activo y hay bear confirmado, o si la
+        #    mascara de bloqueo esta activa, no se abren posiciones NUEVAS
+        #    (las que ya estaban abiertas se siguen gestionando).
+        bloqueado = (filtro_bear and bear_confirmado[i]) or (mascara_bloqueo is not None and mascara_bloqueo[i])
+        if not bloqueado:
             for idx_nivel, nivel in enumerate(niveles_compra):
                 if idx_nivel in posiciones_abiertas:
                     continue
@@ -185,19 +195,19 @@ def simular(
                 maximo_en_tendencia[idx_nivel] = max(maximo_en_tendencia.get(idx_nivel, precio_ent), close[i])
                 trailing = maximo_en_tendencia[idx_nivel] - k_atr_trailing * atr[i]
                 if close[i] < trailing and close[i] > precio_ent:
-                    resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "trailing_tendencia"))
+                    resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "trailing_tendencia", idx_nivel=idx_nivel))
                     del posiciones_abiertas[idx_nivel]
                     maximo_en_tendencia.pop(idx_nivel, None)
                 continue
             nivel_venta = precio_ent + espaciado
             if high[i] >= nivel_venta:
-                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, nivel_venta, "venta_nivel"))
+                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, nivel_venta, "venta_nivel", idx_nivel=idx_nivel))
                 del posiciones_abiertas[idx_nivel]
                 maximo_en_tendencia.pop(idx_nivel, None)
 
     # cerrar lo que quede abierto al final, al ultimo precio (marcar a mercado)
     for idx_nivel, (idx_ent, precio_ent) in posiciones_abiertas.items():
-        resultado.trades.append(TradeGrid(idx_ent, n - 1, precio_ent, close[-1], "fin_periodo"))
+        resultado.trades.append(TradeGrid(idx_ent, n - 1, precio_ent, close[-1], "fin_periodo", idx_nivel=idx_nivel))
 
     return resultado
 
