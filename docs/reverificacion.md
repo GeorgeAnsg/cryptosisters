@@ -8,7 +8,10 @@ Cada candidato pasa por las 6 puertas de `tests/`. Solo cuando pasa las 6 se
 re-escribe de verdad en `motores/`. Si falla una, se para ahí y se anota el
 motivo — no hace falta gastar tiempo en las puertas siguientes.
 
-## 1. StochRSI + ADX
+## 1. StochRSI + ADX — ❌ DESCARTADO (8-sept-2026)
+
+**Muerto para este proyecto. No se prueba más, no se construye en `motores/`,
+no queda pendiente de nada.** Cayó en la Puerta 3, detalle completo abajo.
 
 Código del candidato: `laboratorio/stochrsi_adx.py` (réplica fiel de
 `~/Desktop/tr/v6/core/bot_indicators.py`). Tres variantes: A) sobreventa sin
