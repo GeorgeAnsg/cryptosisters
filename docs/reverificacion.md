@@ -134,9 +134,28 @@ de riesgo ya cerrada (1%/operación, 3-4% pérdida diaria máxima).
    - **No se repite en 1h:** misma ventana equivalente en horas, retorno
      total -21%, retorno medio ~0%, sin patrón por año.
 
-   **DESCARTADO, esta vez con base sólida** (no una config con suerte, sino
-   ausencia de robustez en tres ejes distintos). `registro/intentos.jsonl`
-   guarda las dos vueltas por separado.
+   **DESCARTADO tras la segunda vuelta** (no una config con suerte, sino
+   ausencia de robustez en tres ejes distintos).
+
+   **Tercera vuelta, a petición del usuario — margen/tolerancia relativos a
+   la ALTURA del canal** (no % fijo del precio; corrección metodológica
+   válida, un canal ancho y uno estrecho no deberían tener el mismo margen
+   absoluto). Resultado, esta vez más prometedor a primera vista: mediana
+   +3,4% (vs -6,7% del barrido anterior), 53,1% de combinaciones positivas,
+   la mejor combinación (167 operaciones) sin decaer por año y con algo
+   parecido apareciendo en 1h. **Pero la prueba decisiva lo tumba igual:**
+   comparado contra el baseline correcto (comprar BTC al azar la misma
+   duración que cada operación, ~2,6 días), el exceso es de solo +0,13
+   puntos porcentuales con **p=0,83** — estadísticamente cero. El +0,82%
+   contra cero (p=0,043) que parecía prometedor es un falso positivo
+   esperable de probar 192 configuraciones (se esperan ~10 así solo por
+   azar). La estrategia gana porque está comprada en BTC la mayor parte
+   del tiempo durante un periodo muy alcista, no por ninguna ventaja real
+   del canal — mismo mecanismo exacto que tumbó a StochRSI+ADX.
+
+   **DEFINITIVAMENTE DESCARTADO** tras 3 vueltas de verificación (config
+   única → barrido fijo → barrido relativo a altura + baseline correcto).
+   `registro/intentos.jsonl` guarda las tres vueltas por separado.
 2. **Bloques de acumulación / soporte-resistencia** — propuesta del usuario:
    zonas donde el precio se acumula fuerte y rebota repetidamente entre dos
    bloques, hasta que algo lo rompe. Ya investigado en

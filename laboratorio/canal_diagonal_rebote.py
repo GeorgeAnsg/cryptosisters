@@ -80,16 +80,22 @@ def simular(
     n_pivotes_linea: int = 3,
     tolerancia_toque: float = 0.01,
     margen_invalidacion: float = 0.02,
+    relativo_a_altura: bool = False,
 ) -> list[TradeDiagonal]:
     """Simula la estrategia de rebote sobre un canal diagonal.
 
     - ventana_pivote: velas a cada lado para confirmar un pivote.
     - n_pivotes_linea: cuántos pivotes recientes (ya confirmados) se usan
       para ajustar cada línea.
-    - tolerancia_toque: cuán cerca de la línea (en % del precio) cuenta
-      como "toque" de la mecha.
+    - tolerancia_toque: cuán cerca de la línea cuenta como "toque" de la
+      mecha.
     - margen_invalidacion: cuánto tiene que cerrar por debajo/encima de la
       línea contraria para dar el canal por roto.
+    - relativo_a_altura: si True, `tolerancia_toque` y `margen_invalidacion`
+      se interpretan como fracción de la ALTURA DEL CANAL en ese momento
+      (resistencia - soporte), no como % del precio. Un canal ancho recibe
+      más margen absoluto que uno estrecho, en vez del mismo margen fijo
+      para los dos. Si False (comportamiento original), son % del precio.
     """
     altos, bajos = calcular_pivotes(df, ventana_pivote)
     high = df["high"].to_numpy()
@@ -127,18 +133,26 @@ def simular(
         if soporte_t <= 0 or resistencia_t <= soporte_t:
             continue  # canal degenerado (líneas cruzadas o precio absurdo), se ignora
 
+        altura = resistencia_t - soporte_t
+        if relativo_a_altura:
+            tol_abs = tolerancia_toque * altura
+            marg_abs = margen_invalidacion * altura
+        else:
+            tol_abs = tolerancia_toque * soporte_t
+            marg_abs = margen_invalidacion * soporte_t
+
         if not en_posicion:
             if t <= canal_invalidado_hasta:
                 continue
-            tocó_soporte = low[t] <= soporte_t * (1 + tolerancia_toque)
+            tocó_soporte = low[t] <= soporte_t + tol_abs
             cerró_encima = close[t] > soporte_t
             if tocó_soporte and cerró_encima:
                 en_posicion = True
                 idx_entrada = t
                 precio_entrada = close[t]
         else:
-            invalidado = close[t] < soporte_t * (1 - margen_invalidacion)
-            tocó_resistencia = high[t] >= resistencia_t * (1 - tolerancia_toque)
+            invalidado = close[t] < soporte_t - marg_abs
+            tocó_resistencia = high[t] >= resistencia_t - tol_abs
             if invalidado or tocó_resistencia:
                 motivo = "canal_roto" if invalidado else "objetivo_resistencia"
                 trades.append(TradeDiagonal(idx_entrada, t, precio_entrada, close[t], motivo))
