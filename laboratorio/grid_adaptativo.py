@@ -96,13 +96,10 @@ def simular(
     k_atr_espaciado_tendencia: float = 2.0,
     filtro_bear: bool = False,
     mascara_bloqueo: np.ndarray | None = None,
+    senal_refuerzo: np.ndarray | None = None,
+    ventana_refuerzo: int = 6,
+    mult_espaciado_reforzado: float = 3.0,
 ) -> ResultadoGrid:
-    """
-    mascara_bloqueo: array booleano (misma longitud que df) -- mientras es
-    True, no se abren posiciones NUEVAS en el grid (las que ya estaban
-    abiertas se siguen gestionando con normalidad). Pensado para no pisar
-    a otros motores (p.ej. Doble suelo/techo) cuando ya tienen algo abierto.
-    """
     """
     interruptor_tendencia: si True, mientras ADX>=adx_umbral y +DI>-DI
     (tendencia alcista fuerte confirmada), las posiciones abiertas NO se
@@ -118,6 +115,19 @@ def simular(
     mas" en tendencia (menos operaciones, pero sobreviven mas tiempo) y
     "aprieta" en lateral (mas operaciones pequeñas, que es donde el grid
     rinde mejor).
+
+    mascara_bloqueo: array booleano (misma longitud que df) -- mientras es
+    True, no se abren posiciones NUEVAS en el grid (las que ya estaban
+    abiertas se siguen gestionando con normalidad). Pensado para no pisar
+    a otros motores (p.ej. Doble suelo/techo) cuando ya tienen algo abierto.
+
+    senal_refuerzo: array booleano -- si una compra del grid ocurre dentro
+    de `ventana_refuerzo` velas de una señal externa activa (p.ej. Doble
+    suelo confirmado), esa posición concreta se marca como "reforzada":
+    en vez de vender en el siguiente escalón normal, su objetivo se
+    multiplica por `mult_espaciado_reforzado` -- se le da más margen para
+    correr porque hay una confirmación independiente de que el nivel es
+    real, no solo ruido de la rejilla.
     """
     close = df["close"].to_numpy()
     low = df["low"].to_numpy()
@@ -152,6 +162,7 @@ def simular(
     centro, espaciado, niveles_compra = nueva_rejilla(idx_ultimo_recentrado)
     # posiciones abiertas: lista de (idx_nivel, idx_entrada, precio_entrada)
     posiciones_abiertas: dict[int, tuple[int, float]] = {}
+    niveles_reforzados: set[int] = set()
 
     for i in range(idx_ultimo_recentrado, n):
         # 1. stop de seguridad: precio muy por debajo del nivel de compra mas bajo
@@ -160,6 +171,7 @@ def simular(
             for idx_nivel, (idx_ent, precio_ent) in posiciones_abiertas.items():
                 resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, close[i], "stop_rejilla", idx_nivel=idx_nivel))
             posiciones_abiertas = {}
+            niveles_reforzados.clear()
             resultado.n_stops_rejilla += 1
             centro, espaciado, niveles_compra = nueva_rejilla(i)
             resultado.n_recentrados += 1
@@ -185,6 +197,8 @@ def simular(
                     continue
                 if low[i] <= nivel:
                     posiciones_abiertas[idx_nivel] = (i, nivel)
+                    if senal_refuerzo is not None and senal_refuerzo[max(0, i - ventana_refuerzo):i + 1].any():
+                        niveles_reforzados.add(idx_nivel)
 
         # 4. rellenar ventas: precio sube un escalon por encima del nivel de compra
         #    -- salvo que el interruptor de tendencia este activo, en cuyo caso se
@@ -199,11 +213,14 @@ def simular(
                     del posiciones_abiertas[idx_nivel]
                     maximo_en_tendencia.pop(idx_nivel, None)
                 continue
-            nivel_venta = precio_ent + espaciado
+            mult = mult_espaciado_reforzado if idx_nivel in niveles_reforzados else 1.0
+            nivel_venta = precio_ent + espaciado * mult
             if high[i] >= nivel_venta:
-                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, nivel_venta, "venta_nivel", idx_nivel=idx_nivel))
+                motivo = "venta_nivel_reforzado" if mult > 1.0 else "venta_nivel"
+                resultado.trades.append(TradeGrid(idx_ent, i, precio_ent, nivel_venta, motivo, idx_nivel=idx_nivel))
                 del posiciones_abiertas[idx_nivel]
                 maximo_en_tendencia.pop(idx_nivel, None)
+                niveles_reforzados.discard(idx_nivel)
 
     # cerrar lo que quede abierto al final, al ultimo precio (marcar a mercado)
     for idx_nivel, (idx_ent, precio_ent) in posiciones_abiertas.items():
