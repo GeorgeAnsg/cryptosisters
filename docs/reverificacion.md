@@ -206,6 +206,29 @@ confirma que SÍ hay algo real en BTC solo, a diferencia de StochRSI, pero
 con menos operaciones que si se contara sobre varias monedas. Candidato
 serio, segundo junto a Canal. Pendiente: Puertas 2, 3 (formal), 4, 6.
 
+## 2c. Patrones nuevos propuestos por el usuario (8-sept-2026)
+
+1. **Hombro-cabeza-hombro invertido (alcista)** — ❌ **DESCARTADO.** Nunca
+   se había probado en ningún corvus anterior (estaba anotado como "el
+   siguiente motor natural" tras doble suelo, pero corvus2 cambió de
+   arquitectura antes de construirlo). Código: `laboratorio/hch_invertido.py`
+   (detección causal por pivotes, objetivo por measured move). Config por
+   defecto: -32,1% total, p=0,609 contra baseline. Barrido de 25
+   combinaciones: mediana -7,7% pese a media +6,6% (misma firma de
+   sobreajuste que canal diagonal). Mejor combo (46 trades) contra
+   baseline correcto: p=0,417, no significativo, con decaimiento claro por
+   año (+7,99%/trade en 2020 → -2,22% en 2024). Descartado con la misma
+   solidez que canal diagonal.
+2. **Doble techo** (espejo bajista de doble suelo) — **evidencia real pero
+   insuficiente, en cola.** Ya probado en corvus2: +341% en 2022, pero
+   **toda la ganancia depende del único año bajista disponible** (n=1,
+   misma limitación que el ciclo del halving). Exige cortos, que ya
+   sabemos que lo tienen difícil en cripto. No descartado, no confirmado.
+3. **Hombro-cabeza-hombro normal** (bajista) — mismo problema que doble
+   techo (cortos + evidencia bajista limitada a un año). Nunca probado.
+   En cola, prioridad baja mientras no haya más de un mercado bajista con
+   el que contrastar.
+
 ## 3. Resto del catálogo heredado
 
 Pendiente.
