@@ -167,14 +167,44 @@ de riesgo ya cerrada (1%/operación, 3-4% pérdida diaria máxima).
    (Spring de Wyckoff: ruptura falsa + recuperación rápida) sigue en la cola
    del catálogo con prioridad media. **Pendiente, en cola.**
 
-## 2b. Doble suelo
+## 2b. Doble suelo — ✅ APROBADO CONDICIONAL (2 de 6 puertas, alta robustez)
 
-**No es un motor terminado — está a medio construir.** El roadmap de corvus2
-lo marca explícitamente: *"⚙️ afinando: buena forma, aún no bate costes"*. No
-hay una versión validada que re-verificar; hay trabajo sin acabar. Se trata
-como una decisión aparte (¿merece la pena terminarlo, o se prioriza otra
-cosa?) en vez de meterlo en la cola de re-verificación como si ya existiera.
-Pendiente de decidir con el usuario.
+**Corrección importante:** la nota "aún no bate costes" del roadmap de
+corvus2 estaba **desactualizada** — corresponde a una versión anterior sin
+confirmación de volumen. La versión final (`DobleFondoVolVolumen`) sí
+llegó a validarse en 2025 (+17,7% no visto), aunque en universo
+**multi-moneda**, no BTC solo — mismo patrón que StochRSI, así que había
+que comprobar si sobrevive en BTC solo antes de fiarse.
+
+Código: `laboratorio/doble_suelo.py` + `laboratorio/doble_suelo_backtest.py`.
+Regla: doble suelo (≥2 toques en ventana de 120 velas/~20 días, patrón
+≥15% de altura) + confirmación de volumen (>1,5x su media de 30 velas) al
+romper el neckline. Salida: objetivo fijo 30% / stop fijo -12% (sin salida
+dinámica todavía, igual que el original).
+
+| Puerta | Resultado |
+|---|---|
+| 1. Causalidad | **PASA** — 30 cortes, 0 diferencias |
+| 2. Paridad backtest-vivo | No evaluable — falta `ejecucion/` |
+| 3. Costes reales | Pendiente formal, pero operaciones duran semanas/meses → spread previsiblemente irrelevante |
+| 4. Presupuesto de intentos (DSR) | Pendiente de cálculo formal |
+| 5. Recursividad/calentamiento | **PASA** — con calentamiento correcto (≥500 velas; el primer intento con 200 falló por warmup insuficiente en la prueba, no por problema real del indicador) |
+| 6. Riesgo de cartera | No evaluable — falta `cartera/` |
+
+**BTC solo, Desarrollo 2020-2024:** 15 operaciones, +16,2% media, **+620,6%
+total compuesto**, 66,7% ganadoras, caída máxima -36,3%. Contra el baseline
+correcto (comprar BTC al azar, misma duración): exceso **+20,1pp, p=0,021**
+— pasa la prueba que tumbó a StochRSI y al canal diagonal.
+
+**Barrido de robustez, 108 combinaciones** (ventana/altura/tolerancia/
+vol_mult): **100% positivas**, peor caso +12,2%, mediana +257,1%. Mucho más
+robusto que canal diagonal (que solo "ganaba" en una esquina concreta).
+
+**Matiz honesto:** muestra pequeña por configuración (15-19 operaciones en
+5 años) y la evidencia original de corvus2 era multi-moneda — aquí se
+confirma que SÍ hay algo real en BTC solo, a diferencia de StochRSI, pero
+con menos operaciones que si se contara sobre varias monedas. Candidato
+serio, segundo junto a Canal. Pendiente: Puertas 2, 3 (formal), 4, 6.
 
 ## 3. Resto del catálogo heredado
 
