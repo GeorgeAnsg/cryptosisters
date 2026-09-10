@@ -31,7 +31,7 @@ import pandas as pd
 from laboratorio.grid_adaptativo import simular
 from bot_grid_papel import (
     CONFIG_GENERICA, VARIANTES_COSTE, evaluar_capital_con_coste,
-    DIR_BASE, DIR_DATOS_VIVOS, DIR_LOGS,
+    DIR_BASE, DIR_DATOS_VIVOS, DIR_LOGS, obtener_fecha_inicio_paper,
 )
 
 SIMBOLO_YAHOO = "GC=F"
@@ -98,10 +98,11 @@ def ejecutar_ciclo():
     combinado.to_csv(os.path.join(DIR_DATOS_VIVOS, f"{NOMBRE_ARCHIVO}.csv"), index=False)
 
     res = simular(combinado, **CONFIG_GENERICA)
+    fecha_inicio = obtener_fecha_inicio_paper("XAUUSD")
 
     fila_log = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "par": "XAUUSD", "n_velas_historial": len(combinado)}
     for nombre_variante, coste in VARIANTES_COSTE.items():
-        capital, drawdown, n_trades = evaluar_capital_con_coste(res, CONFIG_GENERICA["n_niveles"], coste)
+        capital, drawdown, n_trades = evaluar_capital_con_coste(res, CONFIG_GENERICA["n_niveles"], coste, combinado, fecha_inicio)
         fila_log[f"capital_{nombre_variante}"] = round(capital, 4)
         fila_log[f"drawdown_{nombre_variante}"] = round(drawdown, 4)
         fila_log["n_trades"] = n_trades

@@ -47,6 +47,7 @@ DIR_BASE = os.path.dirname(os.path.abspath(__file__))
 DIR_DATA_ROOT = os.environ.get("CORVUS4_DATA_ROOT", DIR_BASE)
 DIR_DATOS_VIVOS = os.path.join(DIR_DATA_ROOT, "datos_vivos")
 DIR_LOGS = os.path.join(DIR_DATA_ROOT, "logs")
+DIR_INICIO_PAPER = os.path.join(DIR_DATA_ROOT, "inicio_paper")
 
 CONFIG_GENERICA = dict(
     n_niveles=3, k_atr_espaciado=0.5, k_atr_espaciado_tendencia=1.5,
@@ -149,11 +150,40 @@ def guardar_historial(df: pd.DataFrame, par: str, tf: str):
     df.to_csv(os.path.join(DIR_DATOS_VIVOS, f"{par}_{tf}.csv"), index=False)
 
 
-def evaluar_capital_con_coste(res: ResultadoGrid, n_niveles: int, coste_rt_pct: float) -> tuple[float, float, int]:
+def obtener_fecha_inicio_paper(nombre: str):
+    """La PRIMERA vez que un activo corre en este despliegue, fija su
+    "dia 1" real y lo guarda en disco. A partir de ahi, esa fecha nunca
+    cambia -- es el punto de referencia para separar "resultado del
+    backtest sobre el historial descargado" (que no cuenta, son años
+    pasados) de "resultado desde que este bot vigila el activo en el
+    servidor" (lo unico que responde a "?voy ganando o perdiendo hoy?").
+    Sin esto, evaluar_capital_con_coste sumaria de golpe todas las
+    operaciones de los años de historial usados solo para calentar
+    ADX/ATR, y el primer mensaje ya saldria con decenas de trades y
+    capital movido antes de que el bot llevara ni un ciclo corriendo."""
+    os.makedirs(DIR_INICIO_PAPER, exist_ok=True)
+    ruta = os.path.join(DIR_INICIO_PAPER, f"{nombre}.txt")
+    if os.path.exists(ruta):
+        with open(ruta) as f:
+            return pd.Timestamp(f.read().strip())
+    ahora = pd.Timestamp.now(tz="UTC")
+    with open(ruta, "w") as f:
+        f.write(ahora.isoformat())
+    return ahora
+
+
+def evaluar_capital_con_coste(res: ResultadoGrid, n_niveles: int, coste_rt_pct: float,
+                               velas: pd.DataFrame | None = None, fecha_inicio=None) -> tuple[float, float, int]:
     brutos = [n_niveles - k for k in range(n_niveles)]
     suma = sum(brutos)
     pesos = {k: brutos[k] / suma for k in range(n_niveles)}
     trades_ordenados = sorted(res.trades, key=lambda t: t.idx_salida)
+    if velas is not None and fecha_inicio is not None:
+        # Descarta las operaciones que el backtest "encuentra" dentro del
+        # historial descargado para calentar indicadores -- ya pasaron
+        # antes de que este despliegue existiera, no son parte del
+        # resultado que se le esta mostrando al usuario dia a dia.
+        trades_ordenados = [t for t in trades_ordenados if velas.iloc[t.idx_salida]["open_time"] >= fecha_inicio]
     capital, pico, caida_max = 100.0, 100.0, 0.0
     for t in trades_ordenados:
         peso = pesos.get(t.idx_nivel, 1 / n_niveles) * t.peso_fraccion
@@ -161,7 +191,7 @@ def evaluar_capital_con_coste(res: ResultadoGrid, n_niveles: int, coste_rt_pct: 
         capital += 100.0 * peso * (retorno_neto / 100)
         pico = max(pico, capital)
         caida_max = min(caida_max, (capital / pico - 1) * 100)
-    return capital, caida_max, len(res.trades)
+    return capital, caida_max, len(trades_ordenados)
 
 
 def ejecutar_ciclo(par: str = "BTCUSDT", tf: str = "4h", config: dict = CONFIG_GENERICA):
@@ -174,10 +204,11 @@ def ejecutar_ciclo(par: str = "BTCUSDT", tf: str = "4h", config: dict = CONFIG_G
     guardar_historial(combinado, par, tf)
 
     res = simular(combinado, **config)
+    fecha_inicio = obtener_fecha_inicio_paper(par)
 
     fila_log = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "par": par, "n_velas_historial": len(combinado)}
     for nombre_variante, coste in VARIANTES_COSTE.items():
-        capital, drawdown, n_trades = evaluar_capital_con_coste(res, config["n_niveles"], coste)
+        capital, drawdown, n_trades = evaluar_capital_con_coste(res, config["n_niveles"], coste, combinado, fecha_inicio)
         fila_log[f"capital_{nombre_variante}"] = round(capital, 4)
         fila_log[f"drawdown_{nombre_variante}"] = round(drawdown, 4)
         fila_log["n_trades"] = n_trades

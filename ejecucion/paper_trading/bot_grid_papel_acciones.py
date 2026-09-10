@@ -33,7 +33,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from laboratorio.grid_adaptativo import simular
 from bot_grid_papel import (
     CONFIG_GENERICA, VARIANTES_COSTE, evaluar_capital_con_coste,
-    DIR_DATOS_VIVOS, DIR_LOGS,
+    DIR_DATOS_VIVOS, DIR_LOGS, obtener_fecha_inicio_paper,
 )
 from bot_grid_papel_oro import descargar_1h_reciente, a_4h
 
@@ -76,10 +76,11 @@ def ejecutar_ciclo(ticker: str, nombre_archivo: str):
     combinado.to_csv(os.path.join(DIR_DATOS_VIVOS, f"{nombre_archivo}.csv"), index=False)
 
     res = simular(combinado, **CONFIG_GENERICA)
+    fecha_inicio = obtener_fecha_inicio_paper(nombre_archivo)
 
     fila_log = {"timestamp_utc": datetime.now(timezone.utc).isoformat(), "par": ticker, "n_velas_historial": len(combinado)}
     for nombre_variante, coste in VARIANTES_COSTE.items():
-        capital, drawdown, n_trades = evaluar_capital_con_coste(res, CONFIG_GENERICA["n_niveles"], coste)
+        capital, drawdown, n_trades = evaluar_capital_con_coste(res, CONFIG_GENERICA["n_niveles"], coste, combinado, fecha_inicio)
         fila_log[f"capital_{nombre_variante}"] = round(capital, 4)
         fila_log[f"drawdown_{nombre_variante}"] = round(drawdown, 4)
         fila_log["n_trades"] = n_trades
