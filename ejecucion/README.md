@@ -17,6 +17,12 @@ Es la mitad del sistema que hoy no existe en ningún corvus anterior. Tres pieza
 Sin esta carpeta, todo lo demás es un ejercicio académico. Es literalmente el puente
 entre "el bot decide algo" y "el usuario gana o pierde dinero real".
 
-## Estado (8-sept-2026)
-Vacío. Es de las últimas piezas a construir (Fase 6-7 del plan), pero se documenta desde
-ya para que el hueco quede visible en la arquitectura.
+## Estado (10-sept-2026)
+La pieza de Telegram/QuantFury sigue vacía (Fase 6-7 del plan). Pero se ha añadido una
+pieza distinta y más simple: `paper_trading/` — un piloto de forward-test con dinero
+FICTICIO sobre precio REAL de Binance, para el grid adaptativo en BTC, comparando en
+paralelo tres formas de ejecutar la misma estrategia (spot / futuros a mercado / futuros
+límite en Bybit) para ver cuánto se lleva cada una en comisiones reales según van llegando
+datos nuevos. No requiere cuenta ni API key de ningún exchange — pensado para dejar
+corriendo sin supervisión en un servidor pequeño (ver `paper_trading/README.md`) durante
+semanas/meses antes de decidir si merece la pena operar con dinero real.
