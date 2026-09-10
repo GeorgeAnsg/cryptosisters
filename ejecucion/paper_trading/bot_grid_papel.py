@@ -87,12 +87,47 @@ def descargar_velas_recientes(par: str, tf: str = "4h", limite: int = 1000) -> p
     return df
 
 
+def descargar_historial_completo(par: str, tf: str = "4h", max_velas: int = 20000) -> pd.DataFrame:
+    """Pagina hacia atras en Binance (endTime decreciente) hasta juntar
+    hasta max_velas velas o hasta que Binance ya no tenga mas historia para
+    ese par (respuesta vacia o mas corta de lo pedido -- llegamos al inicio
+    de su cotizacion). 20000 velas de 4h son ~9 años, de sobra para
+    BTC/ETH; para pares mas nuevos simplemente para antes, en su propio
+    inicio real. Solo se usa al arrancar de cero (sin datos_vivos/ ni
+    semilla local) -- en ciclos normales se sigue usando
+    descargar_velas_recientes (una sola llamada, barato)."""
+    todas: list[tuple] = []
+    end_time = None
+    while len(todas) < max_velas:
+        url = f"https://api.binance.com/api/v3/klines?symbol={par}&interval={tf}&limit=1000"
+        if end_time is not None:
+            url += f"&endTime={end_time}"
+        with urllib.request.urlopen(url, timeout=30) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        if not data:
+            break
+        filas = [(d[0], float(d[1]), float(d[2]), float(d[3]), float(d[4]), float(d[5])) for d in data]
+        todas = filas + todas
+        end_time = data[0][0] - 1
+        if len(data) < 1000:
+            break  # llegamos al principio de la historia cotizada de este par
+    if not todas:
+        return pd.DataFrame(columns=["open_time", "open", "high", "low", "close", "volume"])
+    df = pd.DataFrame(todas, columns=["open_time", "open", "high", "low", "close", "volume"])
+    df["open_time"] = pd.to_datetime(df["open_time"], unit="ms", utc=True)
+    return df.drop_duplicates(subset="open_time").sort_values("open_time").reset_index(drop=True)
+
+
 def cargar_o_iniciar_historial(par: str, tf: str) -> pd.DataFrame:
-    """La primera vez, arranca del histórico ya validado en datos/crudo/
-    (años de contexto real) en vez de empezar en vacío -- así el ADX/ATR
-    tienen calentamiento correcto desde el primer ciclo, no hay que esperar
-    meses a que se acumule solo. A partir de ahí, vive en datos_vivos/ y
-    crece con cada ciclo."""
+    """La primera vez, arranca con años de historial real en vez de
+    empezar en vacío -- así el ADX/ATR tienen calentamiento correcto desde
+    el primer ciclo Y el "capital" que se registra cada noche refleja una
+    muestra grande, no solo unas semanas. Antes dependía de un archivo
+    semilla en datos/crudo/, pero esa carpeta esta en .gitignore (no viaja
+    con el repo a un despliegue nuevo) -- asi que si no hay nada guardado
+    todavia, se descarga paginando Binance en vez de asumir que la semilla
+    esta ahi. A partir de la primera vez, vive en datos_vivos/ y crece con
+    cada ciclo normal (una sola llamada, no repagina)."""
     ruta = os.path.join(DIR_DATOS_VIVOS, f"{par}_{tf}.csv")
     if os.path.exists(ruta):
         historial = pd.read_csv(ruta)
@@ -105,7 +140,8 @@ def cargar_o_iniciar_historial(par: str, tf: str) -> pd.DataFrame:
         semilla = cargar_ohlcv(par, tf, ruta_base=os.path.join(DIR_BASE, "..", "..", "datos", "crudo"))
         return semilla[["open_time", "open", "high", "low", "close", "volume"]]
 
-    return pd.DataFrame(columns=["open_time", "open", "high", "low", "close", "volume"])
+    print(f"[{par}] sin historial local ni semilla -- descargando historico completo de Binance (puede tardar unos segundos)...")
+    return descargar_historial_completo(par, tf)
 
 
 def guardar_historial(df: pd.DataFrame, par: str, tf: str):

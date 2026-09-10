@@ -79,10 +79,16 @@ python3 ejecucion/paper_trading/bot_grid_papel.py             # los 12 cripto de
 python3 ejecucion/paper_trading/bot_grid_papel_oro.py         # el oro
 python3 ejecucion/paper_trading/bot_grid_papel_acciones.py    # NVDA, GOOGL, KO
 ```
-La primera vez arranca con el histórico ya validado (`datos/crudo/`) si
-existe, o si no con las últimas velas disponibles en Binance; a partir de
-ahí vive en `datos_vivos/` y crece con cada ejecución. Cada activo anota
-su resultado en `logs/<PAR>_4h_paper.csv` (una fila por ejecución, con el
+La primera vez que un activo arranca sin nada guardado (`datos_vivos/`
+vacío), pagina Binance hacia atrás hasta traer todo su histórico real
+(años, no solo los últimos 1000 velas que da una sola llamada) — tarda
+unos segundos por activo, una sola vez. **Esto es importante en un
+despliegue nuevo**: `datos/crudo/` (el histórico ya validado en local)
+está en `.gitignore` y no viaja con el repo a Coolify, así que el bot en
+el servidor SIEMPRE arranca así, paginando desde cero, no leyendo esa
+carpeta. A partir de la primera vez, vive en `datos_vivos/` y crece con
+cada ejecución normal (una sola llamada, barato). Cada activo anota su
+resultado en `logs/<PAR>_4h_paper.csv` (una fila por ejecución, con el
 capital ficticio de las tres variantes).
 
 ## Desplegar en Coolify (Hetzner)

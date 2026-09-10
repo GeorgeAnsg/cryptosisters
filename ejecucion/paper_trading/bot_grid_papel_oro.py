@@ -81,9 +81,15 @@ def cargar_o_iniciar_historial() -> pd.DataFrame:
 
 
 def ejecutar_ciclo():
-    df1h = descargar_1h_reciente(SIMBOLO_YAHOO)
-    velas_nuevas = a_4h(df1h)
     historial = cargar_o_iniciar_historial()
+    # Sin nada guardado todavia (ni datos_vivos/ ni semilla local -- esta
+    # ultima esta en datos/crudo/, que esta en .gitignore y no viaja con un
+    # despliegue nuevo): pedir el maximo que Yahoo permite en velas de 1h
+    # (730 dias) para arrancar con años de calentamiento real en vez de
+    # los 60 dias de una actualizacion normal.
+    dias = 729 if historial.empty else 60
+    df1h = descargar_1h_reciente(SIMBOLO_YAHOO, dias=dias)
+    velas_nuevas = a_4h(df1h)
 
     combinado = pd.concat([historial, velas_nuevas]).drop_duplicates(subset="open_time").sort_values("open_time").reset_index(drop=True)
     for c in ["open", "high", "low", "close", "volume"]:
