@@ -13,3 +13,11 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# Credenciales de Telegram (api_id/api_hash del usuario + sesion autenticada) -- nunca versionar
+.telegram_credenciales.json
+*.session
+*.session-journal
+
+# Credenciales de Santiment (API key del usuario) -- nunca versionar
+.santiment_credenciales.json

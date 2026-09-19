@@ -1,0 +1,10 @@
+{
+  "capital_interno": 100.0,
+  "capital_real_usuario": 100.0,
+  "posiciones": {
+    "BTCUSDT": null,
+    "ETHUSDT": null
+  },
+  "fecha_ultimo_balance_real": null,
+  "fecha_ultimo_recordatorio_balance": null
+}

@@ -1,0 +1,10 @@
+# 19-sept-2026: sin este fichero, `COPY . /app` en cualquier Dockerfile del
+# proyecto (ejecucion/paper_trading/, ejecucion/quantfury/) sube TODO el
+# contexto de build a Coolify -- incluida `investigacion/` (repos de
+# terceros clonados para lectura, ~1.9GB), que ningun bot de produccion
+# necesita en tiempo de ejecucion. Sin esto, cada despliegue tarda mucho
+# mas de lo necesario y puede llegar a fallar por tamano.
+investigacion/
+.git/
+**/__pycache__/
+*.pyc

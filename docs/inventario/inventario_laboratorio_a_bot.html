@@ -1,0 +1,273 @@
+<title>Laboratorio → Bot</title>
+<style>
+:root{
+  --bg:#f2f3f1; --panel:#ffffff; --ink:#1b201d; --ink-dim:#5e685f;
+  --line:#dde1db; --accent:#3a5f52; --accent-soft:#e7ede9;
+  --ok:#2f6f4f; --ok-bg:#e7f3ea;
+  --pend:#a3721f; --pend-bg:#faf1e0;
+  --no:#a33d2f; --no-bg:#faeae7;
+  --hold:#5a5f8a; --hold-bg:#ecedf5;
+  --mono:'IBM Plex Mono', ui-monospace, monospace;
+  --sans:'IBM Plex Sans', -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141715; --panel:#1c201d; --ink:#e9ebe6; --ink-dim:#9aa39a;
+    --line:#2d332e; --accent:#7fb59f; --accent-soft:#1f2b25;
+    --ok:#7fc79a; --ok-bg:#1c2e22;
+    --pend:#e0ac5a; --pend-bg:#332913;
+    --no:#e08a77; --no-bg:#2e211d;
+    --hold:#a3a8d6; --hold-bg:#22243a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141715; --panel:#1c201d; --ink:#e9ebe6; --ink-dim:#9aa39a;
+  --line:#2d332e; --accent:#7fb59f; --accent-soft:#1f2b25;
+  --ok:#7fc79a; --ok-bg:#1c2e22;
+  --pend:#e0ac5a; --pend-bg:#332913;
+  --no:#e08a77; --no-bg:#2e211d;
+  --hold:#a3a8d6; --hold-bg:#22243a;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);padding:2.2rem 1.4rem 4rem;}
+.wrap{max-width:920px;margin:0 auto;}
+h1{font-size:1.55rem;font-weight:700;margin:0 0 .25rem;letter-spacing:-.01em;}
+.sub{color:var(--ink-dim);font-size:.92rem;margin:0 0 1.6rem;max-width:70ch;line-height:1.5;}
+.leyenda{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:2rem;}
+.chip{font-family:var(--mono);font-size:.72rem;letter-spacing:.02em;padding:.28rem .6rem;border-radius:6px;display:inline-flex;align-items:center;gap:.35rem;}
+.c-ok{background:var(--ok-bg);color:var(--ok);}
+.c-pend{background:var(--pend-bg);color:var(--pend);}
+.c-no{background:var(--no-bg);color:var(--no);}
+.c-hold{background:var(--hold-bg);color:var(--hold);}
+.resumen{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-bottom:2.4rem;}
+@media (max-width:640px){.resumen{grid-template-columns:repeat(2,1fr);}}
+.num-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:.85rem 1rem;}
+.num-card .n{font-family:var(--mono);font-size:1.5rem;font-weight:600;line-height:1;}
+.num-card .l{font-size:.72rem;color:var(--ink-dim);margin-top:.3rem;text-transform:uppercase;letter-spacing:.04em;}
+.n-ok{color:var(--ok);} .n-pend{color:var(--pend);} .n-no{color:var(--no);} .n-hold{color:var(--hold);}
+.carpeta{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:1.3rem;overflow:hidden;}
+.carpeta-head{padding:1rem 1.2rem .8rem;border-bottom:1px solid var(--line);}
+.carpeta-head .ruta{font-family:var(--mono);font-size:.95rem;font-weight:600;color:var(--accent);}
+.carpeta-head .desc{font-size:.83rem;color:var(--ink-dim);margin-top:.25rem;max-width:68ch;line-height:1.45;}
+.item{padding:.85rem 1.2rem;border-bottom:1px solid var(--line);display:flex;gap:.9rem;align-items:flex-start;}
+.item:last-child{border-bottom:none;}
+.item .estado{flex-shrink:0;margin-top:.1rem;}
+.item .cuerpo{flex:1;min-width:0;}
+.item .nombre{font-weight:600;font-size:.92rem;margin-bottom:.15rem;}
+.item .nota{font-size:.83rem;color:var(--ink-dim);line-height:1.5;}
+.item .nota code{font-family:var(--mono);background:var(--accent-soft);color:var(--accent);padding:.05rem .3rem;border-radius:3px;font-size:.85em;}
+.completo{padding:.9rem 1.2rem;font-size:.85rem;color:var(--ink-dim);font-style:italic;}
+footer{border-top:1px solid var(--line);padding-top:1.1rem;margin-top:2rem;font-size:.82rem;color:var(--ink-dim);line-height:1.6;}
+.mapa{width:100%;border-collapse:collapse;font-size:.85rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:2rem;}
+.mapa th,.mapa td{padding:.65rem .8rem;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;}
+.mapa th{background:var(--accent-soft);color:var(--ink-dim);font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;}
+.mapa tr:last-child td{border-bottom:none;}
+.mapa td:first-child{font-family:var(--mono);font-weight:600;color:var(--accent);white-space:nowrap;}
+.mapa .ej{color:var(--ink-dim);font-size:.82rem;}
+.mapa tr.destacado td:first-child{position:relative;}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<div class="wrap">
+  <h1>De laboratorio al bot — inventario de piezas</h1>
+  <p class="sub">Todo lo que se ha probado en <code style="font-family:var(--mono)">laboratorio/</code> hasta el 17-sept-2026, organizado por la carpeta de destino que ya existe en el proyecto (motores/entradas/salidas/filtros/tamaño/cartera/ejecución). "Migrado" significa que la pieza vive de verdad en su carpeta final, no solo en un script de backtest.</p>
+
+  <table class="mapa">
+    <thead><tr><th>Carpeta</th><th>Pregunta que responde</th><th>Ejemplos</th></tr></thead>
+    <tbody>
+      <tr><td>motores/</td><td>¿Hay un patrón aquí?</td><td class="ej">doble techo, doble suelo, canal, régimen de mercado</td></tr>
+      <tr><td>entradas/</td><td>¿Abro una posición nueva con este patrón?</td><td class="ej">doble techo/suelo con puntuación (régimen incluido)</td></tr>
+      <tr><td>salidas/</td><td>Mirando SOLO esta posición ya abierta, ¿la cierro hoy?</td><td class="ej">stop, objetivo, racha rota, venta parcial, <code style="font-family:var(--mono)">pendiente_acelerada</code></td></tr>
+      <tr><td>filtros/</td><td>¿Dejo pasar esta operación concreta, hoy?</td><td class="ej">canal por calidad absoluta (adoptado, sin migrar aún) — el resto de intentos, descartado</td></tr>
+      <tr><td>tamaño/</td><td>Ya decidido abrir, ¿cuánto arriesgo?</td><td class="ej">calcular_tamano()</td></tr>
+      <tr><td>cartera/</td><td>Con el capital ya repartido, ¿qué candidato NUEVO se lleva hueco? (decide qué dinero entra, no cómo sale)</td><td class="ej">árbitro, riesgo global</td></tr>
+      <tr class="destacado"><td>ejecución/</td><td>Uniendo todo lo anterior día a día, ¿qué hago ahora mismo? — incluye decisiones que mezclan salida+entrada a la vez, como el switch</td><td class="ej">pipeline completo, switch, aviso Telegram</td></tr>
+    </tbody>
+  </table>
+  <p class="sub" style="margin-top:-1.4rem">El switch (cerrar una posición porque llegó un candidato contrario mucho más fuerte) no es una salida pura ni una decisión de cartera pura — mira las dos cosas a la vez, así que vive en <code style="font-family:var(--mono)">ejecución/</code>, el pipeline que las conecta. Corrección del 15-sept: al principio se propuso <code style="font-family:var(--mono)">cartera/cuenta.py</code> para esto, pero cartera solo decide qué entra, no cómo sale — el switch no encaja ahí.</p>
+
+  <div class="leyenda">
+    <span class="chip c-ok">✓ migrado</span>
+    <span class="chip c-pend">◐ pendiente de migrar</span>
+    <span class="chip c-hold">◒ pendiente de decisión</span>
+    <span class="chip c-no">✗ descartado</span>
+    <span class="chip c-hold">? inconcluso</span>
+  </div>
+
+  <div class="resumen">
+    <div class="num-card"><div class="n n-ok">14</div><div class="l">migrado</div></div>
+    <div class="num-card"><div class="n n-pend">1</div><div class="l">pendiente de migrar</div></div>
+    <div class="num-card"><div class="n n-no">12</div><div class="l">descartado</div></div>
+    <div class="num-card"><div class="n n-hold">6</div><div class="l">decisión / inconcluso</div></div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">motores/</div>
+      <div class="desc">Los detectores base — qué patrón hay, sin decidir todavía si se opera.</div>
+    </div>
+    <div class="completo">✓ Completo — doble techo, doble suelo, canal ascendente, canal descendente, régimen de mercado (SMA200) y volatilidad (ATR) ya están reescritos y migrados aquí. No hay nada pendiente en esta carpeta.</div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">entradas/</div>
+      <div class="desc">Cuándo ABRIR una posición.</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Doble techo</div><div class="nota">Migrado con el régimen de mercado ya integrado en su puntuación (lado bajista bien probado; alcista/neutro, menos). Usa solo la puntuación de forma+contexto — la confirmación de ruptura que resultó indistinguible del azar (20-41% de acierto) <b>no</b> está metida aquí.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Doble suelo</div><div class="nota">Migrado, con el régimen ALCISTA como factor validado. Mismo matiz que doble techo respecto a la confirmación de ruptura.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-pend">◐</span>
+      <div class="cuerpo"><div class="nombre">Canal como señal de entrada propia</div><div class="nota">El motor (<code>canal_ascendente/descendente.py</code>) está limpio y graduado, pero nadie lo usa todavía como entrada real — solo se ha probado como filtro extra dentro de backtests de salida. No existe <code>entradas/canal.py</code>.</div></div>
+    </div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">salidas/</div>
+      <div class="desc">Cuándo CERRAR una posición ya abierta. Migrada del todo el 17-sept-2026 — las cinco reglas viven ya como código real en esta carpeta, no en scripts de backtest sueltos.</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Stop + Objetivo por ATR</div><div class="nota">Vive en <code>salidas/stop_objetivo.py</code>. Decisión FIJA vs DINÁMICA cerrada el 17-sept: se usa la FIJA (K=1.2×ATR, R=4.0) porque es la que está validada de punta a punta (<code>sistema_confirmado_switch_14sept2026.py</code>); la DINÁMICA queda aparcada por falta de evidencia de que sea mejor. La función también gana esta semana los ganchos genéricos de venta parcial y de confirmación retardada (ver abajo).</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Venta parcial</div><div class="nota">Vender el 50% de la posición al llegar a +20% de ganancia. Migrada como gancho genérico (<code>venta_parcial_umbral</code>/<code>venta_parcial_fraccion</code>) dentro de <code>salidas/stop_objetivo.simular_trade</code>.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">↷</span>
+      <div class="cuerpo"><div class="nombre">Switch (cambio de posición)</div><div class="nota">Cierra la posición actual y abre la contraria si aparece un candidato mucho más fuerte (umbral=0.0, ya validado el 14-sept). Sigue sin ir aquí a propósito — mezcla información de salida y de entrada, así que vive en <code>ejecución/cuenta_referencia.py</code> (17-sept), el pipeline que conecta todo.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Racha rota</div><div class="nota">Migrada a <code>salidas/racha_rota.py</code> (17-sept), reutilizando el detector de doble techo/suelo ya graduado. La limitación estructural sigue sin arreglo, a propósito: se queda <b>apagada</b> por completo si no hay un doble techo/suelo confirmado cerca (el caso de abril 2024 que abrió esta investigación) — por eso corre siempre junto a <code>pendiente_acelerada</code>, que cubre exactamente ese hueco. La confirmación retardada por caída de pendiente (30%) vive ahora como gancho genérico en <code>stop_objetivo.simular_trade</code>.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">pendiente_acelerada (sin filtro de contexto)</div><div class="nota">Corte si el precio se movió ≥1.5×ATR en 5 días — sin depender de ningún pico confirmado. <b>Puertas 1, 3, 4 y 5 pasadas</b> (15-sept). Ya vivía en <code>salidas/pendiente_acelerada.py</code>; esta semana se conectó de verdad al resto del sistema en <code>ejecución/cuenta_referencia.py</code>. De los seis filtros de contexto que se probaron para hacerla más selectiva esta semana (canal absoluto/percentil/percentil+piso, volumen, aceleración, vela), ninguno se lleva a producción con garantías — corre siempre activa, sin excepción (ver <code>filtros/</code>).</div></div>
+    </div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">filtros/</div>
+      <div class="desc">Veto por operación — "¿este candidato concreto se permite ahora mismo, o no?". Carpeta de código vacía todavía, pero ya NO es cierto que nada haya sobrevivido: el filtro de canal por calidad absoluta (ver más abajo) está adoptado, solo que sigue viviendo en <code>laboratorio/</code> por su matiz sin resolver en XRP.</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">◒</span>
+      <div class="cuerpo"><div class="nombre">Canal (calidad de forma absoluta, <code>probabilidad_forma≥0.5</code>) como confirmación de <code>pendiente_acelerada</code></div><div class="nota"><b>Distinto del "canal lateral casero" de abajo</b> — este usa el motor de verdad (<code>canal_ascendente</code>/<code>canal_descendente</code>). <b>Adoptado</b> el 15-sept: el resultado con más solidez estadística de toda la investigación (BTC pasa el control de azar con p=0,015). Defecto conocido sin resolver: perjudica a XRP. Los dos intentos de arreglar ese defecto esta semana (percentil relativo, percentil+piso) se descartaron sin mejorar la versión adoptada — ver abajo. Pendiente: migrar esta versión (la absoluta) a <code>filtros/</code> de verdad.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Canal lateral (detector casero)</div><div class="nota">Un detector rápido y simple, NO el motor graduado. Como filtro de <code>pendiente_acelerada</code>. No generaliza entre ETH y BTC — patrón de "un año bueno tapando el resto".</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Canal — percentil relativo por moneda (en vez de umbral absoluto)</div><div class="nota">Intento de arreglar el defecto de XRP del filtro adoptado de arriba: exigir que el canal esté entre los mejores DE SU PROPIA moneda (ventana de historial reciente) en vez de un umbral fijo calibrado en ETH. Mejora ETH y XRP, pero empeora justo BTC (p=0,270 vs p=0,015 de la versión absoluta) — el caso que motivó toda la investigación. Trade-off real, registrado como alternativa, no adoptado.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Canal — percentil relativo + piso de calidad absoluta</div><div class="nota">Híbrido para intentar rescatar el percentil relativo de arriba. Resultado nulo: el piso no cambia ni un solo día vetado en ninguna moneda — la hipótesis que lo motivaba (el percentil dejaba pasar "el menos malo de un tramo malo") queda descartada.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Volumen relativo del día del corte</div><div class="nota">Vetar el corte si el volumen ese día está por debajo de su media de 30 días. En todo el rango donde el filtro apenas actúa, el resultado es idéntico, céntimo a céntimo, a no filtrar — un corte real de <code>pendiente_acelerada</code> casi nunca coincide con volumen bajo. En cuanto se hace más estricto, solo empeora.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Aceleración de la aceleración (segunda derivada de la pendiente)</div><div class="nota">Vetar el corte si la propia pendiente no sigue intensificándose. El único resultado con mejora aparente (+2,8%) resultó ser un pico aislado en la ventana de 3 días, no corroborado ni por la ventana vecina (4 días) — no llega a fase de confirmación.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Forma de la vela del día del corte</div><div class="nota">Vetar el corte si el día cerró con un rechazo marcado (mecha) en contra del movimiento de 5 días. Mismo patrón que el volumen: en el rango donde apenas actúa, empata exactamente con no filtrar; más estricto, solo empeora.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Régimen NEUTRO (SMA200)</div><div class="nota">Como filtro de <code>pendiente_acelerada</code> (no como parte de las entradas, donde sí queda). Parecía el mejor resultado de la sesión, pero no supera un Monte Carlo por permutación: suspender la regla en días NEUTRO da el mismo resultado que suspenderla en días al azar.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Umbral adaptativo por Efficiency Ratio</div><div class="nota">El óptimo real, al extender el grid, es no adaptar nada.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Régimen calibrado por percentil, por activo</div><div class="nota">Ganaba en ETH (donde se ajustó) pero perdía en BTC Y en XRP al congelar — sobreajuste de manual.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Volumen relativo</div><div class="nota">El óptimo real, al extender el grid, es no filtrar por volumen.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Dominancia BTC — velocidad de rotación</div><div class="nota">Mejoraba el total agregado sin tocar ni un céntimo el año real del problema (BTC 2023) — mejora en años irrelevantes, no un arreglo.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Dominancia BTC — nivel relativo a su media larga</div><div class="nota">Variante propuesta para evitar el problema de la anterior (horizonte largo, como el régimen). Mismo resultado: el óptimo converge a "no filtrar" al ampliar el rango.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">?</span>
+      <div class="cuerpo"><div class="nombre">Doble techo/suelo como filtro de otra señal</div><div class="nota">Inconcluso, no descartado: el detector marcó el 99% del histórico como "en formación de extremo" (demasiado permisivo tal como se construyó). Haría falta la versión de consenso/probabilidad para una comparación justa — no se llegó a hacer esta sesión.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">?</span>
+      <div class="cuerpo"><div class="nombre">Ventana=2 para el canal (ajuste del propio motor)</div><div class="nota">No es un filtro nuevo, es un ajuste candidato al motor ya migrado: ventana=2 en vez de 3 mejora ligeramente en ETH y BTC a la vez. No ha pasado las puertas formales (1/3/4/5) todavía.</div></div>
+    </div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">tamaño/</div>
+      <div class="desc">Cuánto arriesgar en cada operación.</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">calcular_tamano()</div><div class="nota">En uso consistente en todos los backtests de esta sesión y anteriores. No se ha cuestionado ni revalidado en esta fase — se hereda como bueno de trabajo previo.</div></div>
+    </div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">cartera/</div>
+      <div class="desc">El árbitro (qué candidato gana cuando hay más señales que huecos) y el riesgo global (multiplicador sobre todas las posiciones a la vez).</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">◒</span>
+      <div class="cuerpo"><div class="nombre">Árbitro + riesgo global</div><div class="nota">Diseño escrito y con código (~45-50 líneas cada uno), pero nunca ejercitado con los motores y salidas actuales. Esta es la <b>Puerta 3 a nivel de cartera</b> pendiente que se menciona en el cierre de la fase anterior: aplicar costes reales (spread ~0% BTC, ~0.7% Polygon) cuando varias monedas compiten por hueco, no solo por operación suelta.</div></div>
+    </div>
+  </div>
+
+  <div class="carpeta">
+    <div class="carpeta-head">
+      <div class="ruta">ejecución/</div>
+      <div class="desc">El puente hacia dinero real: sin esto, todo lo demás sigue siendo un ejercicio de laboratorio.</div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-ok">✓</span>
+      <div class="cuerpo"><div class="nombre">Pipeline de backtest (<code>ejecucion/cuenta_referencia.py</code>, 17-sept)</div><div class="nota">Primera vez que entradas (doble techo/suelo) + tamaño + las cinco salidas + switch se juntan en un único programa, fuera del laboratorio. Verificado con <code>tests/verificar_cuenta_referencia.py</code>: reproduce, céntimo a céntimo, los resultados que ya daban los scripts sueltos del laboratorio. <b>Todavía no es</b> la estrategia de Freqtrade ni conecta con ningún exchange — es el pipeline de backtest de referencia, el paso previo necesario.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Estrategia Freqtrade ejecutable en vivo</div><div class="nota">No existe todavía. Es el siguiente paso natural ahora que el pipeline de backtest (arriba) ya está unificado y verificado.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-no">✗</span>
+      <div class="cuerpo"><div class="nombre">Aviso por Telegram + registro señal emitida vs. ejecutada</div><div class="nota">Vacío — es manual en QuantFury, así que hace falta este puente antes de operar nada real.</div></div>
+    </div>
+    <div class="item">
+      <span class="estado chip c-hold">◒</span>
+      <div class="cuerpo"><div class="nombre">paper_trading/ (nota aparte)</div><div class="nota">Ya existe y corre un piloto de forward-test con dinero ficticio — pero es para una estrategia <b>distinta</b> (grid adaptativo en BTC), no para doble techo/suelo + canal + pendiente_acelerada. No cuenta como avance de esta línea de trabajo.</div></div>
+    </div>
+  </div>
+
+  <footer>
+    Estado a 17-sept-2026. Este documento no sustituye al registro de intentos (<code>registro/intentos.jsonl</code>) ni a las puertas formales de <code>tests/</code> — es un mapa de "qué falta trasladar", no una prueba de que algo esté listo. Te lo actualizo cada vez que migremos o descartemos algo nuevo.
+  </footer>
+</div>
