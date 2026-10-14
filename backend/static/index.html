@@ -375,6 +375,13 @@ function renderPaginaPosiciones(){
 
   const pctCartera = (invertido, cuenta)=> (invertido!=null && cuenta) ? `${(invertido/cuenta*100).toFixed(1)}%` : '—';
 
+  const botonAbrir = (addr, tipo, coin, lado)=>{
+    const id = `mp_${addr}_${tipo}_${coin}_${lado||'spot'}`;
+    const yaAbierta = Object.values(misPosiciones).some(m=>m.estado==='abierta' && m.addr===addr && m.tipo===tipo && m.coin===coin && (m.lado||null)===(lado||null));
+    if(yaAbierta) return `<span style="color:var(--fg-muted);font-size:.74rem">ya abierta</span>`;
+    return `<button class="btn-abrir" data-id="${id}" data-addr="${addr}" data-tipo="${tipo}" data-coin="${coin}" data-lado="${lado||''}">Abrir</button>`;
+  };
+
   let contadorFila = 0;
   const filasTrading = trading.length ? trading.map(it=>{
     const lado = it.lado.toLowerCase();
@@ -390,12 +397,14 @@ function renderPaginaPosiciones(){
       <td>${it.coin}</td>
       <td>$${invertido.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
       <td>${pctCartera(invertido, it.c.cuenta)}</td>
+      <td>$${it.precio}</td>
       <td>${filaPlanta(it.c)}</td>
       <td>${pnl}</td>
+      <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado)}</td>
     </tr>`;
     const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId)).join('') : '';
     return cabecera + hijos;
-  }).join('') : '<tr><td colspan="7" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
 
   const filasSpot = spot.length ? spot.map(it=>{
     const coste = it.coste!=null ? `$${it.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`;
@@ -413,17 +422,18 @@ function renderPaginaPosiciones(){
       <td>${filaPlanta(it.c)}</td>
       <td>${valor}</td>
       <td>${pnl}</td>
+      <td>${botonAbrir(it.c.address, 'spot', it.coin, null)}</td>
     </tr>`;
     const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId)).join('') : '';
     return cabecera + hijos;
-  }).join('') : '<tr><td colspan="7" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
+  }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
   return `
     <div class="seccion-titulo">Trading (${trading.length})</div>
     <div class="sub-panel" data-sub="trading">
       <table class="ops">
         <thead><tr>
-          <th>Fecha</th><th>Dirección</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Trader</th><th>Resultado</th>
+          <th>Fecha</th><th>Dirección</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Entrada</th><th>Trader</th><th>Resultado</th><th></th>
         </tr></thead>
         <tbody>${filasTrading}</tbody>
       </table>
@@ -432,62 +442,18 @@ function renderPaginaPosiciones(){
     <div class="sub-panel" data-sub="spot">
       <table class="ops">
         <thead><tr>
-          <th>Fecha</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Trader</th><th>Valor actual</th><th>Resultado</th>
+          <th>Fecha</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Trader</th><th>Valor actual</th><th>Resultado</th><th></th>
         </tr></thead>
         <tbody>${filasSpot}</tbody>
       </table>
     </div>`;
 }
 
-function fechaRealDeAlerta(c, a){
-  // la alerta solo guarda cuando NOSOTROS la detectamos (deteccion cada 5
-  // min) -- para mostrar cuando el trader hizo la accion de verdad, se busca
-  // el fill de apertura mas reciente que encaje en su historial guardado.
-  if(!c) return null;
-  const lado = a.tipo === 'spot' ? 'Spot' : a.lado;
-  const candidatas = (c.operaciones_recientes || [])
-    .filter(f => f.accion === 'Abre' && f.coin === a.coin && f.lado === lado)
-    .sort((x, y) => y.ts - x.ts);
-  return candidatas.length ? candidatas[0].time : null;
-}
-
 function renderPaginaMias(){
-  // la deteccion de "nuevo" ya no se hace aqui -- el backend la hace sola en
-  // su bucle de refresco (ver backend/refresher.py) y manda el aviso de
-  // Telegram a la vez; esta pagina solo lee lo que el backend ya detecto.
-  const pendientes = Object.entries(alertas).filter(([,a])=>a.estado!=='hecho');
+  // el boton "Abrir" vive en "Posiciones de seguimiento" (cualquier fila,
+  // no solo lo nuevo) -- aqui solo se ve lo que ya has abierto tu, hasta
+  // que lo cierres (eso es lo que alimenta Estadisticas).
   const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
-
-  const trading = pendientes.filter(([,a])=>a.tipo==='trading');
-  const spot = pendientes.filter(([,a])=>a.tipo==='spot');
-
-  const filasTrading = trading.map(([id,a])=>{
-    const c = candidatos.find(x=>x.address===a.addr);
-    const fecha = fechaRealDeAlerta(c, a) || '—';
-    return `<tr>
-      <td><span class="op-lado ${(a.lado||'').toLowerCase()}">${a.lado}</span></td>
-      <td>${a.coin}</td>
-      <td>${a.tamaño}</td>
-      <td>${c?filaPlanta(c):a.addr.slice(0,8)}</td>
-      <td>$${a.precio}</td>
-      <td>${fecha}</td>
-      <td><button class="btn-abrir" data-id="${id}">Abrir</button></td>
-    </tr>`;
-  }).join('');
-
-  const filasSpot = spot.map(([id,a])=>{
-    const c = candidatos.find(x=>x.address===a.addr);
-    const fecha = fechaRealDeAlerta(c, a) || '—';
-    const coste = a.coste!=null ? `$${a.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
-    return `<tr>
-      <td>${a.coin}</td>
-      <td>${a.tamaño}</td>
-      <td>${c?filaPlanta(c):a.addr.slice(0,8)}</td>
-      <td>${coste}</td>
-      <td>${fecha}</td>
-      <td><button class="btn-abrir" data-id="${id}">Abrir</button></td>
-    </tr>`;
-  }).join('');
 
   const filasAbiertas = abiertas.map(([id,m])=>{
     const c = candidatos.find(x=>x.address===m.addr);
@@ -501,12 +467,8 @@ function renderPaginaMias(){
   }).join('');
 
   return `
-    <div class="estado" style="padding:4px 2px 14px;text-align:left">Posiciones nuevas detectadas entre los que sigues. Pulsa "Abrir" cuando la abras tú también — pasa a "Tus posiciones abiertas" abajo, y desde ahí la cierras cuando toque (eso sí entra en Estadísticas).</div>
-    <div class="seccion-titulo">Trading (${trading.length})</div>
-    ${trading.length?`<table class="ops"><thead><tr><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Trader</th><th>Entrada</th><th>Fecha</th><th></th></tr></thead><tbody>${filasTrading}</tbody></table>`:'<div class="estado">Nadie que sigas tiene trading nuevo.</div>'}
-    <div class="seccion-titulo" style="margin-top:22px">Spot (${spot.length})</div>
-    ${spot.length?`<table class="ops"><thead><tr><th>Moneda</th><th>Cantidad</th><th>Trader</th><th>Coste</th><th>Fecha</th><th></th></tr></thead><tbody>${filasSpot}</tbody></table>`:'<div class="estado">Nadie que sigas tiene spot nuevo.</div>'}
-    <div class="seccion-titulo" style="margin-top:22px">Tus posiciones abiertas (${abiertas.length})</div>
+    <div class="estado" style="padding:4px 2px 14px;text-align:left">Lo que abres desde "Posiciones de seguimiento" (botón "Abrir" en cada fila) se queda aquí hasta que lo cierres.</div>
+    <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
     ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
 }
 
@@ -661,17 +623,12 @@ function render(){
 
   root.querySelectorAll('.btn-abrir').forEach(btn=>{
     btn.onclick = async ()=>{
-      const id = btn.dataset.id;
-      const a = alertas[id];
-      if(!a) return;
+      const {id, addr, tipo, coin} = btn.dataset;
+      const lado = btn.dataset.lado || null;
       btn.disabled = true;
       try{
-        const posId = 'mp_' + id;
-        await apiEnviar('POST', '/mis_posiciones', {
-          id: posId, addr: a.addr, tipo: a.tipo, coin: a.coin, lado: a.lado || null, alerta_id: id,
-        });
-        alertas[id] = {...a, estado:'hecho'};
-        misPosiciones[posId] = {addr:a.addr, tipo:a.tipo, coin:a.coin, lado:a.lado||null, estado:'abierta', fecha_apertura:Date.now(), alerta_id:id};
+        await apiEnviar('POST', '/mis_posiciones', {id, addr, tipo, coin, lado});
+        misPosiciones[id] = {addr, tipo, coin, lado, estado:'abierta', fecha_apertura:Date.now()};
         render();
       }catch(e){
         console.error('fallo al abrir posicion', e);
