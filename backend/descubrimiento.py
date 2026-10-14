@@ -278,10 +278,26 @@ def descubrir_candidatos():
 
 
 def ciclo_descubrimiento():
+    # un reinicio del proceso (cada deploy) no debe relanzar el descubrimiento
+    # de golpe -- se guarda cuando se ejecuto de verdad por ultima vez y, si
+    # no ha pasado una semana desde entonces, se espera lo que falte antes
+    # del primer ciclo en vez de arrancar inmediatamente
+    conn = db.conectar()
+    ultima = db.meta_get(conn, "ultimo_descubrimiento")
+    conn.close()
+    if ultima:
+        falta = INTERVALO_SEGUNDOS - (time.time() - float(ultima))
+        if falta > 0:
+            time.sleep(falta)
+
     while True:
         try:
             descubrir_candidatos()
         except Exception:
             print("fallo en el ciclo de descubrimiento:")
             traceback.print_exc()
+        finally:
+            conn = db.conectar()
+            db.meta_set(conn, "ultimo_descubrimiento", str(time.time()))
+            conn.close()
         time.sleep(INTERVALO_SEGUNDOS)

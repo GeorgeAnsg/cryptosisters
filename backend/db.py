@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS alertas (
     id TEXT PRIMARY KEY, tipo TEXT, addr TEXT, coin TEXT, lado TEXT,
     tamaño REAL, precio REAL, coste REAL, estado TEXT DEFAULT 'pendiente', detectado INTEGER
 );
+CREATE TABLE IF NOT EXISTS meta (
+    clave TEXT PRIMARY KEY, valor TEXT
+);
 CREATE TABLE IF NOT EXISTS mis_posiciones (
     id TEXT PRIMARY KEY, addr TEXT, tipo TEXT, coin TEXT, lado TEXT, estado TEXT DEFAULT 'abierta',
     fecha_apertura INTEGER, fecha_cierre INTEGER, pnl REAL, alerta_id TEXT,
@@ -72,6 +75,16 @@ def iniciar():
         conn.execute("UPDATE candidatos SET sigue_spot=1 WHERE siguiendo=1 AND puntuacion_spot IS NOT NULL")
     conn.commit()
     conn.close()
+
+
+def meta_get(conn, clave):
+    fila = conn.execute("SELECT valor FROM meta WHERE clave=?", (clave,)).fetchone()
+    return fila["valor"] if fila else None
+
+
+def meta_set(conn, clave, valor):
+    conn.execute("INSERT INTO meta (clave, valor) VALUES (?,?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor", (clave, valor))
+    conn.commit()
 
 
 def abrir_posicion(conn, id, addr, tipo, coin, lado, alerta_id, tamaño, precio_entrada, tamaño_trader):
