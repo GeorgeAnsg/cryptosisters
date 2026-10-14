@@ -7,7 +7,10 @@ import json
 import time
 import urllib.error
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+ZONA_USUARIO = ZoneInfo("Europe/Madrid")
 
 INFO_URL = "https://api.hyperliquid.xyz/info"
 SLEEP_ENTRE_LLAMADAS = 0.3
@@ -87,7 +90,10 @@ def cargar_spot_meta():
 
 
 def formatear_time(ms):
-    dt = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+    # en hora del usuario (Madrid), no UTC -- el servidor corre en UTC pero
+    # el usuario esta en España, tanto en la web (ver fechaLocal en el
+    # frontend) como en los avisos de Telegram
+    dt = datetime.fromtimestamp(ms / 1000, tz=ZONA_USUARIO)
     return f"{dt.day:02d}-{MESES_EN[dt.month-1]} {dt.hour:02d}:{dt.minute:02d}"
 
 
