@@ -131,6 +131,7 @@ tr.op-hijo.oculto{display:none}
 
 .estado{font-size:.84rem;color:var(--fg-muted);text-align:center;padding:40px}
 .btn-abrir,.btn-cerrar,.btn-añadir,.btn-reducir{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.btn-cerrar,.btn-añadir,.btn-reducir{width:26px;height:26px;padding:0;font-size:.95rem;line-height:1}
 .btn-abrir:hover,.btn-cerrar:hover,.btn-añadir:hover,.btn-reducir:hover{background:#000;color:#fff;border-color:#000}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
 .gb-leyenda{font-size:.76rem;color:var(--fg-muted);margin:-4px 2px 12px}
@@ -609,22 +610,23 @@ function renderPaginaMias(){
 
   const filasAbiertas = abiertas.map(([id,m])=>{
     const c = candidatos.find(x=>x.address===m.addr);
+    const invertido = (m.tamaño!=null && m.precio_entrada!=null) ? m.tamaño*m.precio_entrada : null;
     return `<tr>
       <td>${new Date(m.fecha_apertura).toLocaleDateString('es-ES')}</td>
       <td>${c?filaPlanta(c, m.lado?'trading':'spot'):m.addr.slice(0,8)}</td>
       <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
       <td>${etiquetaMoneda(m.coin)}</td>
-      <td>${m.tamaño!=null?m.tamaño:'—'}</td>
+      <td>${invertido!=null?`$${invertido.toLocaleString('es-ES',{maximumFractionDigits:0})}`:'—'}</td>
       <td>${m.precio_entrada!=null?`$${m.precio_entrada}`:'—'}</td>
-      <td id="pnl-vivo-${id}" class="op-pnl">…</td>
-      <td style="text-align:right"><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-reducir" data-id="${id}">Reducir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
+      <td id="pnl-vivo-${id}" class="op-pnl ${ultimoPnlVivoPorId[id]?.clase||''}">${ultimoPnlVivoPorId[id]?.texto ?? '…'}</td>
+      <td style="text-align:right"><button class="btn-añadir" data-id="${id}" title="Añadir">+</button> <button class="btn-reducir" data-id="${id}" title="Reducir">−</button> <button class="btn-cerrar" data-id="${id}" title="Cerrar">✕</button></td>
     </tr>`;
   }).join('');
 
   return `
     <div id="grafico-mis-posiciones">${ultimoGraficoMisPosicionesHtml}</div>
     <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
-    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th>Resultado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>$ invertido</th><th>Entrada</th><th>Resultado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
 }
 
 let cargandoResumenPropio = false;
@@ -633,6 +635,10 @@ let cargandoResumenPropio = false;
 // grafico se veia parpadear: vacio un instante hasta que llegaban los
 // precios nuevos, y volvia a aparecer -- con la cache no hay hueco en blanco
 let ultimoGraficoMisPosicionesHtml = '';
+// mismo motivo que ultimoGraficoMisPosicionesHtml: sin cache, la celda de
+// "Resultado" de cada fila nacia en "..." en cada sondeo y parpadeaba hasta
+// que volvia a llegar el precio en vivo
+let ultimoPnlVivoPorId = {};
 async function actualizarResumenPropio(){
   // win rate tuyo (de lo que ya has cerrado) es sincrono, no necesita pedir nada
   const cerradas = Object.values(misPosiciones).filter(m=>m.estado==='cerrada' && m.pnl!=null);
@@ -685,7 +691,8 @@ async function cargarPnlVivoMisPosiciones(abiertas){
     const celda = document.getElementById(`pnl-vivo-${id}`);
     const precio = precios[`${m.coin}|${m.tipo||'trading'}`];
     if(precio == null || m.precio_entrada == null || m.tamaño == null){
-      if(celda) celda.textContent = '— (sin dato en vivo)';
+      ultimoPnlVivoPorId[id] = {texto:'— (sin dato en vivo)', clase:''};
+      if(celda) celda.textContent = ultimoPnlVivoPorId[id].texto;
       continue;
     }
     const signo = m.lado === 'Short' ? -1 : 1;
@@ -693,9 +700,10 @@ async function cargarPnlVivoMisPosiciones(abiertas){
     const invertido = m.precio_entrada * m.tamaño;
     const pct = invertido ? (pnl / invertido * 100) : null;
     barras.push({etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
+    const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
+    ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase: pnl>0?'pos':(pnl<0?'neg':'')};
     if(celda){ // puede haber cambiado de pagina mientras se pedian los precios
-      const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
-      celda.textContent = `${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`;
+      celda.textContent = ultimoPnlVivoPorId[id].texto;
       celda.classList.toggle('pos', pnl > 0);
       celda.classList.toggle('neg', pnl < 0);
     }
