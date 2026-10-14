@@ -149,8 +149,8 @@ tr.op-hijo.oculto{display:none}
     <div id="grafico-monedas" class="cn-grafico"></div>
   </div>
   <div class="page-tabs">
-    <button class="page-tab activo" data-pagina="posiciones">Posiciones de seguimiento</button>
-    <button class="page-tab" data-pagina="mias">Posiciones abiertas</button>
+    <button class="page-tab activo" data-pagina="mias">Mis posiciones</button>
+    <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
     <button class="page-tab" data-pagina="seguimiento">Seguimiento</button>
     <button class="page-tab" data-pagina="stats">Estadísticas</button>
   </div>
@@ -331,7 +331,7 @@ function tarjeta(c, filtroActividad){
     </div>`;
 }
 
-let paginaActiva = 'posiciones';
+let paginaActiva = 'mias';
 let filtroActividad = 'trading';
 let ordenAsc = false;
 let subPestañaPosiciones = 'trading';
@@ -1002,7 +1002,7 @@ function actualizarBadgesTabs(){
   const tabSeg = document.querySelector('.page-tab[data-pagina="posiciones"]');
   if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Hay algo nuevo"></span>':'');
   const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
-  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas';
+  if(tabMias) tabMias.innerHTML = 'Mis posiciones';
   const tabSeguimiento = document.querySelector('.page-tab[data-pagina="seguimiento"]');
   if(tabSeguimiento) tabSeguimiento.innerHTML = 'Seguimiento' + (hayDescubrimientoNuevoDesdeUltimaVisita()?'<span class="alerta-tab" title="Hay un trader nuevo descubierto"></span>':'');
 }
