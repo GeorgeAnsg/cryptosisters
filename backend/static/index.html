@@ -560,14 +560,41 @@ function renderPaginaMias(){
       <td>${etiquetaMoneda(m.coin)}</td>
       <td>${m.tamaño!=null?m.tamaño:'—'}</td>
       <td>${m.precio_entrada!=null?`$${m.precio_entrada}`:'—'}</td>
-      <td><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
+      <td id="pnl-vivo-${id}" class="op-pnl">…</td>
+      <td><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-reducir" data-id="${id}">Reducir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
     </tr>`;
   }).join('');
 
   return `
     <div class="estado" style="padding:4px 2px 14px;text-align:left">Lo que abres desde "Posiciones de seguimiento" (botón "Abrir" en cada fila) se queda aquí hasta que lo cierres. El tamaño y el precio son los que TÚ metiste al abrir, no los del trader.</div>
     <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
-    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th>Resultado</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+}
+
+async function cargarPnlVivoMisPosiciones(abiertas){
+  // se pide el precio actual una vez por (moneda,tipo) distinta, no una vez
+  // por fila -- varias posiciones abiertas pueden compartir la misma moneda
+  const claves = [...new Set(abiertas.map(([,m])=> `${m.coin}|${m.tipo||'trading'}`))];
+  const precios = {};
+  await Promise.all(claves.map(async clave=>{
+    const [coin, tipo] = clave.split('|');
+    try{ const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`); precios[clave] = precio; }
+    catch(e){ precios[clave] = null; }
+  }));
+  for(const [id, m] of abiertas){
+    const celda = document.getElementById(`pnl-vivo-${id}`);
+    if(!celda) continue; // puede haber cambiado de pagina mientras se pedian los precios
+    const precio = precios[`${m.coin}|${m.tipo||'trading'}`];
+    if(precio == null || m.precio_entrada == null || m.tamaño == null){
+      celda.textContent = '— (sin dato en vivo)';
+      continue;
+    }
+    const signo = m.lado === 'Short' ? -1 : 1;
+    const pnl = (precio - m.precio_entrada) * m.tamaño * signo;
+    celda.textContent = `${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}`;
+    celda.classList.toggle('pos', pnl > 0);
+    celda.classList.toggle('neg', pnl < 0);
+  }
 }
 
 function construirSvgLinea(valores){
@@ -798,6 +825,39 @@ function render(){
     };
   });
 
+  root.querySelectorAll('.btn-reducir').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const m = misPosiciones[id];
+      if(!m) return;
+      btn.disabled = true;
+      let precio;
+      try{
+        ({precio} = await apiGet(`/precio/${m.coin}?tipo=${m.tipo||'trading'}`));
+      }catch(e){
+        console.error('fallo al pedir el precio actual', e);
+        btn.disabled = false;
+        return;
+      }
+      btn.disabled = false;
+      const maxDolares = m.tamaño * precio;
+      modalCantidad({titulo:`Reducir posición (máx. $${maxDolares.toLocaleString('es-ES',{maximumFractionDigits:0})})`, coin:m.coin, lado:m.lado, precio, onConfirmar: async (tamañoPedido)=>{
+        const tamañoReducido = Math.min(tamañoPedido, m.tamaño);
+        try{
+          const res = await apiEnviar('PATCH', `/mis_posiciones/${id}/reducir`, {tamaño_reducido: tamañoReducido, precio});
+          if(res.resto <= m.tamaño * 0.001){
+            misPosiciones[id] = {...m, estado:'cerrada', pnl: res.pnl, fecha_cierre:Date.now()};
+          } else {
+            misPosiciones[id] = {...m, tamaño: res.resto};
+          }
+          render();
+        }catch(e){
+          console.error('fallo al reducir posicion', e);
+        }
+      }});
+    };
+  });
+
   root.querySelectorAll('.btn-cerrar').forEach(btn=>{
     btn.onclick = async ()=>{
       const id = btn.dataset.id;
@@ -818,6 +878,11 @@ function render(){
       }
     };
   });
+
+  if(paginaActiva === 'mias'){
+    const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
+    if(abiertas.length) cargarPnlVivoMisPosiciones(abiertas);
+  }
 
   actualizarBadgesTabs();
   }catch(e){

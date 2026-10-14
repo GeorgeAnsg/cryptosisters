@@ -150,6 +150,50 @@ def añadir_a_posicion(id: str, body: AñadirBody, x_api_key: str | None = Heade
     return {"ok": True, "tamaño": tamaño_nuevo, "precio_entrada": round(precio_nuevo, 6)}
 
 
+class ReducirBody(BaseModel):
+    tamaño_reducido: float
+    precio: float
+
+
+@app.patch("/mis_posiciones/{id}/reducir")
+def reducir_posicion(id: str, body: ReducirBody, x_api_key: str | None = Header(default=None)):
+    comprobar_clave(x_api_key)
+    conn = db.conectar()
+    fila = conn.execute("SELECT * FROM mis_posiciones WHERE id=? AND estado='abierta'", (id,)).fetchone()
+    if fila is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="posicion no encontrada o ya cerrada")
+    tamaño_actual = fila["tamaño"] or 0
+    if body.tamaño_reducido <= 0 or body.tamaño_reducido > tamaño_actual * 1.0001:
+        conn.close()
+        raise HTTPException(status_code=400, detail="tamaño a reducir invalido")
+    # short gana cuando el precio baja, el resto (long/spot) gana cuando sube
+    signo = -1 if fila["lado"] == "Short" else 1
+    pnl = (body.precio - fila["precio_entrada"]) * body.tamaño_reducido * signo
+    resto = tamaño_actual - body.tamaño_reducido
+    if resto <= tamaño_actual * 0.001:  # reducir (casi) todo = cerrar del todo
+        conn.execute(
+            "UPDATE mis_posiciones SET estado='cerrada', pnl=?, fecha_cierre=? WHERE id=?",
+            (round(pnl, 2), int(time.time() * 1000), id),
+        )
+    else:
+        # la parte reducida se registra como un cierre parcial propio (para
+        # que Estadisticas la cuente), y la posicion original se queda
+        # abierta con lo que resta, mismo precio de entrada (coste no cambia al reducir)
+        conn.execute(
+            """INSERT INTO mis_posiciones (id, addr, tipo, coin, lado, estado, fecha_apertura, fecha_cierre,
+               pnl, alerta_id, tamaño, precio_entrada, tamaño_trader_visto)
+               VALUES (?,?,?,?,?,'cerrada',?,?,?,?,?,?,?)""",
+            (f"{id}_r{int(time.time()*1000)}", fila["addr"], fila["tipo"], fila["coin"], fila["lado"],
+             fila["fecha_apertura"], int(time.time() * 1000), round(pnl, 2), fila["alerta_id"],
+             body.tamaño_reducido, fila["precio_entrada"], fila["tamaño_trader_visto"]),
+        )
+        conn.execute("UPDATE mis_posiciones SET tamaño=? WHERE id=?", (resto, id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "pnl": round(pnl, 2), "resto": round(resto, 8)}
+
+
 class CerrarBody(BaseModel):
     pnl: float
 
