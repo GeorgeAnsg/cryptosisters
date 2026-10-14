@@ -306,32 +306,39 @@ function marcarCierres(filas){
 }
 
 function filaMovimientoTrading(o, filaId){
+  // columnas alineadas con la cabecera de la tabla padre: Fecha, Dirección,
+  // Moneda, $ invertido, % de su cartera, Entrada, Trader, Resultado, (Abrir)
   const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
   const verbo = o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce');
   return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
     <td>${o.time}</td>
-    <td></td>
     <td>${verbo}</td>
-    <td>${o.coin}</td>
-    <td>${o.sz}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
+    <td>${o.coin}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
+    <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
+    <td>—</td>
     <td>$${o.px}</td>
+    <td></td>
     <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+    <td></td>
   </tr>`;
 }
 
 function filaMovimientoSpot(o, filaId){
+  // columnas alineadas con la cabecera: Fecha, Moneda, $ invertido, % de su
+  // cartera, Trader, Valor actual, Resultado, (Abrir)
   const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
   const verbo = o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende');
   return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
     <td>${o.time}</td>
-    <td></td>
-    <td>${verbo} ${nombreMonedaBase(o.coin)}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
-    <td>${o.sz}</td>
+    <td>${verbo} ${nombreMonedaBase(o.coin)}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
     <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
     <td>—</td>
+    <td></td>
+    <td>—</td>
     <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+    <td></td>
   </tr>`;
 }
 
