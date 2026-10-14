@@ -490,12 +490,28 @@ function renderPaginaPosiciones(){
     return null;
   };
 
+  // si el ciclo de 5 min acaba de ver un añadido que el backtest diario
+  // todavia no tiene como fill de verdad (ver masReciente arriba), se
+  // construye un fill "sintetico" con lo que SI sabemos (antes/ahora de la
+  // tabla alertas) para que la fila sea expandible igualmente -- si no,
+  // "acaba de añadir" no se podia ver desglosado hasta el siguiente backtest
+  const movimientoSintetico = (clave, ts, coin, precio)=>{
+    const al = alertas[clave];
+    if(!al || al.tamaño_antes == null || al.detectado !== ts) return null;
+    const delta = al.tamaño - al.tamaño_antes;
+    if(delta <= 0) return null; // una reduccion no es "ha añadido"
+    return {ts, accion:'Abre', esInicio:false, cierraDelTodo:false, sz:+delta.toPrecision(8), notional:Math.round(delta*precio), px:precio, nFills:1, closedPnl:0, coin};
+  };
+
   const filasTrading = trading.length ? trading.map(it=>{
     const lado = it.lado.toLowerCase();
     const invertido = it.tamaño * it.precio;
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '<span style="color:var(--fg-muted)">sin dato</span>';
-    const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
+    const claveAlerta = `${it.c.address}_trading_${it.coin}_${it.lado}`;
+    const sintetico = movimientoSintetico(claveAlerta, it.ts, it.coin, it.precio);
+    const filasReales = it.bloque ? it.bloque.filas : [];
+    const tieneDetalle = filasReales.length > 1 || (filasReales.length >= 1 && sintetico);
     const filaId = `t_${it.c.address}_${it.coin}_${it.lado}`;
     const abierta = expandidos.has(filaId);
     const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
@@ -510,8 +526,9 @@ function renderPaginaPosiciones(){
       <td>${pnl}</td>
       <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado, motivoNoAbrirTrading(it), it.tamaño)}</td>
     </tr>`;
-    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId, abierta)).join('') : '';
-    return cabecera + hijos;
+    const hijosReales = filasReales.length > 1 ? marcarCierres(filasReales).reverse().map(o=>filaMovimientoTrading(o, filaId, abierta)) : [];
+    const hijos = sintetico ? [filaMovimientoTrading(sintetico, filaId, abierta), ...hijosReales] : hijosReales;
+    return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="9" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
 
   const filasSpot = spot.length ? spot.map(it=>{
@@ -519,7 +536,11 @@ function renderPaginaPosiciones(){
     const valor = it.valor!=null ? `$${it.valor.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
-    const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
+    const claveAlerta = `${it.c.address}_spot_${it.coin}`;
+    const precioAprox = it.coste!=null && it.tamaño ? it.coste/it.tamaño : (it.valor!=null && it.tamaño ? it.valor/it.tamaño : 0);
+    const sintetico = movimientoSintetico(claveAlerta, it.ts, it.coin, precioAprox);
+    const filasReales = it.bloque ? it.bloque.filas : [];
+    const tieneDetalle = filasReales.length > 1 || (filasReales.length >= 1 && sintetico);
     const filaId = `s_${it.c.address}_${it.coin}`;
     const abierta = expandidos.has(filaId);
     const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
@@ -533,8 +554,9 @@ function renderPaginaPosiciones(){
       <td>${pnl}</td>
       <td>${botonAbrir(it.c.address, 'spot', it.coin, null, null, it.tamaño)}</td>
     </tr>`;
-    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId, abierta)).join('') : '';
-    return cabecera + hijos;
+    const hijosReales = filasReales.length > 1 ? marcarCierres(filasReales).reverse().map(o=>filaMovimientoSpot(o, filaId, abierta)) : [];
+    const hijos = sintetico ? [filaMovimientoSpot(sintetico, filaId, abierta), ...hijosReales] : hijosReales;
+    return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
   return `

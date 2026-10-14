@@ -153,7 +153,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             ))
         elif abs(fila["tamaño"] - p["tamaño"]) > max(1e-9, p["tamaño"] * 0.001):
             antes = fila["tamaño"]
-            conn.execute("UPDATE alertas SET tamaño=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], p["entryPx"], ahora, id_))
+            conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             avisos.append((
                 f"🔵 Ha añadido — {cabecera(conn, addr, candidato)}\n\n"
                 f"{p['lado'].upper()} {p['coin']}\n"
@@ -183,7 +183,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             ))
         elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
             antes = fila["tamaño"]
-            conn.execute("UPDATE alertas SET tamaño=?, detectado=? WHERE id=?", (h["tamaño"], ahora, id_))
+            conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, detectado=? WHERE id=?", (h["tamaño"], antes, ahora, id_))
             avisos.append((
                 f"🔵 Ha añadido a su cartera spot — {cabecera(conn, addr, candidato)}\n\n"
                 f"{h['coin']}\n"

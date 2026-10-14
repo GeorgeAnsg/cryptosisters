@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS candidatos (
 );
 CREATE TABLE IF NOT EXISTS alertas (
     id TEXT PRIMARY KEY, tipo TEXT, addr TEXT, coin TEXT, lado TEXT,
-    tamaño REAL, precio REAL, coste REAL, estado TEXT DEFAULT 'pendiente', detectado INTEGER
+    tamaño REAL, tamaño_antes REAL, precio REAL, coste REAL, estado TEXT DEFAULT 'pendiente', detectado INTEGER
 );
 CREATE TABLE IF NOT EXISTS meta (
     clave TEXT PRIMARY KEY, valor TEXT
@@ -63,6 +63,9 @@ def iniciar():
         conn.execute("ALTER TABLE candidatos ADD COLUMN retorno_pct_spot REAL")
     if "drawdown_spot" not in columnas_c:
         conn.execute("ALTER TABLE candidatos ADD COLUMN drawdown_spot REAL")
+    columnas_a = {f[1] for f in conn.execute("PRAGMA table_info(alertas)")}
+    if "tamaño_antes" not in columnas_a:
+        conn.execute("ALTER TABLE alertas ADD COLUMN tamaño_antes REAL")
     if "sigue_trading" not in columnas_c:
         # migracion: antes "siguiendo" era un unico interruptor para todo un
         # trader; ahora se sigue por separado su trading y su spot. A quien
