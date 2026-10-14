@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 import db
+import hyperliquid
 import refresher
 import seed
 
@@ -96,6 +97,8 @@ class AbrirBody(BaseModel):
     coin: str
     lado: str | None = None
     alerta_id: str | None = None
+    tamaño: float | None = None
+    precio_entrada: float | None = None
 
 
 @app.post("/mis_posiciones")
@@ -103,9 +106,10 @@ def abrir_posicion(body: AbrirBody, x_api_key: str | None = Header(default=None)
     comprobar_clave(x_api_key)
     conn = db.conectar()
     conn.execute(
-        """INSERT INTO mis_posiciones (id, addr, tipo, coin, lado, estado, fecha_apertura, alerta_id)
-           VALUES (?,?,?,?,?,'abierta',?,?)""",
-        (body.id, body.addr, body.tipo, body.coin, body.lado, int(time.time() * 1000), body.alerta_id),
+        """INSERT INTO mis_posiciones (id, addr, tipo, coin, lado, estado, fecha_apertura, alerta_id, tamaño, precio_entrada)
+           VALUES (?,?,?,?,?,'abierta',?,?,?,?)""",
+        (body.id, body.addr, body.tipo, body.coin, body.lado, int(time.time() * 1000), body.alerta_id,
+         body.tamaño, body.precio_entrada),
     )
     if body.alerta_id:
         conn.execute("UPDATE alertas SET estado='hecho' WHERE id=?", (body.alerta_id,))
@@ -129,6 +133,19 @@ def cerrar_posicion(id: str, body: CerrarBody, x_api_key: str | None = Header(de
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@app.get("/precio/{coin}")
+def precio_actual(coin: str, tipo: str = "trading", x_api_key: str | None = Header(default=None)):
+    comprobar_clave(x_api_key)
+    precios = hyperliquid.fetch_json({"type": "allMids"})
+    if tipo == "spot":
+        spot_nombres = hyperliquid.cargar_spot_meta()
+        idx = next((k[1:] for k, v in spot_nombres.items() if v == coin), None)
+        clave = f"@{idx}" if idx is not None else None
+    else:
+        clave = coin
+    return {"precio": float(precios[clave]) if clave and clave in precios else None}
 
 
 @app.get("/salud")

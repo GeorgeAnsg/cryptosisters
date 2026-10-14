@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS alertas (
 );
 CREATE TABLE IF NOT EXISTS mis_posiciones (
     id TEXT PRIMARY KEY, addr TEXT, tipo TEXT, coin TEXT, lado TEXT, estado TEXT DEFAULT 'abierta',
-    fecha_apertura INTEGER, fecha_cierre INTEGER, pnl REAL, alerta_id TEXT
+    fecha_apertura INTEGER, fecha_cierre INTEGER, pnl REAL, alerta_id TEXT,
+    tamaño REAL, precio_entrada REAL
 );
 """
 
@@ -37,6 +38,12 @@ def conectar():
 def iniciar():
     conn = conectar()
     conn.executescript(SCHEMA)
+    # migracion para bases ya existentes creadas antes de añadir estas columnas
+    columnas = {f[1] for f in conn.execute("PRAGMA table_info(mis_posiciones)")}
+    if "tamaño" not in columnas:
+        conn.execute("ALTER TABLE mis_posiciones ADD COLUMN tamaño REAL")
+    if "precio_entrada" not in columnas:
+        conn.execute("ALTER TABLE mis_posiciones ADD COLUMN precio_entrada REAL")
     conn.commit()
     conn.close()
 

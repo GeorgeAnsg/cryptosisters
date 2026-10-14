@@ -108,7 +108,8 @@ tr.op-hijo.oculto{display:none}
 .op-estado{font-size:.64rem;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:99px;font-weight:700}
 .op-estado.abierta{background:var(--accent-weak);color:var(--accent)}
 .op-estado.cerrada{background:var(--border);color:var(--fg-muted)}
-.badge-nuevo{font-size:.6rem;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:99px;font-weight:700;background:var(--ok);color:#fff}
+.punto-mov{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:var(--border)}
+.punto-mov.nuevo{background:var(--ok)}
 .op-flecha{cursor:pointer;display:inline-block;width:12px;color:var(--fg-muted);user-select:none}
 
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin:14px 0;padding-top:14px;border-top:1px solid var(--border)}
@@ -138,9 +139,9 @@ tr.op-hijo.oculto{display:none}
     <div id="grafico-monedas" class="cn-grafico"></div>
   </div>
   <div class="page-tabs">
-    <button class="page-tab activo" data-pagina="seguimiento">Seguimiento</button>
-    <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
+    <button class="page-tab activo" data-pagina="posiciones">Posiciones de seguimiento</button>
     <button class="page-tab" data-pagina="mias">Posiciones abiertas</button>
+    <button class="page-tab" data-pagina="seguimiento">Seguimiento</button>
     <button class="page-tab" data-pagina="stats">Estadísticas</button>
   </div>
 </header>
@@ -152,6 +153,7 @@ tr.op-hijo.oculto{display:none}
 let candidatos = [];
 let alertas = {};
 let misPosiciones = {};
+let expandidos = new Set(); // que flechas estan desplegadas -- sobrevive al sondeo periodico (cargarTodo+render cada 30s)
 
 // backend propio (ver carpeta backend/) -- mismo origen que esta pagina,
 // ruta relativa. El backend sustituye esto por la API_KEY real al servir
@@ -279,7 +281,7 @@ function tarjeta(c){
     </div>`;
 }
 
-let paginaActiva = 'seguimiento';
+let paginaActiva = 'posiciones';
 let subPestañaPosiciones = 'trading';
 
 function bloqueDePosicion(c, lado, coinBase){
@@ -298,20 +300,20 @@ function marcarCierres(filas){
   // parcial y la posicion sigue viva. Sin esto, "Reduce/cierra" no decia
   // cual de las dos cosas pasaba realmente.
   let restante = 0;
-  return filas.map(o=>{
+  return filas.map((o,i)=>{
     restante += (o.accion === 'Abre' ? o.sz : -o.sz);
     const cierraDelTodo = o.accion === 'Cierra' && Math.abs(restante) < 0.00001;
-    return {...o, cierraDelTodo};
+    return {...o, cierraDelTodo, esInicio: i===0};
   });
 }
 
-function filaMovimientoTrading(o, filaId){
+function filaMovimientoTrading(o, filaId, abierta){
   // columnas alineadas con la cabecera de la tabla padre: Fecha, Dirección,
   // Moneda, $ invertido, % de su cartera, Entrada, Trader, Resultado, (Abrir)
   const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
-  const verbo = o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce');
-  return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
+  const verbo = (o.esInicio && o.accion==='Abre') ? 'Abre (inicio)' : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
+  return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
     <td>${o.time}</td>
     <td>${verbo}</td>
     <td>${o.coin}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
@@ -324,13 +326,13 @@ function filaMovimientoTrading(o, filaId){
   </tr>`;
 }
 
-function filaMovimientoSpot(o, filaId){
+function filaMovimientoSpot(o, filaId, abierta){
   // columnas alineadas con la cabecera: Fecha, Moneda, $ invertido, % de su
   // cartera, Trader, Valor actual, Resultado, (Abrir)
   const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
-  const verbo = o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende');
-  return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
+  const verbo = (o.esInicio && o.accion==='Abre') ? 'Compra (inicio)' : (o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'));
+  return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
     <td>${o.time}</td>
     <td>${verbo} ${nombreMonedaBase(o.coin)}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
     <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
@@ -377,29 +379,43 @@ function renderPaginaPosiciones(){
 
   if(!trading.length && !spot.length) return '<div class="estado">Los que sigues no tienen ninguna posición abierta ahora mismo.</div>';
 
-  const badgeNuevo = (ts)=> (ultimaVisitaAnterior && ts && ts > ultimaVisitaAnterior)
-    ? `<span class="badge-nuevo" title="Movimiento posterior a tu última visita">nuevo</span>` : '';
+  const puntoMov = (ts)=>{
+    const esNuevo = ultimaVisitaAnterior && ts && ts > ultimaVisitaAnterior;
+    return `<span class="punto-mov ${esNuevo?'nuevo':''}" title="${esNuevo?'Movimiento posterior a tu última visita':'Ya lo habías visto'}"></span>`;
+  };
 
   const pctCartera = (invertido, cuenta)=> (invertido!=null && cuenta) ? `${(invertido/cuenta*100).toFixed(1)}%` : '—';
 
-  const botonAbrir = (addr, tipo, coin, lado)=>{
+  const botonAbrir = (addr, tipo, coin, lado, motivoNoAbrir)=>{
     const id = `mp_${addr}_${tipo}_${coin}_${lado||'spot'}`;
     const yaAbierta = Object.values(misPosiciones).some(m=>m.estado==='abierta' && m.addr===addr && m.tipo===tipo && m.coin===coin && (m.lado||null)===(lado||null));
     if(yaAbierta) return `<span style="color:var(--fg-muted);font-size:.74rem">ya abierta</span>`;
+    if(motivoNoAbrir) return `<span style="color:var(--fg-muted);font-size:.68rem" title="${motivoNoAbrir}">—</span>`;
     return `<button class="btn-abrir" data-id="${id}" data-addr="${addr}" data-tipo="${tipo}" data-coin="${coin}" data-lado="${lado||''}">Abrir</button>`;
   };
 
-  let contadorFila = 0;
+  const UMBRAL_DIAS_ABRIR = 3;
+  const motivoNoAbrirTrading = (it)=>{
+    const primera = it.bloque && it.bloque.filas.length ? it.bloque.filas[0] : null;
+    const incompleta = !it.bloque || it.bloque.truncada
+      || Math.abs(Math.abs(it.bloque.neto) - it.tamaño) > Math.max(1e-6, it.tamaño*0.001);
+    if(incompleta) return 'No tenemos el inicio de esta posición (se abrió antes de lo que vemos de este trader) — no tiene sentido copiarla ya empezada.';
+    const diasDesdeInicio = (Date.now() - primera.ts) / 86400000;
+    if(diasDesdeInicio > UMBRAL_DIAS_ABRIR) return `Posición abierta hace más de ${UMBRAL_DIAS_ABRIR} días — ya ha pasado demasiado tiempo para copiarla al precio de hoy.`;
+    return null;
+  };
+
   const filasTrading = trading.length ? trading.map(it=>{
     const lado = it.lado.toLowerCase();
     const invertido = it.tamaño * it.precio;
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '<span style="color:var(--fg-muted)">sin dato</span>';
     const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
-    const filaId = 'p'+(contadorFila++);
-    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">▸</span>` : '';
+    const filaId = `t_${it.c.address}_${it.coin}_${it.lado}`;
+    const abierta = expandidos.has(filaId);
+    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
     const cabecera = `<tr>
-      <td>${it.fecha} ${badgeNuevo(it.ts)}</td>
+      <td>${puntoMov(it.ts)}${it.fecha}</td>
       <td>${flecha}<span class="op-lado ${lado}">${it.lado}</span></td>
       <td>${it.coin}</td>
       <td>$${invertido.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
@@ -407,9 +423,9 @@ function renderPaginaPosiciones(){
       <td>$${it.precio}</td>
       <td>${filaPlanta(it.c)}</td>
       <td>${pnl}</td>
-      <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado)}</td>
+      <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado, motivoNoAbrirTrading(it))}</td>
     </tr>`;
-    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId)).join('') : '';
+    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId, abierta)).join('') : '';
     return cabecera + hijos;
   }).join('') : '<tr><td colspan="9" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
 
@@ -419,10 +435,11 @@ function renderPaginaPosiciones(){
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
     const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
-    const filaId = 'p'+(contadorFila++);
-    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">▸</span>` : '';
+    const filaId = `s_${it.c.address}_${it.coin}`;
+    const abierta = expandidos.has(filaId);
+    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
     const cabecera = `<tr>
-      <td>${it.fecha} ${badgeNuevo(it.ts)}</td>
+      <td>${puntoMov(it.ts)}${it.fecha}</td>
       <td>${flecha}${it.coin}</td>
       <td>${coste}</td>
       <td>${pctCartera(it.coste, it.c.cuenta)}</td>
@@ -431,7 +448,7 @@ function renderPaginaPosiciones(){
       <td>${pnl}</td>
       <td>${botonAbrir(it.c.address, 'spot', it.coin, null)}</td>
     </tr>`;
-    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId)).join('') : '';
+    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId, abierta)).join('') : '';
     return cabecera + hijos;
   }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
@@ -469,14 +486,16 @@ function renderPaginaMias(){
       <td>${c?filaPlanta(c):m.addr.slice(0,8)}</td>
       <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
       <td>${m.coin}</td>
+      <td>${m.tamaño!=null?m.tamaño:'—'}</td>
+      <td>${m.precio_entrada!=null?`$${m.precio_entrada}`:'—'}</td>
       <td><button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
     </tr>`;
   }).join('');
 
   return `
-    <div class="estado" style="padding:4px 2px 14px;text-align:left">Lo que abres desde "Posiciones de seguimiento" (botón "Abrir" en cada fila) se queda aquí hasta que lo cierres.</div>
+    <div class="estado" style="padding:4px 2px 14px;text-align:left">Lo que abres desde "Posiciones de seguimiento" (botón "Abrir" en cada fila) se queda aquí hasta que lo cierres. El tamaño y el precio son los que TÚ metiste al abrir, no los del trader.</div>
     <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
-    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
 }
 
 function construirSvgLinea(valores){
@@ -624,6 +643,7 @@ function render(){
       const id = fl.dataset.bloque;
       const seAbre = fl.textContent === '▸';
       fl.textContent = seAbre ? '▾' : '▸';
+      if(seAbre) expandidos.add(id); else expandidos.delete(id);
       root.querySelectorAll(`[data-hijo-de="${id}"]`).forEach(tr=> tr.classList.toggle('oculto', !seAbre));
     };
   });
@@ -632,10 +652,15 @@ function render(){
     btn.onclick = async ()=>{
       const {id, addr, tipo, coin} = btn.dataset;
       const lado = btn.dataset.lado || null;
+      const texto = prompt(`¿Qué tamaño de ${coin} vas a abrir tú? (en unidades del activo, no en $)`);
+      if(texto === null) return;
+      const tamaño = parseFloat(texto.replace(',', '.'));
+      if(isNaN(tamaño) || tamaño <= 0){ alert('Eso no es un tamaño válido.'); return; }
       btn.disabled = true;
       try{
-        await apiEnviar('POST', '/mis_posiciones', {id, addr, tipo, coin, lado});
-        misPosiciones[id] = {addr, tipo, coin, lado, estado:'abierta', fecha_apertura:Date.now()};
+        const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`);
+        await apiEnviar('POST', '/mis_posiciones', {id, addr, tipo, coin, lado, tamaño, precio_entrada: precio});
+        misPosiciones[id] = {addr, tipo, coin, lado, estado:'abierta', fecha_apertura:Date.now(), tamaño, precio_entrada: precio};
         render();
       }catch(e){
         console.error('fallo al abrir posicion', e);
@@ -672,29 +697,36 @@ function render(){
   }
 }
 
-function actualizarBadgesTabs(){
-  // punto rojo en las pestañas de arriba cuando hay algo que mirar: movimientos
-  // nuevos en lo que sigues, o posiciones pendientes de abrir en "las tuyas"
+function hayAperturaNuevaDesdeUltimaVisita(){
+  // solo cuenta como "nuevo" una apertura DE VERDAD (primer movimiento del
+  // bloque es un "Abre" posterior a tu última visita y tenemos su origen
+  // completo) -- un simple añadido a una posición ya existente no cuenta,
+  // ni tampoco una posición de la que no tenemos el inicio.
+  if(!ultimaVisitaAnterior) return false;
   const siguiendo = candidatos.filter(c=>c.siguiendo);
-  let hayNuevo = false;
   for(const c of siguiendo){
     for(const p of (c.posicion_actual||[])){
       const b = bloqueDePosicion(c, p.lado, p.coin);
-      const ultima = b ? b.filas[b.filas.length-1] : null;
-      if(ultima && ultimaVisitaAnterior && ultima.ts > ultimaVisitaAnterior) hayNuevo = true;
+      const primera = b && b.filas.length ? b.filas[0] : null;
+      if(primera && primera.accion==='Abre' && !b.truncada && primera.ts > ultimaVisitaAnterior) return true;
     }
     for(const h of (c.holdings_spot||[])){
       const b = bloqueDePosicion(c, 'Spot', h.coin);
-      const ultima = b ? b.filas[b.filas.length-1] : null;
-      if(ultima && ultimaVisitaAnterior && ultima.ts > ultimaVisitaAnterior) hayNuevo = true;
+      const primera = b && b.filas.length ? b.filas[0] : null;
+      if(primera && primera.accion==='Abre' && !b.truncada && primera.ts > ultimaVisitaAnterior) return true;
     }
   }
-  const hayPendientes = Object.values(alertas).some(a=>a.estado!=='hecho');
+  return false;
+}
 
+function actualizarBadgesTabs(){
+  // mismo punto rojo, misma condición, en las dos pestañas -- avisan de
+  // exactamente lo mismo: se ha abierto una posición nueva de verdad.
+  const hayNuevo = hayAperturaNuevaDesdeUltimaVisita();
   const tabSeg = document.querySelector('.page-tab[data-pagina="posiciones"]');
-  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Hay movimientos nuevos"></span>':'');
+  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Se ha abierto una posición nueva"></span>':'');
   const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
-  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas' + (hayPendientes?'<span class="alerta-tab" title="Hay posiciones nuevas pendientes"></span>':'');
+  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas' + (hayNuevo?'<span class="alerta-tab" title="Se ha abierto una posición nueva"></span>':'');
 }
 
 document.querySelectorAll('.page-tab').forEach(btn=>{

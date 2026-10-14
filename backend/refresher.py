@@ -10,11 +10,6 @@ import telegram
 INTERVALO_SEGUNDOS = 5 * 60
 
 
-def nombre_planta_o_addr(conn, addr):
-    row = conn.execute("SELECT categoria FROM candidatos WHERE address=?", (addr,)).fetchone()
-    return addr[:10] if row is None else addr[:10]
-
-
 def refrescar_uno(conn, addr, spot_nombres, idx_por_nombre, precios):
     datos = hyperliquid.datos_de_trader(addr, spot_nombres, idx_por_nombre, precios)
     fila = conn.execute("SELECT cuenta FROM candidatos WHERE address=?", (addr,)).fetchone()
@@ -42,35 +37,81 @@ def refrescar_uno(conn, addr, spot_nombres, idx_por_nombre, precios):
         ),
     )
 
-    detectar_alertas(conn, addr, datos["posicion_actual"], datos["holdings_spot"])
+    candidato = {"cuenta": cuenta, "puntuacion": puntuacion, "win_rate": bt["win_rate"] if bt else None}
+    detectar_alertas(conn, addr, datos["posicion_actual"], datos["holdings_spot"], candidato)
 
 
-def detectar_alertas(conn, addr, posicion_actual, holdings_spot):
-    """Misma logica que tenia el front en JS (detectarAlertas): compara lo
-    que hay abierto AHORA contra lo que ya conociamos, y lo nuevo se guarda
-    como alerta pendiente + aviso de Telegram."""
+def cabecera(addr, candidato):
+    rank = f"{candidato['puntuacion']}/100" if candidato.get("puntuacion") is not None else "sin puntuación"
+    wr = f"{candidato['win_rate']*100:.0f}%" if candidato.get("win_rate") is not None else "sin dato"
+    return f"{addr[:10]}... · Ranking: {rank} · Win rate: {wr}"
+
+
+def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
+    """Compara lo que hay abierto AHORA contra lo que ya conociamos (guardado
+    en 'alertas'): si la clave coin+lado no existia, es una posicion nueva;
+    si existia con otro tamaño, es que ha añadido o reducido -- de eso solo
+    avisamos cuando AUMENTA (reducir/cerrar no lo pidio el usuario)."""
     avisos = []
+    ahora = int(time.time() * 1000)
+    fecha = hyperliquid.formatear_time(ahora)
+
     for p in posicion_actual:
         id_ = f"{addr}_trading_{p['coin']}_{p['lado']}"
-        existe = conn.execute("SELECT 1 FROM alertas WHERE id=?", (id_,)).fetchone()
-        if existe:
-            continue
-        conn.execute(
-            "INSERT INTO alertas (id, tipo, addr, coin, lado, tamaño, precio, estado, detectado) VALUES (?,?,?,?,?,?,?,?,?)",
-            (id_, "trading", addr, p["coin"], p["lado"], p["tamaño"], p["entryPx"], "pendiente", int(time.time() * 1000)),
-        )
-        avisos.append(f"Nueva posicion {p['lado']} en {p['coin']} (trader {addr[:10]}...)")
+        fila = conn.execute("SELECT tamaño FROM alertas WHERE id=?", (id_,)).fetchone()
+        invertido = p["tamaño"] * p["entryPx"]
+        pct = f"{invertido/candidato['cuenta']*100:.1f}%" if candidato.get("cuenta") else "—"
+        if fila is None:
+            conn.execute(
+                "INSERT INTO alertas (id, tipo, addr, coin, lado, tamaño, precio, estado, detectado) VALUES (?,?,?,?,?,?,?,?,?)",
+                (id_, "trading", addr, p["coin"], p["lado"], p["tamaño"], p["entryPx"], "pendiente", ahora),
+            )
+            avisos.append(
+                f"🟢 Nueva posición — {cabecera(addr, candidato)}\n\n"
+                f"{p['lado'].upper()} {p['coin']}\n"
+                f"$ invertido: ${invertido:,.0f}\n"
+                f"% de su cartera: {pct}\n"
+                f"Entrada: ${p['entryPx']}\n"
+                f"Hora: {fecha}"
+            )
+        elif abs(fila["tamaño"] - p["tamaño"]) > max(1e-9, p["tamaño"] * 0.001):
+            antes = fila["tamaño"]
+            conn.execute("UPDATE alertas SET tamaño=?, precio=? WHERE id=?", (p["tamaño"], p["entryPx"], id_))
+            avisos.append(
+                f"🔵 Ha añadido — {cabecera(addr, candidato)}\n\n"
+                f"{p['lado'].upper()} {p['coin']}\n"
+                f"Antes: {antes}\n"
+                f"Ahora: {p['tamaño']}\n"
+                f"$ invertido ahora: ${invertido:,.0f}\n"
+                f"% de su cartera: {pct}\n"
+                f"Entrada: ${p['entryPx']}\n"
+                f"Hora: {fecha}"
+            )
 
     for h in holdings_spot:
         id_ = f"{addr}_spot_{h['coin']}"
-        existe = conn.execute("SELECT 1 FROM alertas WHERE id=?", (id_,)).fetchone()
-        if existe:
-            continue
-        conn.execute(
-            "INSERT INTO alertas (id, tipo, addr, coin, tamaño, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?)",
-            (id_, "spot", addr, h["coin"], h["tamaño"], h.get("costeBase"), "pendiente", int(time.time() * 1000)),
-        )
-        avisos.append(f"Nueva compra spot de {h['coin']} (trader {addr[:10]}...)")
+        fila = conn.execute("SELECT tamaño FROM alertas WHERE id=?", (id_,)).fetchone()
+        if fila is None:
+            conn.execute(
+                "INSERT INTO alertas (id, tipo, addr, coin, tamaño, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?)",
+                (id_, "spot", addr, h["coin"], h["tamaño"], h.get("costeBase"), "pendiente", ahora),
+            )
+            avisos.append(
+                f"🟢 Nueva compra spot — {cabecera(addr, candidato)}\n\n"
+                f"{h['coin']}\n"
+                f"Tamaño: {h['tamaño']}\n"
+                f"Hora: {fecha}"
+            )
+        elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
+            antes = fila["tamaño"]
+            conn.execute("UPDATE alertas SET tamaño=? WHERE id=?", (h["tamaño"], id_))
+            avisos.append(
+                f"🔵 Ha añadido a su cartera spot — {cabecera(addr, candidato)}\n\n"
+                f"{h['coin']}\n"
+                f"Antes: {antes}\n"
+                f"Ahora: {h['tamaño']}\n"
+                f"Hora: {fecha}"
+            )
 
     for texto in avisos:
         telegram.enviar(texto)
