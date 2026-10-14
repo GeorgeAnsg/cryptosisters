@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 from pathlib import Path
 
@@ -8,9 +9,11 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 import db
+import descubrimiento
 import hyperliquid
 import refresher
 import seed
+import telegram_bot
 
 API_KEY = os.environ.get("API_KEY")
 
@@ -33,6 +36,8 @@ def iniciar():
     db.iniciar()
     seed.sembrar_si_vacio()
     refresher.arrancar_en_segundo_plano()
+    threading.Thread(target=descubrimiento.ciclo_descubrimiento, daemon=True).start()
+    telegram_bot.arrancar_en_segundo_plano()
 
 
 @app.get("/candidatos")
@@ -45,14 +50,23 @@ def listar_candidatos(x_api_key: str | None = Header(default=None)):
 
 
 class SeguirBody(BaseModel):
-    siguiendo: bool
+    # se puede seguir/dejar de seguir trading y spot por separado -- cada uno
+    # es opcional, solo se toca el que venga informado
+    sigue_trading: bool | None = None
+    sigue_spot: bool | None = None
 
 
 @app.patch("/candidatos/{addr}")
 def marcar_seguir(addr: str, body: SeguirBody, x_api_key: str | None = Header(default=None)):
     comprobar_clave(x_api_key)
     conn = db.conectar()
-    conn.execute("UPDATE candidatos SET siguiendo=? WHERE address=?", (int(body.siguiendo), addr))
+    if body.sigue_trading is not None:
+        conn.execute("UPDATE candidatos SET sigue_trading=? WHERE address=?", (int(body.sigue_trading), addr))
+    if body.sigue_spot is not None:
+        conn.execute("UPDATE candidatos SET sigue_spot=? WHERE address=?", (int(body.sigue_spot), addr))
+    # "siguiendo" se mantiene como derivado (sigue_trading O sigue_spot) para
+    # todo lo que solo necesita saber "¿se sigue a este trader, en lo que sea?"
+    conn.execute("UPDATE candidatos SET siguiendo=(sigue_trading OR sigue_spot) WHERE address=?", (addr,))
     conn.commit()
     conn.close()
     return {"ok": True}
@@ -99,23 +113,41 @@ class AbrirBody(BaseModel):
     alerta_id: str | None = None
     tamaño: float | None = None
     precio_entrada: float | None = None
+    tamaño_trader: float | None = None
 
 
 @app.post("/mis_posiciones")
 def abrir_posicion(body: AbrirBody, x_api_key: str | None = Header(default=None)):
     comprobar_clave(x_api_key)
     conn = db.conectar()
-    conn.execute(
-        """INSERT INTO mis_posiciones (id, addr, tipo, coin, lado, estado, fecha_apertura, alerta_id, tamaño, precio_entrada)
-           VALUES (?,?,?,?,?,'abierta',?,?,?,?)""",
-        (body.id, body.addr, body.tipo, body.coin, body.lado, int(time.time() * 1000), body.alerta_id,
-         body.tamaño, body.precio_entrada),
-    )
-    if body.alerta_id:
-        conn.execute("UPDATE alertas SET estado='hecho' WHERE id=?", (body.alerta_id,))
-    conn.commit()
+    db.abrir_posicion(conn, body.id, body.addr, body.tipo, body.coin, body.lado, body.alerta_id,
+                       body.tamaño, body.precio_entrada, body.tamaño_trader)
     conn.close()
     return {"ok": True}
+
+
+class AñadirBody(BaseModel):
+    tamaño_adicional: float
+    precio: float
+
+
+@app.patch("/mis_posiciones/{id}/añadir")
+def añadir_a_posicion(id: str, body: AñadirBody, x_api_key: str | None = Header(default=None)):
+    comprobar_clave(x_api_key)
+    conn = db.conectar()
+    fila = conn.execute("SELECT tamaño, precio_entrada FROM mis_posiciones WHERE id=? AND estado='abierta'", (id,)).fetchone()
+    if fila is None:
+        conn.close()
+        raise HTTPException(status_code=404, detail="posicion no encontrada o ya cerrada")
+    tamaño_antes = fila["tamaño"] or 0
+    precio_antes = fila["precio_entrada"] if fila["precio_entrada"] is not None else body.precio
+    tamaño_nuevo = tamaño_antes + body.tamaño_adicional
+    # precio medio ponderado por tamaño, como si fuera un solo coste medio acumulado
+    precio_nuevo = (tamaño_antes * precio_antes + body.tamaño_adicional * body.precio) / tamaño_nuevo
+    conn.execute("UPDATE mis_posiciones SET tamaño=?, precio_entrada=? WHERE id=?", (tamaño_nuevo, precio_nuevo, id))
+    conn.commit()
+    conn.close()
+    return {"ok": True, "tamaño": tamaño_nuevo, "precio_entrada": round(precio_nuevo, 6)}
 
 
 class CerrarBody(BaseModel):
@@ -136,16 +168,9 @@ def cerrar_posicion(id: str, body: CerrarBody, x_api_key: str | None = Header(de
 
 
 @app.get("/precio/{coin}")
-def precio_actual(coin: str, tipo: str = "trading", x_api_key: str | None = Header(default=None)):
+def precio_endpoint(coin: str, tipo: str = "trading", x_api_key: str | None = Header(default=None)):
     comprobar_clave(x_api_key)
-    precios = hyperliquid.fetch_json({"type": "allMids"})
-    if tipo == "spot":
-        spot_nombres = hyperliquid.cargar_spot_meta()
-        idx = next((k[1:] for k, v in spot_nombres.items() if v == coin), None)
-        clave = f"@{idx}" if idx is not None else None
-    else:
-        clave = coin
-    return {"precio": float(precios[clave]) if clave and clave in precios else None}
+    return {"precio": hyperliquid.precio_actual(coin, tipo)}
 
 
 @app.get("/salud")

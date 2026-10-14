@@ -39,6 +39,10 @@ h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 
 
 .page-tabs{display:flex;gap:8px;margin-top:18px}
 .page-tab{font:inherit;font-size:.86rem;font-weight:700;padding:9px 18px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.filtro-actividad{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:14px}
+.filtro-pills{display:flex;gap:6px}
+.filtro-pill{font:inherit;font-size:.76rem;font-weight:600;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.filtro-pill.activo{background:#000;color:#fff;border-color:#000}
 .page-tab.activo{background:var(--panel-dark);color:var(--fg-on-dark);border-color:var(--panel-dark)}
 .page-panel.oculto{display:none}
 
@@ -57,11 +61,15 @@ h2 .n{font-family:var(--font-mono);font-size:.74rem;color:var(--fg-muted);font-w
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
 
 .tarjeta{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:var(--shadow);transition:opacity .15s, border-color .15s}
+.tarjeta.nuevo-descubrimiento{border:2px solid #3b6fe0;box-shadow:0 0 0 3px rgba(59,111,224,.15)}
 .tarjeta.no-sigue{opacity:.5}
 .tarjeta.especulativo{border-color:var(--warn-border)}
 
 .cabecera-tarjeta{display:flex;align-items:center;gap:12px;margin-bottom:14px}
 .avatar{flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:#fff}
+.avatar-puntuacion{width:50px;height:50px;flex-direction:column;line-height:1;gap:1px}
+.avatar-puntuacion .n{font-size:1.05rem;font-weight:800}
+.avatar-puntuacion .d{font-size:.5rem;font-weight:600;opacity:.75}
 .id-wrap{flex:1;min-width:0}
 .addr{font-family:var(--font-mono);font-size:.8rem;color:var(--fg);display:block}
 .badges{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
@@ -120,8 +128,8 @@ tr.op-hijo.oculto{display:none}
 .etiqueta-especulativo{font-size:.8rem;color:var(--warn);font-weight:600;margin-bottom:8px;line-height:1.4}
 
 .estado{font-size:.84rem;color:var(--fg-muted);text-align:center;padding:40px}
-.btn-abrir,.btn-cerrar{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
-.btn-abrir:hover,.btn-cerrar:hover{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn-abrir,.btn-cerrar,.btn-añadir{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.btn-abrir:hover,.btn-cerrar:hover,.btn-añadir:hover{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
 .stat-caja{background:var(--panel);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
 .stat-caja .v{font-size:1.25rem}
@@ -188,6 +196,17 @@ try{
   localStorage.setItem('segTraders_ultimaVisita', String(Date.now()));
 }catch(e){}
 
+const UNA_HORA_MS = 60*60*1000;
+// "es nuevo" si es posterior a tu ultima visita O si simplemente ha pasado
+// menos de una hora desde que ocurrio -- si no, recargar la pagina (que
+// actualiza "ultima visita" al instante) podia hacer desaparecer un punto
+// que acababa de aparecer hace un minuto.
+function esReciente(ts){
+  if(!ts) return false;
+  if(ultimaVisitaAnterior && ts > ultimaVisitaAnterior) return true;
+  return (Date.now() - ts) < UNA_HORA_MS;
+}
+
 function hashAddr(addr){
   let h = 0;
   for(let i=0;i<addr.length;i++){ h = (h*31 + addr.charCodeAt(i)) | 0; }
@@ -225,20 +244,48 @@ const NOMBRES_MONEDA = {'@107':'HYPE','@142':'UBTC','@151':'UETH','@156':'USOL',
 function nombreMonedaBase(coin){
   return NOMBRES_MONEDA[coin] || coin;
 }
+// el backend formatea la fecha en UTC (o.time) -- aqui se recalcula en la
+// hora local del navegador a partir del timestamp crudo (o.ts/ultima.ts)
+function fechaLocal(ts){
+  if(!ts) return 'sin fecha reciente';
+  const d = new Date(ts);
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${String(d.getDate()).padStart(2,'0')}-${meses[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
 function nombreMoneda(coin){
-  return NOMBRES_MONEDA[coin] ? `${NOMBRES_MONEDA[coin]} (spot)` : coin;
+  return NOMBRES_MONEDA[coin] ? `${etiquetaMoneda(NOMBRES_MONEDA[coin])} (spot)` : coin;
+}
+// UBTC/UETH/USOL en spot son el mismo activo que BTC/ETH/SOL en trading
+// (bitcoin/eth/sol de verdad, tokenizado via Unit) -- se muestran igual
+// para no dar la impresion de que son monedas distintas. nombreMonedaBase()
+// SIGUE devolviendo el nombre interno (UBTC) para no romper el matching
+// contra holdings_spot; esto es solo para lo que ve el usuario.
+const ALIAS_MONEDA = {UBTC:'BTC', UETH:'ETH', USOL:'SOL'};
+function etiquetaMoneda(nombre){
+  return ALIAS_MONEDA[nombre] || nombre;
 }
 
-function tarjeta(c){
+function tarjeta(c, filtroActividad){
   const addrCorta = c.address.slice(0,8)+'…'+c.address.slice(-4);
+  const mostrarSpot = filtroActividad === 'spot';
+  const puntuacionMostrada = mostrarSpot ? c.puntuacion_spot : c.puntuacion;
   const planta = plantaFor(c.address);
   const esEspeculativo = c.categoria === 'especulativo';
-  const avatar = `<div class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</div>`;
-  const switchHtml = `<button class="sw ${c.siguiendo?'on':''}" data-addr="${c.address}" data-on="${c.siguiendo?'1':'0'}" aria-label="Seguir a ${planta}"></button>`;
+  const avatar = puntuacionMostrada!=null
+    ? `<div class="avatar avatar-puntuacion" style="background:${colorFor(c.address)}"><span class="n">${puntuacionMostrada}</span><span class="d">100</span></div>`
+    : `<div class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</div>`;
+  // que faceta controla el interruptor depende de en que pestaña estas
+  // viendo la tarjeta: en "Solo trading"/"Solo spot" controla esa faceta
+  // sola; en "Trading + Spot" (o en las especulativas, que no tienen
+  // facetas) controla las dos a la vez
+  const facetaSwitch = filtroActividad==='trading' ? 'trading' : (filtroActividad==='spot' ? 'spot' : 'ambos');
+  const sigueFacetaSwitch = facetaSwitch==='trading' ? c.sigue_trading : (facetaSwitch==='spot' ? c.sigue_spot : c.siguiendo);
+  const switchHtml = `<button class="sw ${sigueFacetaSwitch?'on':''}" data-addr="${c.address}" data-on="${sigueFacetaSwitch?'1':'0'}" data-faceta="${facetaSwitch}" aria-label="Seguir a ${planta} (${facetaSwitch})"></button>`;
+  const esNuevoDescubrimiento = esReciente(c.descubierto_ts);
 
   if(esEspeculativo){
     return `
-      <div class="tarjeta especulativo ${c.siguiendo?'':'no-sigue'}" data-addr="${c.address}" data-abre-modal="1">
+      <div class="tarjeta especulativo ${c.siguiendo?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
         ${switchHtml}
         <div class="cabecera-tarjeta">
           ${avatar}
@@ -252,8 +299,11 @@ function tarjeta(c){
       </div>`;
   }
 
+  const drawdownMostrado = mostrarSpot ? c.drawdown_spot : c.drawdown;
+  const retornoMostrado = mostrarSpot ? c.retorno_pct_spot : c.retorno_pct;
+  const winRateMostrado = mostrarSpot ? c.win_rate_spot : c.win_rate;
   return `
-    <div class="tarjeta ${c.siguiendo?'':'no-sigue'}" data-addr="${c.address}" data-abre-modal="1">
+    <div class="tarjeta ${c.siguiendo?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
       ${switchHtml}
       <div class="cabecera-tarjeta">
         ${avatar}
@@ -264,17 +314,13 @@ function tarjeta(c){
             <span class="badge b-${c.riesgo}">${c.riesgo}</span>
           </div>
         </div>
-        ${c.puntuacion!=null?`<div style="flex:none;text-align:center;font-family:var(--font-display);margin-right:50px">
-          <div style="font-weight:800;font-size:1.3rem;line-height:1">${c.puntuacion}</div>
-          <div style="font-size:.6rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em">/100</div>
-        </div>`:''}
       </div>
       <div class="stats">
         <div class="stat"><div class="l">Antigüedad</div><div class="v">${c.antiguedad}d</div></div>
-        <div class="stat"><div class="l">Drawdown</div><div class="v">${(c.drawdown*100).toFixed(0)}%</div></div>
+        <div class="stat"><div class="l">Drawdown</div><div class="v">${drawdownMostrado!=null?(drawdownMostrado*100).toFixed(0)+'%':'—'}</div></div>
         <div class="stat"><div class="l">Cuenta</div><div class="v">$${Math.round(c.cuenta).toLocaleString('es-ES')}</div></div>
-        <div class="stat"><div class="l">Win rate</div><div class="v">${c.win_rate!=null?(c.win_rate*100).toFixed(0)+'%':'—'}</div></div>
-        <div class="stat"><div class="l">Retorno backtest</div><div class="v" style="color:${c.retorno_pct>0?'var(--ok)':c.retorno_pct<0?'var(--bad)':'inherit'}">${c.retorno_pct!=null?c.retorno_pct.toFixed(1)+'%':'—'}</div></div>
+        <div class="stat"><div class="l">Win rate</div><div class="v">${winRateMostrado!=null?(winRateMostrado*100).toFixed(0)+'%':'—'}</div></div>
+        <div class="stat"><div class="l">Retorno backtest</div><div class="v" style="color:${retornoMostrado>0?'var(--ok)':retornoMostrado<0?'var(--bad)':'inherit'}">${retornoMostrado!=null?retornoMostrado.toFixed(1)+'%':'—'}</div></div>
         <div class="stat"><div class="l">Profit factor</div><div class="v">${c.profit_factor!=null?c.profit_factor.toFixed(2):(c.profit_factor===null&&c.retorno_pct!=null?'∞':'—')}</div></div>
       </div>
       <div class="monedas">${c.monedas||''}</div>
@@ -282,6 +328,8 @@ function tarjeta(c){
 }
 
 let paginaActiva = 'posiciones';
+let filtroActividad = 'trading';
+let ordenAsc = false;
 let subPestañaPosiciones = 'trading';
 
 function bloqueDePosicion(c, lado, coinBase){
@@ -314,7 +362,7 @@ function filaMovimientoTrading(o, filaId, abierta){
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
   const verbo = (o.esInicio && o.accion==='Abre') ? 'Abre (inicio)' : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
   return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
-    <td>${o.time}</td>
+    <td>${fechaLocal(o.ts)}</td>
     <td>${verbo}</td>
     <td>${o.coin}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
     <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
@@ -333,8 +381,8 @@ function filaMovimientoSpot(o, filaId, abierta){
   const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
   const verbo = (o.esInicio && o.accion==='Abre') ? 'Compra (inicio)' : (o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'));
   return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
-    <td>${o.time}</td>
-    <td>${verbo} ${nombreMonedaBase(o.coin)}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
+    <td>${fechaLocal(o.ts)}</td>
+    <td>${verbo} ${etiquetaMoneda(nombreMonedaBase(o.coin))}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
     <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
     <td>—</td>
     <td></td>
@@ -344,34 +392,58 @@ function filaMovimientoSpot(o, filaId, abierta){
   </tr>`;
 }
 
-function filaPlanta(c){
+function filaPlanta(c, faceta){
   const planta = plantaFor(c.address);
-  return `<span class="pf-trader" data-addr="${c.address}"><span class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</span>${planta}</span>`;
+  return `<span class="pf-trader" data-addr="${c.address}" data-faceta="${faceta||''}"><span class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</span>${planta}</span>`;
 }
 
 function renderPaginaSeguimiento(){
-  const todos = [...candidatos].sort((a,b)=>{
+  const filtros = [['trading','Trading'],['spot','Spot']];
+  const filtrosHtml = `<div class="filtro-actividad">
+    <div class="filtro-pills">${filtros.map(([v,l])=>
+      `<button class="filtro-pill ${filtroActividad===v?'activo':''}" data-filtro="${v}">${l}</button>`).join('')}</div>
+    <button class="filtro-pill" data-orden="1" title="Cambiar orden">Puntuación ${ordenAsc?'▲':'▼'}</button>
+  </div>`;
+
+  // solo trading o solo spot -- nunca mezclados en la misma vista; las
+  // especulativas (sin facetas) se ven en el filtro de trading por defecto
+  let lista = candidatos;
+  if(filtroActividad==='trading') lista = lista.filter(c=>c.categoria==='especulativo' || c.puntuacion!=null);
+  if(filtroActividad==='spot') lista = lista.filter(c=>c.puntuacion_spot!=null);
+
+  // para "ambos" se ordena tambien por la puntuacion de trading -- es la
+  // misma que se muestra en el avatar de la tarjeta en esa vista
+  const puntuacionDe = c => filtroActividad==='spot' ? c.puntuacion_spot : c.puntuacion;
+  const dir = ordenAsc ? 1 : -1;
+  const todos = [...lista].sort((a,b)=>{
     if((a.categoria==='especulativo') !== (b.categoria==='especulativo')) return a.categoria==='especulativo' ? 1 : -1;
-    return (a.prioridad??99)-(b.prioridad??99);
+    return dir * ((puntuacionDe(a)??-1) - (puntuacionDe(b)??-1));
   });
-  return `<div class="grid">${todos.map(c=>tarjeta(c)).join('')}</div>`;
+  const grid = todos.length ? `<div class="grid">${todos.map(c=>tarjeta(c, filtroActividad)).join('')}</div>`
+    : '<div class="estado">Nadie tiene puntuación en esta categoría todavía.</div>';
+  return filtrosHtml + grid;
 }
 
 function renderPaginaPosiciones(){
-  const siguiendo = candidatos.filter(c=>c.siguiendo);
-  if(!siguiendo.length) return '<div class="estado">No sigues a nadie todavía — actívalo en la pestaña "Seguimiento".</div>';
+  // trading y spot se siguen por separado -- cada tabla solo mira a quien
+  // tiene SU faceta seguida, no "siguiendo" en general (ver tarjeta())
+  const siguiendoTrading = candidatos.filter(c=>c.sigue_trading);
+  const siguiendoSpot = candidatos.filter(c=>c.sigue_spot);
+  if(!siguiendoTrading.length && !siguiendoSpot.length) return '<div class="estado">No sigues a nadie todavía — actívalo en la pestaña "Seguimiento".</div>';
 
   const trading = [], spot = [];
-  for(const c of siguiendo){
+  for(const c of siguiendoTrading){
     for(const p of (c.posicion_actual||[])){
       const b = bloqueDePosicion(c, p.lado, p.coin);
       const ultima = b ? b.filas[b.filas.length-1] : null;
-      trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?ultima.time:'sin fecha reciente'});
+      trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, stopLoss:p.stopLoss, takeProfit:p.takeProfit, ts:ultima?ultima.ts:null, fecha:ultima?fechaLocal(ultima.ts):'sin fecha reciente'});
     }
+  }
+  for(const c of siguiendoSpot){
     for(const h of (c.holdings_spot||[])){
       const b = bloqueDePosicion(c, 'Spot', h.coin);
       const ultima = b ? b.filas[b.filas.length-1] : null;
-      spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?ultima.time:'sin fecha reciente'});
+      spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?fechaLocal(ultima.ts):'sin fecha reciente'});
     }
   }
   const porFecha = (a,b)=> (b.ts??-1) - (a.ts??-1);
@@ -380,18 +452,18 @@ function renderPaginaPosiciones(){
   if(!trading.length && !spot.length) return '<div class="estado">Los que sigues no tienen ninguna posición abierta ahora mismo.</div>';
 
   const puntoMov = (ts)=>{
-    const esNuevo = ultimaVisitaAnterior && ts && ts > ultimaVisitaAnterior;
+    const esNuevo = esReciente(ts);
     return `<span class="punto-mov ${esNuevo?'nuevo':''}" title="${esNuevo?'Movimiento posterior a tu última visita':'Ya lo habías visto'}"></span>`;
   };
 
   const pctCartera = (invertido, cuenta)=> (invertido!=null && cuenta) ? `${(invertido/cuenta*100).toFixed(1)}%` : '—';
 
-  const botonAbrir = (addr, tipo, coin, lado, motivoNoAbrir)=>{
+  const botonAbrir = (addr, tipo, coin, lado, motivoNoAbrir, tamañoTrader)=>{
     const id = `mp_${addr}_${tipo}_${coin}_${lado||'spot'}`;
     const yaAbierta = Object.values(misPosiciones).some(m=>m.estado==='abierta' && m.addr===addr && m.tipo===tipo && m.coin===coin && (m.lado||null)===(lado||null));
     if(yaAbierta) return `<span style="color:var(--fg-muted);font-size:.74rem">ya abierta</span>`;
     if(motivoNoAbrir) return `<span style="color:var(--fg-muted);font-size:.68rem" title="${motivoNoAbrir}">—</span>`;
-    return `<button class="btn-abrir" data-id="${id}" data-addr="${addr}" data-tipo="${tipo}" data-coin="${coin}" data-lado="${lado||''}">Abrir</button>`;
+    return `<button class="btn-abrir" data-id="${id}" data-addr="${addr}" data-tipo="${tipo}" data-coin="${coin}" data-lado="${lado||''}" data-tamano-trader="${tamañoTrader??''}">Abrir</button>`;
   };
 
   const UMBRAL_DIAS_ABRIR = 3;
@@ -420,10 +492,10 @@ function renderPaginaPosiciones(){
       <td>${it.coin}</td>
       <td>$${invertido.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
       <td>${pctCartera(invertido, it.c.cuenta)}</td>
-      <td>$${it.precio}</td>
-      <td>${filaPlanta(it.c)}</td>
+      <td>$${it.precio}${(it.takeProfit!=null||it.stopLoss!=null)?`<br><span style="font-size:.68rem;color:var(--fg-muted)">${it.takeProfit!=null?`TP $${it.takeProfit}`:''}${it.takeProfit!=null&&it.stopLoss!=null?' · ':''}${it.stopLoss!=null?`SL $${it.stopLoss}`:''}</span>`:''}</td>
+      <td>${filaPlanta(it.c, 'trading')}</td>
       <td>${pnl}</td>
-      <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado, motivoNoAbrirTrading(it))}</td>
+      <td>${botonAbrir(it.c.address, 'trading', it.coin, it.lado, motivoNoAbrirTrading(it), it.tamaño)}</td>
     </tr>`;
     const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId, abierta)).join('') : '';
     return cabecera + hijos;
@@ -440,13 +512,13 @@ function renderPaginaPosiciones(){
     const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
     const cabecera = `<tr>
       <td>${puntoMov(it.ts)}${it.fecha}</td>
-      <td>${flecha}${it.coin}</td>
+      <td>${flecha}${etiquetaMoneda(it.coin)}</td>
       <td>${coste}</td>
       <td>${pctCartera(it.coste, it.c.cuenta)}</td>
-      <td>${filaPlanta(it.c)}</td>
+      <td>${filaPlanta(it.c, 'spot')}</td>
       <td>${valor}</td>
       <td>${pnl}</td>
-      <td>${botonAbrir(it.c.address, 'spot', it.coin, null)}</td>
+      <td>${botonAbrir(it.c.address, 'spot', it.coin, null, null, it.tamaño)}</td>
     </tr>`;
     const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId, abierta)).join('') : '';
     return cabecera + hijos;
@@ -483,12 +555,12 @@ function renderPaginaMias(){
     const c = candidatos.find(x=>x.address===m.addr);
     return `<tr>
       <td>${new Date(m.fecha_apertura).toLocaleDateString('es-ES')}</td>
-      <td>${c?filaPlanta(c):m.addr.slice(0,8)}</td>
+      <td>${c?filaPlanta(c, m.lado?'trading':'spot'):m.addr.slice(0,8)}</td>
       <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
-      <td>${m.coin}</td>
+      <td>${etiquetaMoneda(m.coin)}</td>
       <td>${m.tamaño!=null?m.tamaño:'—'}</td>
       <td>${m.precio_entrada!=null?`$${m.precio_entrada}`:'—'}</td>
-      <td><button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
+      <td><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
     </tr>`;
   }).join('');
 
@@ -537,7 +609,7 @@ function renderPaginaStats(){
     const pnlClase = m.pnl > 0 ? 'pos' : (m.pnl < 0 ? 'neg' : '');
     return `<tr>
       <td>${new Date(m.fecha_cierre).toLocaleDateString('es-ES')}</td>
-      <td>${c?filaPlanta(c):(m.addr||'').slice(0,8)}</td>
+      <td>${c?filaPlanta(c, m.lado?'trading':'spot'):(m.addr||'').slice(0,8)}</td>
       <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
       <td>${m.coin}</td>
       <td><span class="op-pnl ${pnlClase}">${fmt(m.pnl)}</span></td>
@@ -567,8 +639,8 @@ function renderGraficoMonedas(){
   const conteo = {};
   for(const c of candidatos){
     const monedas = new Set();
-    for(const p of (c.posicion_actual||[])) monedas.add(p.coin);
-    for(const h of (c.holdings_spot||[])) monedas.add(h.coin);
+    for(const p of (c.posicion_actual||[])) monedas.add(etiquetaMoneda(p.coin));
+    for(const h of (c.holdings_spot||[])) monedas.add(etiquetaMoneda(h.coin));
     monedas.forEach(m=> conteo[m] = (conteo[m]||0) + 1);
   }
   const top = Object.entries(conteo).sort((a,b)=>b[1]-a[1]).slice(0,6);
@@ -615,12 +687,20 @@ function render(){
     btn.onclick = async (ev)=>{
       ev.stopPropagation();
       const addr = btn.dataset.addr;
+      const faceta = btn.dataset.faceta;
       const nuevoEstado = btn.dataset.on !== '1';
+      const cuerpo = faceta==='trading' ? {sigue_trading: nuevoEstado}
+        : faceta==='spot' ? {sigue_spot: nuevoEstado}
+        : {sigue_trading: nuevoEstado, sigue_spot: nuevoEstado};
       btn.disabled = true;
       try{
-        await apiEnviar('PATCH', `/candidatos/${addr}`, {siguiendo: nuevoEstado});
+        await apiEnviar('PATCH', `/candidatos/${addr}`, cuerpo);
         const c = candidatos.find(x=>x.address===addr);
-        if(c) c.siguiendo = nuevoEstado;
+        if(c){
+          if('sigue_trading' in cuerpo) c.sigue_trading = cuerpo.sigue_trading;
+          if('sigue_spot' in cuerpo) c.sigue_spot = cuerpo.sigue_spot;
+          c.siguiendo = c.sigue_trading || c.sigue_spot;
+        }
         render();
       }catch(e){
         console.error('fallo al guardar', e);
@@ -633,7 +713,23 @@ function render(){
   root.querySelectorAll('[data-abre-modal], .pf-trader').forEach(card=>{
     card.onclick = ()=>{
       const c = candidatos.find(x=>x.address===card.dataset.addr);
-      if(c) abrirModal(c);
+      // en la lista de candidatos el filtro de la pestaña decide la faceta;
+      // en las tablas de posiciones cada fila ya trae la suya en data-faceta
+      const faceta = card.dataset.faceta || filtroActividad;
+      if(c) abrirModal(c, faceta);
+    };
+  });
+
+  root.querySelectorAll('.filtro-pill[data-filtro]').forEach(btn=>{
+    btn.onclick = ()=>{
+      filtroActividad = btn.dataset.filtro;
+      render();
+    };
+  });
+  root.querySelectorAll('.filtro-pill[data-orden]').forEach(btn=>{
+    btn.onclick = ()=>{
+      ordenAsc = !ordenAsc;
+      render();
     };
   });
 
@@ -652,20 +748,53 @@ function render(){
     btn.onclick = async ()=>{
       const {id, addr, tipo, coin} = btn.dataset;
       const lado = btn.dataset.lado || null;
-      const texto = prompt(`¿Qué tamaño de ${coin} vas a abrir tú? (en unidades del activo, no en $)`);
-      if(texto === null) return;
-      const tamaño = parseFloat(texto.replace(',', '.'));
-      if(isNaN(tamaño) || tamaño <= 0){ alert('Eso no es un tamaño válido.'); return; }
+      const tamañoTrader = btn.dataset.tamanoTrader ? parseFloat(btn.dataset.tamanoTrader) : null;
       btn.disabled = true;
+      let precio;
       try{
-        const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`);
-        await apiEnviar('POST', '/mis_posiciones', {id, addr, tipo, coin, lado, tamaño, precio_entrada: precio});
-        misPosiciones[id] = {addr, tipo, coin, lado, estado:'abierta', fecha_apertura:Date.now(), tamaño, precio_entrada: precio};
-        render();
+        ({precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`));
       }catch(e){
-        console.error('fallo al abrir posicion', e);
+        console.error('fallo al pedir el precio actual', e);
         btn.disabled = false;
+        return;
       }
+      btn.disabled = false;
+      modalCantidad({titulo:'Abrir posición', coin, lado, precio, onConfirmar: async (tamaño)=>{
+        try{
+          await apiEnviar('POST', '/mis_posiciones', {id, addr, tipo, coin, lado, tamaño, precio_entrada: precio, tamaño_trader: tamañoTrader});
+          misPosiciones[id] = {addr, tipo, coin, lado, estado:'abierta', fecha_apertura:Date.now(), tamaño, precio_entrada: precio};
+          render();
+        }catch(e){
+          console.error('fallo al abrir posicion', e);
+        }
+      }});
+    };
+  });
+
+  root.querySelectorAll('.btn-añadir').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const m = misPosiciones[id];
+      if(!m) return;
+      btn.disabled = true;
+      let precio;
+      try{
+        ({precio} = await apiGet(`/precio/${m.coin}?tipo=${m.tipo}`));
+      }catch(e){
+        console.error('fallo al pedir el precio actual', e);
+        btn.disabled = false;
+        return;
+      }
+      btn.disabled = false;
+      modalCantidad({titulo:'Añadir a tu posición', coin:m.coin, lado:m.lado, precio, onConfirmar: async (tamañoAdicional)=>{
+        try{
+          const res = await apiEnviar('PATCH', `/mis_posiciones/${id}/añadir`, {tamaño_adicional: tamañoAdicional, precio});
+          misPosiciones[id] = {...m, tamaño: res.tamaño, precio_entrada: res.precio_entrada};
+          render();
+        }catch(e){
+          console.error('fallo al añadir a la posicion', e);
+        }
+      }});
     };
   });
 
@@ -703,30 +832,39 @@ function hayAperturaNuevaDesdeUltimaVisita(){
   // completo) -- un simple añadido a una posición ya existente no cuenta,
   // ni tampoco una posición de la que no tenemos el inicio.
   if(!ultimaVisitaAnterior) return false;
-  const siguiendo = candidatos.filter(c=>c.siguiendo);
-  for(const c of siguiendo){
-    for(const p of (c.posicion_actual||[])){
+  for(const c of candidatos){
+    if(c.sigue_trading) for(const p of (c.posicion_actual||[])){
       const b = bloqueDePosicion(c, p.lado, p.coin);
       const primera = b && b.filas.length ? b.filas[0] : null;
-      if(primera && primera.accion==='Abre' && !b.truncada && primera.ts > ultimaVisitaAnterior) return true;
+      if(primera && primera.accion==='Abre' && !b.truncada && esReciente(primera.ts)) return true;
     }
-    for(const h of (c.holdings_spot||[])){
+    if(c.sigue_spot) for(const h of (c.holdings_spot||[])){
       const b = bloqueDePosicion(c, 'Spot', h.coin);
       const primera = b && b.filas.length ? b.filas[0] : null;
-      if(primera && primera.accion==='Abre' && !b.truncada && primera.ts > ultimaVisitaAnterior) return true;
+      if(primera && primera.accion==='Abre' && !b.truncada && esReciente(primera.ts)) return true;
     }
   }
   return false;
 }
 
+function hayDescubrimientoNuevoDesdeUltimaVisita(){
+  if(!ultimaVisitaAnterior) return false;
+  return candidatos.some(c=> esReciente(c.descubierto_ts));
+}
+
 function actualizarBadgesTabs(){
-  // mismo punto rojo, misma condición, en las dos pestañas -- avisan de
-  // exactamente lo mismo: se ha abierto una posición nueva de verdad.
+  // "Posiciones abiertas" NO lleva punto -- lo que hay ahi lo abres tu
+  // mismo, no tiene sentido avisarte de nada en esa pestaña.
+  // el punto de "Posiciones de seguimiento" es solo por aperturas nuevas de
+  // gente que sigues -- un trader recien descubierto (ni seguido todavia)
+  // no tiene nada que ver con esta pestaña, eso es cosa de "Seguimiento"
   const hayNuevo = hayAperturaNuevaDesdeUltimaVisita();
   const tabSeg = document.querySelector('.page-tab[data-pagina="posiciones"]');
-  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Se ha abierto una posición nueva"></span>':'');
+  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Hay algo nuevo"></span>':'');
   const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
-  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas' + (hayNuevo?'<span class="alerta-tab" title="Se ha abierto una posición nueva"></span>':'');
+  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas';
+  const tabSeguimiento = document.querySelector('.page-tab[data-pagina="seguimiento"]');
+  if(tabSeguimiento) tabSeguimiento.innerHTML = 'Seguimiento' + (hayDescubrimientoNuevoDesdeUltimaVisita()?'<span class="alerta-tab" title="Hay un trader nuevo descubierto"></span>':'');
 }
 
 document.querySelectorAll('.page-tab').forEach(btn=>{
@@ -788,7 +926,47 @@ function construirBloques(ops){
   return bloques.reverse(); // mas reciente primero
 }
 
-function abrirModal(c){
+function modalCantidad({titulo, coin, lado, precio, onConfirmar}){
+  const fondo = document.createElement('div');
+  fondo.className = 'modal-fondo';
+  fondo.innerHTML = `
+    <div class="modal" style="max-width:380px">
+      <div class="modal-cabecera">
+        <div>
+          <div class="addr">${titulo}</div>
+          <div style="font-size:.76rem;color:var(--fg-muted)">${lado?`${lado} `:''}${etiquetaMoneda(coin)} · precio actual: $${precio}</div>
+        </div>
+        <button class="modal-cerrar" aria-label="Cerrar">×</button>
+      </div>
+      <div style="padding:0 22px 22px">
+        <label style="font-size:.76rem;color:var(--fg-muted);display:block;margin-bottom:6px">Cuánto vas a invertir (en $)</label>
+        <input type="number" step="any" min="0" class="input-cantidad" style="width:100%;font:inherit;font-size:1rem;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg);box-sizing:border-box" placeholder="$">
+        <div class="invertido-estimado" style="font-size:.8rem;color:var(--fg-muted);margin-top:8px">Equivale a: —</div>
+        <button class="btn-confirmar-cantidad" style="margin-top:16px;width:100%;font:inherit;font-weight:700;padding:11px;border-radius:10px;border:none;background:var(--accent);color:var(--accent-fg);cursor:pointer">Confirmar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(fondo);
+  const input = fondo.querySelector('.input-cantidad');
+  const estimado = fondo.querySelector('.invertido-estimado');
+  input.oninput = ()=>{
+    const dolares = parseFloat(input.value);
+    estimado.textContent = `Equivale a: ${!isNaN(dolares)&&dolares>0 ? (dolares/precio)+' '+etiquetaMoneda(coin) : '—'}`;
+  };
+  const cerrar = ()=> document.body.removeChild(fondo);
+  fondo.onclick = (ev)=>{ if(ev.target===fondo) cerrar(); };
+  fondo.querySelector('.modal-cerrar').onclick = cerrar;
+  const confirmar = ()=>{
+    const dolares = parseFloat(input.value);
+    if(isNaN(dolares) || dolares<=0){ alert('Eso no es un importe válido.'); return; }
+    cerrar();
+    onConfirmar(dolares/precio);
+  };
+  fondo.querySelector('.btn-confirmar-cantidad').onclick = confirmar;
+  input.onkeydown = (ev)=>{ if(ev.key==='Enter') confirmar(); };
+  input.focus();
+}
+
+function abrirModal(c, faceta){
   const addrCorta = c.address.slice(0,8)+'…'+c.address.slice(-4);
   const planta = plantaFor(c.address);
   const ops = agruparEpisodios(c.operaciones_recientes || []);
@@ -828,7 +1006,7 @@ function abrirModal(c){
     const pnl = h.pnlNoRealizado!=null ? `<span class="op-pnl ${pnlClase}">${h.pnlNoRealizado>0?'+':''}$${h.pnlNoRealizado.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
     return `
     <tr>
-      <td>${h.coin}</td>
+      <td>${etiquetaMoneda(h.coin)}</td>
       <td>${h['tamaño']}</td>
       <td>${coste}</td>
       <td>${valor}</td>
@@ -850,7 +1028,7 @@ function abrirModal(c){
         <td>${o.sz}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
         <td>$${o.px}</td>
         <td>${notional}</td>
-        <td>${o.time}</td>
+        <td>${fechaLocal(o.ts)}</td>
         <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
       </tr>`;
   };
@@ -909,7 +1087,7 @@ function abrirModal(c){
           <td title="Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí">${b.neto>=0?'+':''}${b.neto} (cambio visible)</td>
           <td>—</td>
           <td>—</td>
-          <td>${ultima.time}<span class="op-estado ${estadoTxt}" style="margin-left:6px" title="${b.abierta?'Sigue abierta ahora mismo':'Ya está cerrada del todo'}">${estadoTxt}</span> ${avisoTruncada}</td>
+          <td>${fechaLocal(ultima.ts)}<span class="op-estado ${estadoTxt}" style="margin-left:6px" title="${b.abierta?'Sigue abierta ahora mismo':'Ya está cerrada del todo'}">${estadoTxt}</span> ${avisoTruncada}</td>
           <td>${pnlHtml}</td>
         </tr>`;
       const hijos = b.filas.length > 1 ? marcarCierres(b.filas).reverse().map(o=>filaHijo(o, bloqueId)).join('') : '';
@@ -917,8 +1095,15 @@ function abrirModal(c){
     }).join('');
   };
 
-  const tradingTablaHtml = renderBloques(bloques.filter(b=>b.lado === 'Long' || b.lado === 'Short'), 'Sin operaciones de trading (long/short) registradas todavía.');
+  const bloquesTrading = bloques.filter(b=>b.lado === 'Long' || b.lado === 'Short');
+  const tradingTablaHtml = renderBloques(bloquesTrading, 'Sin operaciones de trading (long/short) registradas todavía.');
   const spotMovimientosHtml = renderBloques(bloques.filter(b=>b.lado === 'Spot'), 'Sin compras/ventas spot registradas todavía.');
+  // si no hace trading de verdad, o si se abrio el modal desde la faceta
+  // spot (tarjeta/fila de spot), la pestaña de trading solo estorba -- se
+  // abre directamente en spot y ni se muestra el boton de esa pestaña.
+  // Igualmente al reves si se abrio desde la faceta trading.
+  const hayTrading = bloquesTrading.length > 0 && faceta !== 'spot';
+  const hayModalSpot = faceta !== 'trading';
 
   const fondo = document.createElement('div');
   fondo.className = 'modal-fondo';
@@ -933,11 +1118,11 @@ function abrirModal(c){
         <button class="modal-cerrar" aria-label="Cerrar">×</button>
       </div>
       <div class="modal-tabs">
-        <button class="modal-tab activo" data-tab="trading">Trading (long/short)</button>
-        <button class="modal-tab" data-tab="spot">Spot (cartera)</button>
+        ${hayTrading?`<button class="modal-tab activo" data-tab="trading">Trading (long/short)</button>`:''}
+        ${hayModalSpot?`<button class="modal-tab ${hayTrading?'':'activo'}" data-tab="spot">Spot (cartera)</button>`:''}
       </div>
       <div class="modal-lista">
-        <div class="panel" data-panel="trading">
+        <div class="panel ${hayTrading?'':'oculto'}" data-panel="trading">
           <table class="ops">
             <thead><tr>
               <th title="Si apostaba a que el precio sube (Long) o baja (Short)">Dirección</th>
@@ -951,7 +1136,7 @@ function abrirModal(c){
             <tbody>${tradingTablaHtml}</tbody>
           </table>
         </div>
-        <div class="panel oculto" data-panel="spot">
+        <div class="panel ${hayTrading||!hayModalSpot?'oculto':''}" data-panel="spot">
           <h3 class="panel-subtitulo">Cartera actual (en vivo)</h3>
           <table class="ops">
             <thead><tr>
