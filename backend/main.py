@@ -250,6 +250,16 @@ def forzar_descubrimiento(x_api_key: str | None = Header(default=None)):
     return {"ok": True, "mensaje": "lanzado en segundo plano, tardará unos minutos"}
 
 
+@app.get("/spot_meta")
+def spot_meta(x_api_key: str | None = Header(default=None)):
+    """Mapa {'@indice': 'NOMBRE'} de TODAS las monedas spot de Hyperliquid --
+    el frontend antes tenia una lista fija a mano que se quedaba corta en
+    cuanto Hyperliquid listaba algo nuevo (salia '@591' en vez del nombre).
+    Esta es la misma fuente que ya usa el backend para resolver nombres."""
+    comprobar_clave(x_api_key)
+    return hyperliquid.cargar_spot_meta()
+
+
 @app.get("/salud")
 def salud():
     return {"ok": True}

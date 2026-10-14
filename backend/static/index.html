@@ -240,9 +240,10 @@ function plantaFor(addr){
   return plantaPorAddr[addr] || addr.slice(0,6);
 }
 
-const NOMBRES_MONEDA = {'@107':'HYPE','@142':'UBTC','@151':'UETH','@156':'USOL',
-  '@162':'UFART','@188':'UPUMP','@206':'UENA','@210':'UXPL','@230':'USDH',
-  '@272':'UZEC','@290':'UVIRT','@699':'UANSEM'};
+// se rellena de verdad en cargarTodo() desde /spot_meta (la lista completa y
+// en vivo que ya sabe el backend) -- este fallback fijo es solo por si esa
+// llamada falla y hay que seguir mostrando algo antes de que cargue
+let NOMBRES_MONEDA = {'@107':'HYPE','@142':'UBTC','@151':'UETH','@156':'USOL'};
 function nombreMonedaBase(coin){
   return NOMBRES_MONEDA[coin] || coin;
 }
@@ -1336,6 +1337,8 @@ async function cargarTodo(){
 
 async function iniciar(){
   try{
+    // no cambia casi nunca -- se pide una vez al iniciar, no en cada sondeo
+    apiGet('/spot_meta').then(m=>{ NOMBRES_MONEDA = m; render(); }).catch(e=>console.error('fallo cargando spot_meta', e));
     await cargarTodo();
     render();
   }catch(e){
