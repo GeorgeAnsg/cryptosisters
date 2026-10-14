@@ -601,13 +601,13 @@ function renderPaginaMias(){
       <td>${m.tamaño!=null?m.tamaño:'—'}</td>
       <td>${m.precio_entrada!=null?`$${m.precio_entrada}`:'—'}</td>
       <td id="pnl-vivo-${id}" class="op-pnl">…</td>
-      <td><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-reducir" data-id="${id}">Reducir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
+      <td style="text-align:right"><button class="btn-añadir" data-id="${id}">Añadir</button> <button class="btn-reducir" data-id="${id}">Reducir</button> <button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
     </tr>`;
   }).join('');
 
   return `
     <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
-    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th>Resultado</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th>Resultado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
 }
 
 async function cargarPnlVivoMisPosiciones(abiertas){
@@ -630,7 +630,10 @@ async function cargarPnlVivoMisPosiciones(abiertas){
     }
     const signo = m.lado === 'Short' ? -1 : 1;
     const pnl = (precio - m.precio_entrada) * m.tamaño * signo;
-    celda.textContent = `${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}`;
+    const invertido = m.precio_entrada * m.tamaño;
+    const pct = invertido ? (pnl / invertido * 100) : null;
+    const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
+    celda.textContent = `${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`;
     celda.classList.toggle('pos', pnl > 0);
     celda.classList.toggle('neg', pnl < 0);
   }
