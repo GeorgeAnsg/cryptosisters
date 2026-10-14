@@ -285,7 +285,7 @@ function tarjeta(c, filtroActividad){
 
   if(esEspeculativo){
     return `
-      <div class="tarjeta especulativo ${c.siguiendo?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
+      <div class="tarjeta especulativo ${sigueFacetaSwitch?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
         ${switchHtml}
         <div class="cabecera-tarjeta">
           ${avatar}
@@ -303,7 +303,7 @@ function tarjeta(c, filtroActividad){
   const retornoMostrado = mostrarSpot ? c.retorno_pct_spot : c.retorno_pct;
   const winRateMostrado = mostrarSpot ? c.win_rate_spot : c.win_rate;
   return `
-    <div class="tarjeta ${c.siguiendo?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
+    <div class="tarjeta ${sigueFacetaSwitch?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
       ${switchHtml}
       <div class="cabecera-tarjeta">
         ${avatar}
@@ -912,11 +912,12 @@ function construirBloques(ops){
       // si el primer movimiento que vemos de esta posicion ya es un "Cierra",
       // es que la posicion existia antes de lo que tenemos en estos datos:
       // no sabemos su tamaño real, solo lo que cambia a partir de aqui.
-      bloques.push({coin:o.coin, lado:o.lado, filas:[], neto:0, abierta:true, truncada: o.accion === 'Cierra'});
+      bloques.push({coin:o.coin, lado:o.lado, filas:[], neto:0, totalAbierto:0, abierta:true, truncada: o.accion === 'Cierra'});
       abiertoPorClave[clave] = idx;
     }
     const b = bloques[idx];
     b.filas.push(o);
+    if(o.accion === 'Abre') b.totalAbierto = +(b.totalAbierto + o.sz).toPrecision(8);
     b.neto = +(b.neto + (o.accion === 'Abre' ? o.sz : -o.sz)).toPrecision(8);
     if(Math.abs(b.neto) < 0.00001){
       b.abierta = false;
@@ -1084,7 +1085,7 @@ function abrirModal(c, faceta){
         <tr class="op-cabecera">
           <td>${flecha}<span class="op-lado ${lado}" title="${tituloLado}">${b.lado}</span></td>
           <td>${nombreMoneda(b.coin)}</td>
-          <td title="Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí">${b.neto>=0?'+':''}${b.neto} (cambio visible)</td>
+          <td title="${b.abierta?'Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí':'Ya está cerrada del todo -- el neto siempre acaba en 0, así que aquí se muestra lo que se llegó a invertir en total para abrirla'}">${b.abierta?`${b.neto>=0?'+':''}${b.neto} (cambio visible)`:`${b.totalAbierto} (tamaño operado)`}</td>
           <td>—</td>
           <td>—</td>
           <td>${fechaLocal(ultima.ts)}<span class="op-estado ${estadoTxt}" style="margin-left:6px" title="${b.abierta?'Sigue abierta ahora mismo':'Ya está cerrada del todo'}">${estadoTxt}</span> ${avisoTruncada}</td>
