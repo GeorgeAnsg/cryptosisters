@@ -431,19 +431,32 @@ function renderPaginaPosiciones(){
   const siguiendoSpot = candidatos.filter(c=>c.sigue_spot);
   if(!siguiendoTrading.length && !siguiendoSpot.length) return '<div class="estado">No sigues a nadie todavía — actívalo en la pestaña "Seguimiento".</div>';
 
+  // el backtest diario (ver refresher.ciclo_backtest_diario) es lo unico que
+  // actualiza los "bloques" (operaciones_recientes), asi que su fecha puede
+  // tener hasta un dia de retraso -- el ciclo de 5 min SI sabe el momento
+  // exacto en que detecto el ultimo cambio de tamaño (tabla 'alertas'), asi
+  // que esa fecha manda cuando es mas reciente que la del bloque
+  const masReciente = (tsBloque, idAlerta)=>{
+    const tsAlerta = alertas[idAlerta]?.detectado;
+    if(tsAlerta && (!tsBloque || tsAlerta > tsBloque)) return tsAlerta;
+    return tsBloque || null;
+  };
+
   const trading = [], spot = [];
   for(const c of siguiendoTrading){
     for(const p of (c.posicion_actual||[])){
       const b = bloqueDePosicion(c, p.lado, p.coin);
       const ultima = b ? b.filas[b.filas.length-1] : null;
-      trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, stopLoss:p.stopLoss, takeProfit:p.takeProfit, ts:ultima?ultima.ts:null, fecha:ultima?fechaLocal(ultima.ts):'sin fecha reciente'});
+      const ts = masReciente(ultima?.ts, `${c.address}_trading_${p.coin}_${p.lado}`);
+      trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, stopLoss:p.stopLoss, takeProfit:p.takeProfit, ts, fecha:ts?fechaLocal(ts):'sin fecha reciente'});
     }
   }
   for(const c of siguiendoSpot){
     for(const h of (c.holdings_spot||[])){
       const b = bloqueDePosicion(c, 'Spot', h.coin);
       const ultima = b ? b.filas[b.filas.length-1] : null;
-      spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?fechaLocal(ultima.ts):'sin fecha reciente'});
+      const ts = masReciente(ultima?.ts, `${c.address}_spot_${h.coin}`);
+      spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts, fecha:ts?fechaLocal(ts):'sin fecha reciente'});
     }
   }
   const porFecha = (a,b)=> (b.ts??-1) - (a.ts??-1);
