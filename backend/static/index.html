@@ -103,8 +103,8 @@ table.ops.oculto,.panel.oculto{display:none}
 .modal-cerrar{margin-left:auto;background:none;border:none;font-size:1.3rem;color:var(--fg-muted);cursor:pointer;line-height:1;padding:4px}
 .modal-lista{overflow:auto;padding:0 22px 22px}
 table.ops{border-collapse:collapse;width:100%;font-size:.78rem}
-table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--border);cursor:help}
-table.ops td{padding:8px 8px;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap}
+table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:10px 20px;border-bottom:1px solid var(--border);cursor:help}
+table.ops td{padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap}
 table.ops tr:last-child td{border-bottom:none}
 .op-lado{font-weight:700;padding:3px 9px;border-radius:99px;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em;cursor:help}
 .op-lado.long{background:#e3ecfd;color:#2f5bf0}
@@ -133,10 +133,12 @@ tr.op-hijo.oculto{display:none}
 .btn-abrir,.btn-cerrar,.btn-añadir,.btn-reducir{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
 .btn-abrir:hover,.btn-cerrar:hover,.btn-añadir:hover,.btn-reducir:hover{background:#000;color:#fff;border-color:#000}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
+.gb-leyenda{font-size:.76rem;color:var(--fg-muted);margin:-4px 2px 12px}
 .grafico-barras{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:18px}
-.gb-fila{display:grid;grid-template-columns:110px 1fr 64px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0}
+.gb-fila{display:grid;grid-template-columns:110px 1fr 64px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
 .gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gb-pista{display:flex;height:14px}
+.gb-pista{display:flex;height:14px;position:relative}
+.gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:var(--border)}
 .gb-mitad{width:50%;display:flex}
 .gb-izq{justify-content:flex-end}
 .gb-barra{height:100%;border-radius:3px;background:var(--fg-muted)}
@@ -620,12 +622,17 @@ function renderPaginaMias(){
   }).join('');
 
   return `
-    <div id="grafico-mis-posiciones"></div>
+    <div id="grafico-mis-posiciones">${ultimoGraficoMisPosicionesHtml}</div>
     <div class="seccion-titulo">Tus posiciones abiertas (${abiertas.length})</div>
     ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Tu entrada</th><th>Resultado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
 }
 
 let cargandoResumenPropio = false;
+// se guarda el ultimo grafico calculado para pintarlo de inmediato en el
+// siguiente render() (cada sondeo reconstruye el HTML entero, y sin esto el
+// grafico se veia parpadear: vacio un instante hasta que llegaban los
+// precios nuevos, y volvia a aparecer -- con la cache no hay hueco en blanco
+let ultimoGraficoMisPosicionesHtml = '';
 async function actualizarResumenPropio(){
   // win rate tuyo (de lo que ya has cerrado) es sincrono, no necesita pedir nada
   const cerradas = Object.values(misPosiciones).filter(m=>m.estado==='cerrada' && m.pnl!=null);
@@ -693,8 +700,9 @@ async function cargarPnlVivoMisPosiciones(abiertas){
       celda.classList.toggle('neg', pnl < 0);
     }
   }
+  ultimoGraficoMisPosicionesHtml = construirGraficoPosicionesAbiertas(barras);
   const grafico = document.getElementById('grafico-mis-posiciones');
-  if(grafico) grafico.innerHTML = construirGraficoPosicionesAbiertas(barras);
+  if(grafico) grafico.innerHTML = ultimoGraficoMisPosicionesHtml;
 }
 
 function construirGraficoPosicionesAbiertas(barras){
@@ -704,16 +712,18 @@ function construirGraficoPosicionesAbiertas(barras){
     const pct = b.pct ?? 0;
     const ancho = Math.abs(pct)/max*50; // 50% del contenedor como mitad positiva o negativa
     const clase = pct > 0 ? 'pos' : (pct < 0 ? 'neg' : '');
+    const titulo = `${b.etiqueta}: ${pct>0?'ganando':pct<0?'perdiendo':'sin cambio'} ${Math.abs(pct).toFixed(1)}% (${b.pnl>0?'+':''}$${b.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})})`;
     const barraHtml = pct >= 0
       ? `<div class="gb-mitad gb-izq"></div><div class="gb-mitad gb-der"><div class="gb-barra ${clase}" style="width:${ancho}%"></div></div>`
       : `<div class="gb-mitad gb-izq"><div class="gb-barra ${clase}" style="width:${ancho}%;margin-left:auto"></div></div><div class="gb-mitad gb-der"></div>`;
-    return `<div class="gb-fila">
+    return `<div class="gb-fila" title="${titulo}">
       <div class="gb-etiqueta">${b.etiqueta}</div>
       <div class="gb-pista">${barraHtml}</div>
       <div class="gb-valor ${clase}">${pct>0?'+':''}${pct.toFixed(1)}%</div>
     </div>`;
   }).join('');
   return `<div class="seccion-titulo" style="margin-top:4px">Tus posiciones, de más a menos rentable</div>
+    <div class="gb-leyenda">Cada barra es el % de ganancia o pérdida de esa posición ahora mismo. ← pierdes · ganas →, partiendo del 0% en el centro.</div>
     <div class="grafico-barras">${filas}</div>`;
 }
 
