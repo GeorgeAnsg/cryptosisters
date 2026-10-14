@@ -1,0 +1,1019 @@
+<title>Seguimiento de traders</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* layout: rejilla de tarjetas (grid auto-fill), avatar generado por hash de
+   direccion, dos secciones (vetados / especulativos) con tratamiento distinto.
+   paleta: blanco/negro + azul de acento, botones y badges tipo pildora */
+:root{
+  --bg:#e7e9ee; --panel:#ffffff; --panel-dark:#131417; --fg:#131417; --fg-on-dark:#f3f4f6; --fg-muted:#6b7078;
+  --border:#e1e3e8; --accent:#2f5bf0; --accent-fg:#ffffff; --accent-weak:#e8edfe;
+  --ok:#1a9c5c; --warn:#b4760a; --warn-bg:#fdf1dd; --warn-border:#eecd93; --bad:#d5362a;
+  --font-display:'Plus Jakarta Sans',system-ui,sans-serif; --font-body:'Plus Jakarta Sans',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --shadow:0 1px 2px rgba(19,20,23,.04), 0 4px 16px rgba(19,20,23,.06);
+  color-scheme: light;
+}
+/* diseño comprometido con un único aspecto (el de la referencia): claro siempre, sin variante oscura */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);padding:20px 16px;padding-block:28px}
+.envoltorio{max-width:1100px;margin:0 auto}
+header{margin-bottom:22px}
+h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 6px;letter-spacing:-.02em}
+.sub{color:var(--fg-muted);font-size:.9rem;max-width:620px;line-height:1.5;margin:0}
+.cabecera-negra{display:flex;align-items:stretch;gap:0;margin:18px 0 0;background:var(--panel-dark);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;flex-wrap:wrap}
+.resumen-item{display:flex;flex-direction:column;gap:3px;padding:16px 24px;justify-content:center}
+.resumen-item + .resumen-item{border-left:1px solid rgba(255,255,255,.12)}
+.resumen-item .n{font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--fg-on-dark);font-variant-numeric:tabular-nums;transition:transform .25s, color .25s}
+.resumen-item .n.resalta{transform:scale(1.35);color:var(--accent)}
+.resumen-item .l{font-size:.68rem;color:#9ca0ab;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.cn-divisor{width:1px;background:rgba(255,255,255,.12);align-self:stretch;flex:none}
+.cn-grafico{padding:14px 24px;min-width:240px;flex:1;display:flex;flex-direction:column;justify-content:center}
+.gm-titulo{font-size:.68rem;color:#9ca0ab;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:10px}
+.gm-fila{display:flex;align-items:center;gap:8px;font-size:.78rem;margin-bottom:6px}
+.gm-fila:last-child{margin-bottom:0}
+.gm-moneda{width:62px;flex:none;color:var(--fg-on-dark);font-family:var(--font-mono);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gm-barra-fondo{flex:1;height:8px;background:rgba(255,255,255,.12);border-radius:99px;overflow:hidden}
+.gm-barra{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.gm-n{width:18px;flex:none;text-align:right;color:#9ca0ab;font-family:var(--font-mono);font-size:.72rem}
+
+.page-tabs{display:flex;gap:8px;margin-top:18px}
+.page-tab{font:inherit;font-size:.86rem;font-weight:700;padding:9px 18px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.page-tab.activo{background:var(--panel-dark);color:var(--fg-on-dark);border-color:var(--panel-dark)}
+.page-panel.oculto{display:none}
+
+.sub-tab{font:inherit;font-size:.8rem;font-weight:700;padding:6px 14px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.sub-tab.activo{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.sub-panel.oculto{display:none}
+.sub-panel table.ops{background:var(--panel);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
+.sub-panel table.ops td,.sub-panel table.ops th{padding:11px 14px}
+.pf-trader{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-display);font-weight:700}
+.pf-trader .avatar{width:26px;height:26px;font-size:.74rem}
+
+h2{font-family:var(--font-display);font-weight:800;font-size:1.1rem;margin:32px 0 4px;display:flex;align-items:baseline;gap:10px;letter-spacing:-.01em}
+h2 .n{font-family:var(--font-mono);font-size:.74rem;color:var(--fg-muted);font-weight:500}
+.seccion-sub{font-size:.8rem;color:var(--fg-muted);margin:0 0 16px;max-width:640px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+
+.tarjeta{position:relative;background:var(--panel);border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:var(--shadow);transition:opacity .15s, border-color .15s}
+.tarjeta.no-sigue{opacity:.5}
+.tarjeta.especulativo{border-color:var(--warn-border)}
+
+.cabecera-tarjeta{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.avatar{flex:none;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:#fff}
+.id-wrap{flex:1;min-width:0}
+.addr{font-family:var(--font-mono);font-size:.8rem;color:var(--fg);display:block}
+.badges{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:.64rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
+.b-posicional,.b-activo{background:var(--accent-weak);color:var(--accent)}
+.b-muy_activo{background:var(--warn-bg);color:var(--warn)}
+.b-conservador{background:rgba(26,156,92,.12);color:var(--ok)}
+.b-moderado{background:var(--warn-bg);color:var(--warn)}
+.b-agresivo{background:rgba(213,54,42,.1);color:var(--bad)}
+
+.sw{position:absolute;top:16px;right:16px;width:42px;height:25px;border-radius:99px;background:var(--border);border:none;cursor:pointer;transition:background .15s;z-index:2}
+.sw.on{background:var(--panel-dark)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on::after{transform:translateX(17px)}
+.sw:disabled{cursor:wait;opacity:.6}
+
+.tarjeta{cursor:pointer}
+.tarjeta:hover{border-color:var(--fg-muted)}
+
+.modal-fondo{position:fixed;inset:0;background:rgba(19,20,23,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
+.modal{background:var(--panel);border-radius:20px;max-width:1020px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.modal-cabecera{display:flex;align-items:center;gap:12px;padding:22px 22px 14px;flex:none}
+.modal-tabs{display:flex;gap:6px;padding:0 22px 14px;flex:none}
+.modal-tab{font:inherit;font-size:.82rem;font-weight:700;padding:7px 16px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.modal-tab.activo{background:var(--panel-dark);color:var(--fg-on-dark);border-color:var(--panel-dark)}
+table.ops.oculto,.panel.oculto{display:none}
+.panel-subtitulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);margin:18px 0 8px;font-weight:700}
+.panel-subtitulo:first-child{margin-top:0}
+.modal-cerrar{margin-left:auto;background:none;border:none;font-size:1.3rem;color:var(--fg-muted);cursor:pointer;line-height:1;padding:4px}
+.modal-lista{overflow:auto;padding:0 22px 22px}
+table.ops{border-collapse:collapse;width:100%;font-size:.78rem}
+table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:6px 8px;border-bottom:1px solid var(--border);cursor:help}
+table.ops td{padding:8px 8px;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap}
+table.ops tr:last-child td{border-bottom:none}
+.op-lado{font-weight:700;padding:3px 9px;border-radius:99px;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em;cursor:help}
+.op-lado.long{background:#e3ecfd;color:#2f5bf0}
+.op-lado.short{background:#fde9e7;color:#c24a3b}
+.op-lado.spot{background:var(--border);color:var(--fg-muted)}
+.op-pnl.pos{color:var(--ok);font-weight:700}
+.op-pnl.neg{color:var(--bad);font-weight:700}
+tr.op-cabecera td{background:var(--accent-weak);font-weight:700}
+tr.op-hijo td{padding-left:26px;color:var(--fg-muted);font-weight:400}
+tr.op-hijo.oculto{display:none}
+.op-estado{font-size:.64rem;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:99px;font-weight:700}
+.op-estado.abierta{background:var(--accent-weak);color:var(--accent)}
+.op-estado.cerrada{background:var(--border);color:var(--fg-muted)}
+.badge-nuevo{font-size:.6rem;text-transform:uppercase;letter-spacing:.03em;padding:2px 7px;border-radius:99px;font-weight:700;background:var(--ok);color:#fff}
+.op-flecha{cursor:pointer;display:inline-block;width:12px;color:var(--fg-muted);user-select:none}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px;margin:14px 0;padding-top:14px;border-top:1px solid var(--border)}
+.stat .l{font-size:.62rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;font-weight:600}
+.stat .v{font-family:var(--font-mono);font-size:.86rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+.monedas{font-size:.78rem;color:var(--fg-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis}
+.etiqueta-especulativo{font-size:.8rem;color:var(--warn);font-weight:600;margin-bottom:8px;line-height:1.4}
+
+.estado{font-size:.84rem;color:var(--fg-muted);text-align:center;padding:40px}
+.btn-abrir,.btn-cerrar{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.btn-abrir:hover,.btn-cerrar:hover{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
+.stat-caja{background:var(--panel);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.stat-caja .v{font-size:1.25rem}
+.page-tab{position:relative}
+.page-tab .alerta-tab{position:absolute;top:2px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+</style>
+
+<div class="envoltorio">
+<header>
+  <h1>Seguimiento de traders</h1>
+  <div class="cabecera-negra">
+    <div class="resumen-item"><span class="n" id="n-siguiendo">—</span><span class="l">Siguiendo</span></div>
+    <div class="resumen-item"><span class="n" id="n-total">—</span><span class="l">Total</span></div>
+    <div class="cn-divisor"></div>
+    <div id="grafico-monedas" class="cn-grafico"></div>
+  </div>
+  <div class="page-tabs">
+    <button class="page-tab activo" data-pagina="seguimiento">Seguimiento</button>
+    <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
+    <button class="page-tab" data-pagina="mias">Posiciones abiertas</button>
+    <button class="page-tab" data-pagina="stats">Estadísticas</button>
+  </div>
+</header>
+
+<div id="root"><div class="estado">Cargando...</div></div>
+</div>
+
+<script>
+let candidatos = [];
+let alertas = {};
+let misPosiciones = {};
+
+// backend propio (ver carpeta backend/) -- mismo origen que esta pagina,
+// ruta relativa. El backend sustituye esto por la API_KEY real al servir
+// la pagina (ver main.py, pagina_principal): la pagina es solo tan privada
+// como lo sea la URL -- no la compartas en abierto.
+const API_BASE = '';
+const API_KEY = 'PON_AQUI_TU_API_KEY';
+
+async function apiGet(ruta){
+  const r = await fetch(API_BASE + ruta, {headers:{'X-API-Key':API_KEY}});
+  if(!r.ok) throw new Error(`${ruta} -> ${r.status}`);
+  return r.json();
+}
+async function apiEnviar(metodo, ruta, cuerpo){
+  const r = await fetch(API_BASE + ruta, {
+    method: metodo,
+    headers: {'Content-Type':'application/json', 'X-API-Key':API_KEY},
+    body: JSON.stringify(cuerpo),
+  });
+  if(!r.ok) throw new Error(`${ruta} -> ${r.status}`);
+  return r.json();
+}
+
+// cuando viste la pagina la ultima vez -- se usa para marcar "nuevo" lo que
+// se ha movido despues de esa visita. Se lee una vez al cargar (asi los
+// badges no van desapareciendo mientras sigues mirando esta misma sesion) y
+// se guarda ya el momento actual para la proxima vez que entres.
+let ultimaVisitaAnterior = null;
+try{
+  const guardada = localStorage.getItem('segTraders_ultimaVisita');
+  ultimaVisitaAnterior = guardada ? parseInt(guardada, 10) : null;
+  localStorage.setItem('segTraders_ultimaVisita', String(Date.now()));
+}catch(e){}
+
+function hashAddr(addr){
+  let h = 0;
+  for(let i=0;i<addr.length;i++){ h = (h*31 + addr.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function colorFor(addr){
+  const h = hashAddr(addr) % 360;
+  return `hsl(${h} 58% 42%)`;
+}
+
+const PLANTAS = ['Roble','Sauce','Bambú','Olivo','Ciprés','Abedul','Acacia','Laurel','Jazmín','Lavanda',
+  'Romero','Tomillo','Helecho','Magnolia','Cerezo','Pino','Cedro','Haya','Álamo','Arce',
+  'Eucalipto','Hiedra','Loto','Girasol','Orquídea','Bonsái','Palmera','Secuoya','Baobab','Mimosa',
+  'Nogal','Fresno','Tilo','Azalea','Camelia','Begonia','Hortensia','Tulipán','Narciso','Peonía'];
+const plantaPorAddr = {};
+function asignarPlantas(lista){
+  const usadas = new Set(Object.values(plantaPorAddr));
+  const ordenado = [...lista].sort((a,b)=> a.address.localeCompare(b.address));
+  for(const c of ordenado){
+    if(plantaPorAddr[c.address]) continue;
+    let i = hashAddr(c.address) % PLANTAS.length;
+    let intentos = 0;
+    while(usadas.has(PLANTAS[i]) && intentos < PLANTAS.length){ i = (i+1) % PLANTAS.length; intentos++; }
+    plantaPorAddr[c.address] = PLANTAS[i];
+    usadas.add(PLANTAS[i]);
+  }
+}
+function plantaFor(addr){
+  return plantaPorAddr[addr] || addr.slice(0,6);
+}
+
+const NOMBRES_MONEDA = {'@107':'HYPE','@142':'UBTC','@151':'UETH','@156':'USOL',
+  '@162':'UFART','@188':'UPUMP','@206':'UENA','@210':'UXPL','@230':'USDH',
+  '@272':'UZEC','@290':'UVIRT','@699':'UANSEM'};
+function nombreMonedaBase(coin){
+  return NOMBRES_MONEDA[coin] || coin;
+}
+function nombreMoneda(coin){
+  return NOMBRES_MONEDA[coin] ? `${NOMBRES_MONEDA[coin]} (spot)` : coin;
+}
+
+function tarjeta(c){
+  const addrCorta = c.address.slice(0,8)+'…'+c.address.slice(-4);
+  const planta = plantaFor(c.address);
+  const esEspeculativo = c.categoria === 'especulativo';
+  const avatar = `<div class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</div>`;
+  const switchHtml = `<button class="sw ${c.siguiendo?'on':''}" data-addr="${c.address}" data-on="${c.siguiendo?'1':'0'}" aria-label="Seguir a ${planta}"></button>`;
+
+  if(esEspeculativo){
+    return `
+      <div class="tarjeta especulativo ${c.siguiendo?'':'no-sigue'}" data-addr="${c.address}" data-abre-modal="1">
+        ${switchHtml}
+        <div class="cabecera-tarjeta">
+          ${avatar}
+          <div class="id-wrap">
+            <span class="addr">${planta} <span style="color:var(--fg-muted);font-size:.7rem">(${addrCorta})</span></span>
+            <div class="badges"><span class="badge" style="background:var(--warn-bg);color:var(--warn)">especulativo</span></div>
+          </div>
+        </div>
+        <div class="etiqueta-especulativo">${c.etiqueta||''}</div>
+        <div class="monedas">${c.monedas||''}</div>
+      </div>`;
+  }
+
+  return `
+    <div class="tarjeta ${c.siguiendo?'':'no-sigue'}" data-addr="${c.address}" data-abre-modal="1">
+      ${switchHtml}
+      <div class="cabecera-tarjeta">
+        ${avatar}
+        <div class="id-wrap">
+          <span class="addr">${planta} <span style="color:var(--fg-muted);font-size:.7rem">(${addrCorta})</span></span>
+          <div class="badges">
+            <span class="badge b-${c.estilo}">${c.estilo.replace('_',' ')}</span>
+            <span class="badge b-${c.riesgo}">${c.riesgo}</span>
+          </div>
+        </div>
+        ${c.puntuacion!=null?`<div style="flex:none;text-align:center;font-family:var(--font-display);margin-right:50px">
+          <div style="font-weight:800;font-size:1.3rem;line-height:1">${c.puntuacion}</div>
+          <div style="font-size:.6rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em">/100</div>
+        </div>`:''}
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="l">Antigüedad</div><div class="v">${c.antiguedad}d</div></div>
+        <div class="stat"><div class="l">Drawdown</div><div class="v">${(c.drawdown*100).toFixed(0)}%</div></div>
+        <div class="stat"><div class="l">Cuenta</div><div class="v">$${Math.round(c.cuenta).toLocaleString('es-ES')}</div></div>
+        <div class="stat"><div class="l">Win rate</div><div class="v">${c.win_rate!=null?(c.win_rate*100).toFixed(0)+'%':'—'}</div></div>
+        <div class="stat"><div class="l">Retorno backtest</div><div class="v" style="color:${c.retorno_pct>0?'var(--ok)':c.retorno_pct<0?'var(--bad)':'inherit'}">${c.retorno_pct!=null?c.retorno_pct.toFixed(1)+'%':'—'}</div></div>
+        <div class="stat"><div class="l">Profit factor</div><div class="v">${c.profit_factor!=null?c.profit_factor.toFixed(2):(c.profit_factor===null&&c.retorno_pct!=null?'∞':'—')}</div></div>
+      </div>
+      <div class="monedas">${c.monedas||''}</div>
+    </div>`;
+}
+
+let paginaActiva = 'seguimiento';
+let subPestañaPosiciones = 'trading';
+
+function bloqueDePosicion(c, lado, coinBase){
+  const ops = agruparEpisodios(c.operaciones_recientes || []);
+  const bloques = construirBloques(ops);
+  // bloques viene de mas reciente a mas antiguo: el primero que encaje con
+  // esta clave es el mas reciente -- es el que corresponde a la posicion
+  // que sigue abierta ahora (misma logica que en el modal).
+  return bloques.find(x => x.lado === lado && (lado === 'Spot' ? nombreMonedaBase(x.coin) === coinBase : x.coin === coinBase)) || null;
+}
+
+function marcarCierres(filas){
+  // filas tiene que venir en orden cronologico (mas antigua primero). Un
+  // "Cierra" solo es un cierre DE VERDAD si, tras restarle su tamaño a lo
+  // que quedaba, no queda nada (o casi); si queda algo, es una reduccion
+  // parcial y la posicion sigue viva. Sin esto, "Reduce/cierra" no decia
+  // cual de las dos cosas pasaba realmente.
+  let restante = 0;
+  return filas.map(o=>{
+    restante += (o.accion === 'Abre' ? o.sz : -o.sz);
+    const cierraDelTodo = o.accion === 'Cierra' && Math.abs(restante) < 0.00001;
+    return {...o, cierraDelTodo};
+  });
+}
+
+function filaMovimientoTrading(o, filaId){
+  const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+  const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+  const verbo = o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce');
+  return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
+    <td>${o.time}</td>
+    <td></td>
+    <td>${verbo}</td>
+    <td>${o.coin}</td>
+    <td>${o.sz}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
+    <td>$${o.px}</td>
+    <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+  </tr>`;
+}
+
+function filaMovimientoSpot(o, filaId){
+  const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+  const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+  const verbo = o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende');
+  return `<tr class="op-hijo oculto" data-hijo-de="${filaId}">
+    <td>${o.time}</td>
+    <td></td>
+    <td>${verbo} ${nombreMonedaBase(o.coin)}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
+    <td>${o.sz}</td>
+    <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
+    <td>—</td>
+    <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+  </tr>`;
+}
+
+function filaPlanta(c){
+  const planta = plantaFor(c.address);
+  return `<span class="pf-trader" data-addr="${c.address}"><span class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</span>${planta}</span>`;
+}
+
+function renderPaginaSeguimiento(){
+  const todos = [...candidatos].sort((a,b)=>{
+    if((a.categoria==='especulativo') !== (b.categoria==='especulativo')) return a.categoria==='especulativo' ? 1 : -1;
+    return (a.prioridad??99)-(b.prioridad??99);
+  });
+  return `<div class="grid">${todos.map(c=>tarjeta(c)).join('')}</div>`;
+}
+
+function renderPaginaPosiciones(){
+  const siguiendo = candidatos.filter(c=>c.siguiendo);
+  if(!siguiendo.length) return '<div class="estado">No sigues a nadie todavía — actívalo en la pestaña "Seguimiento".</div>';
+
+  const trading = [], spot = [];
+  for(const c of siguiendo){
+    for(const p of (c.posicion_actual||[])){
+      const b = bloqueDePosicion(c, p.lado, p.coin);
+      const ultima = b ? b.filas[b.filas.length-1] : null;
+      trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?ultima.time:'sin fecha reciente'});
+    }
+    for(const h of (c.holdings_spot||[])){
+      const b = bloqueDePosicion(c, 'Spot', h.coin);
+      const ultima = b ? b.filas[b.filas.length-1] : null;
+      spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts:ultima?ultima.ts:null, fecha:ultima?ultima.time:'sin fecha reciente'});
+    }
+  }
+  const porFecha = (a,b)=> (b.ts??-1) - (a.ts??-1);
+  trading.sort(porFecha); spot.sort(porFecha);
+
+  if(!trading.length && !spot.length) return '<div class="estado">Los que sigues no tienen ninguna posición abierta ahora mismo.</div>';
+
+  const badgeNuevo = (ts)=> (ultimaVisitaAnterior && ts && ts > ultimaVisitaAnterior)
+    ? `<span class="badge-nuevo" title="Movimiento posterior a tu última visita">nuevo</span>` : '';
+
+  let contadorFila = 0;
+  const filasTrading = trading.length ? trading.map(it=>{
+    const lado = it.lado.toLowerCase();
+    const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '<span style="color:var(--fg-muted)">sin dato</span>';
+    const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
+    const filaId = 'p'+(contadorFila++);
+    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">▸</span>` : '';
+    const cabecera = `<tr>
+      <td>${it.fecha} ${badgeNuevo(it.ts)}</td>
+      <td>${filaPlanta(it.c)}</td>
+      <td>${flecha}<span class="op-lado ${lado}">${it.lado}</span></td>
+      <td>${it.coin}</td>
+      <td>${it.tamaño}</td>
+      <td>$${it.precio}</td>
+      <td>${pnl}</td>
+    </tr>`;
+    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoTrading(o, filaId)).join('') : '';
+    return cabecera + hijos;
+  }).join('') : '<tr><td colspan="7" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
+
+  const filasSpot = spot.length ? spot.map(it=>{
+    const coste = it.coste!=null ? `$${it.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`;
+    const valor = it.valor!=null ? `$${it.valor.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
+    const tieneDetalle = it.bloque && it.bloque.filas.length > 1;
+    const filaId = 'p'+(contadorFila++);
+    const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">▸</span>` : '';
+    const cabecera = `<tr>
+      <td>${it.fecha} ${badgeNuevo(it.ts)}</td>
+      <td>${filaPlanta(it.c)}</td>
+      <td>${flecha}${it.coin}</td>
+      <td>${it.tamaño}</td>
+      <td>${coste}</td>
+      <td>${valor}</td>
+      <td>${pnl}</td>
+    </tr>`;
+    const hijos = tieneDetalle ? marcarCierres(it.bloque.filas).reverse().map(o=>filaMovimientoSpot(o, filaId)).join('') : '';
+    return cabecera + hijos;
+  }).join('') : '<tr><td colspan="7" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
+
+  return `
+    <div class="seccion-titulo">Trading (${trading.length})</div>
+    <div class="sub-panel" data-sub="trading">
+      <table class="ops">
+        <thead><tr>
+          <th>Fecha</th><th>Trader</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Entrada</th><th>Resultado</th>
+        </tr></thead>
+        <tbody>${filasTrading}</tbody>
+      </table>
+    </div>
+    <div class="seccion-titulo" style="margin-top:22px">Spot (${spot.length})</div>
+    <div class="sub-panel" data-sub="spot">
+      <table class="ops">
+        <thead><tr>
+          <th>Fecha</th><th>Trader</th><th>Moneda</th><th>Cantidad</th><th>Coste base</th><th>Valor actual</th><th>Resultado</th>
+        </tr></thead>
+        <tbody>${filasSpot}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderPaginaMias(){
+  // la deteccion de "nuevo" ya no se hace aqui -- el backend la hace sola en
+  // su bucle de refresco (ver backend/refresher.py) y manda el aviso de
+  // Telegram a la vez; esta pagina solo lee lo que el backend ya detecto.
+  const pendientes = Object.entries(alertas).filter(([,a])=>a.estado!=='hecho');
+  const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
+
+  const trading = pendientes.filter(([,a])=>a.tipo==='trading');
+  const spot = pendientes.filter(([,a])=>a.tipo==='spot');
+
+  const filasTrading = trading.map(([id,a])=>{
+    const c = candidatos.find(x=>x.address===a.addr);
+    return `<tr>
+      <td>${c?filaPlanta(c):a.addr.slice(0,8)}</td>
+      <td><span class="op-lado ${(a.lado||'').toLowerCase()}">${a.lado}</span></td>
+      <td>${a.coin}</td>
+      <td>${a.tamaño}</td>
+      <td>$${a.precio}</td>
+      <td><button class="btn-abrir" data-id="${id}">Abrir</button></td>
+    </tr>`;
+  }).join('');
+
+  const filasSpot = spot.map(([id,a])=>{
+    const c = candidatos.find(x=>x.address===a.addr);
+    const coste = a.coste!=null ? `$${a.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    return `<tr>
+      <td>${c?filaPlanta(c):a.addr.slice(0,8)}</td>
+      <td>${a.coin}</td>
+      <td>${a.tamaño}</td>
+      <td>${coste}</td>
+      <td><button class="btn-abrir" data-id="${id}">Abrir</button></td>
+    </tr>`;
+  }).join('');
+
+  const filasAbiertas = abiertas.map(([id,m])=>{
+    const c = candidatos.find(x=>x.address===m.addr);
+    return `<tr>
+      <td>${new Date(m.fecha_apertura).toLocaleDateString('es-ES')}</td>
+      <td>${c?filaPlanta(c):m.addr.slice(0,8)}</td>
+      <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
+      <td>${m.coin}</td>
+      <td><button class="btn-cerrar" data-id="${id}">Cerrar</button></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div class="estado" style="padding:4px 2px 14px;text-align:left">Posiciones nuevas detectadas entre los que sigues. Pulsa "Abrir" cuando la abras tú también — pasa a "Tus posiciones abiertas" abajo, y desde ahí la cierras cuando toque (eso sí entra en Estadísticas).</div>
+    <div class="seccion-titulo">Trading (${trading.length})</div>
+    ${trading.length?`<table class="ops"><thead><tr><th>Trader</th><th>Dirección</th><th>Moneda</th><th>Tamaño</th><th>Entrada</th><th></th></tr></thead><tbody>${filasTrading}</tbody></table>`:'<div class="estado">Nadie que sigas tiene trading nuevo.</div>'}
+    <div class="seccion-titulo" style="margin-top:22px">Spot (${spot.length})</div>
+    ${spot.length?`<table class="ops"><thead><tr><th>Trader</th><th>Moneda</th><th>Cantidad</th><th>Coste</th><th></th></tr></thead><tbody>${filasSpot}</tbody></table>`:'<div class="estado">Nadie que sigas tiene spot nuevo.</div>'}
+    <div class="seccion-titulo" style="margin-top:22px">Tus posiciones abiertas (${abiertas.length})</div>
+    ${abiertas.length?`<table class="ops"><thead><tr><th>Abierta</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th></th></tr></thead><tbody>${filasAbiertas}</tbody></table>`:'<div class="estado">Todavía no has abierto ninguna.</div>'}`;
+}
+
+function construirSvgLinea(valores){
+  if(valores.length < 2) return '<div class="estado">Aún no hay suficientes cierres para graficar.</div>';
+  const w = 600, h = 160, pad = 6;
+  const min = Math.min(0, ...valores), max = Math.max(0, ...valores);
+  const rango = (max - min) || 1;
+  const x = i => pad + i*(w-2*pad)/(valores.length-1);
+  const y = v => h-pad - (v-min)*(h-2*pad)/rango;
+  const puntos = valores.map((v,i)=>`${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const color = valores[valores.length-1] >= 0 ? 'var(--ok)' : 'var(--bad)';
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:160px;display:block">
+    <line x1="${pad}" y1="${y(0).toFixed(1)}" x2="${w-pad}" y2="${y(0).toFixed(1)}" stroke="var(--border)" stroke-dasharray="4 4"/>
+    <polyline points="${puntos}" fill="none" stroke="${color}" stroke-width="2"/>
+  </svg>`;
+}
+
+function renderPaginaStats(){
+  // esto es TU resultado (lo que tu mismo has abierto desde "Posiciones
+  // abiertas" y luego cerrado), no el de los traders que sigues -- por eso
+  // esta a cero mientras no hayas abierto y cerrado nada todavia.
+  const cierres = Object.values(misPosiciones).filter(m=>m.estado==='cerrada' && m.pnl!=null);
+  if(!cierres.length) return '<div class="estado">Todavía no has cerrado ninguna posición propia — esto se rellena cuando abras algo desde "Posiciones abiertas" y luego lo cierres.</div>';
+  cierres.sort((a,b)=>a.fecha_cierre-b.fecha_cierre);
+
+  let acumulado = 0;
+  const serie = cierres.map(c=>{ acumulado += c.pnl; return acumulado; });
+
+  const ganadores = cierres.filter(c=>c.pnl>0);
+  const perdedores = cierres.filter(c=>c.pnl<0);
+  const gananciaBruta = ganadores.reduce((s,c)=>s+c.pnl, 0);
+  const perdidaBruta = perdedores.reduce((s,c)=>s+c.pnl, 0);
+  const neto = gananciaBruta + perdidaBruta;
+  const winRate = ganadores.length / cierres.length * 100;
+  const fmt = n => `${n>=0?'+':''}$${n.toLocaleString('es-ES',{maximumFractionDigits:0})}`;
+
+  const filasCierres = [...cierres].reverse().map(m=>{
+    const c = candidatos.find(x=>x.address===m.addr);
+    const pnlClase = m.pnl > 0 ? 'pos' : (m.pnl < 0 ? 'neg' : '');
+    return `<tr>
+      <td>${new Date(m.fecha_cierre).toLocaleDateString('es-ES')}</td>
+      <td>${c?filaPlanta(c):(m.addr||'').slice(0,8)}</td>
+      <td>${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}">${m.lado}</span>`:'Spot'}</td>
+      <td>${m.coin}</td>
+      <td><span class="op-pnl ${pnlClase}">${fmt(m.pnl)}</span></td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px">
+      <div class="stat-caja"><div class="l">Neto (${cierres.length} cierres)</div><div class="v" style="color:${neto>=0?'var(--ok)':'var(--bad)'}">${fmt(neto)}</div></div>
+      <div class="stat-caja"><div class="l">Ganado</div><div class="v" style="color:var(--ok)">${fmt(gananciaBruta)}</div></div>
+      <div class="stat-caja"><div class="l">Perdido</div><div class="v" style="color:var(--bad)">${fmt(perdidaBruta)}</div></div>
+      <div class="stat-caja"><div class="l">Win rate</div><div class="v">${winRate.toFixed(0)}%</div></div>
+    </div>
+    <div class="seccion-titulo">Evolución acumulada (tus ${cierres.length} cierres)</div>
+    <div class="stat-caja" style="margin-bottom:22px">${construirSvgLinea(serie)}</div>
+    <div class="seccion-titulo">Historial de tus cierres</div>
+    <table class="ops">
+      <thead><tr><th>Fecha</th><th>Copiada de</th><th>Dirección</th><th>Moneda</th><th>Resultado</th></tr></thead>
+      <tbody>${filasCierres}</tbody>
+    </table>`;
+}
+
+function renderGraficoMonedas(){
+  // cuantos traders (de todos los que tenemos, sigan o no) tienen AHORA
+  // MISMO algo abierto en cada moneda -- trading y spot cuentan igual, es
+  // solo para hacerse una idea rapida de donde esta puesto el dinero
+  const conteo = {};
+  for(const c of candidatos){
+    const monedas = new Set();
+    for(const p of (c.posicion_actual||[])) monedas.add(p.coin);
+    for(const h of (c.holdings_spot||[])) monedas.add(h.coin);
+    monedas.forEach(m=> conteo[m] = (conteo[m]||0) + 1);
+  }
+  const top = Object.entries(conteo).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(!top.length) return '';
+  const max = top[0][1];
+  return `
+    <div class="gm-titulo">Monedas con más traders dentro ahora mismo</div>
+    ${top.map(([coin,n])=>`
+      <div class="gm-fila">
+        <span class="gm-moneda">${coin}</span>
+        <div class="gm-barra-fondo"><div class="gm-barra" style="width:${Math.max(6,n/max*100)}%"></div></div>
+        <span class="gm-n">${n}</span>
+      </div>`).join('')}`;
+}
+
+function render(){
+  const root = document.getElementById('root');
+  if(!candidatos.length){ root.innerHTML = '<div class="estado">Sin datos todavía.</div>'; return; }
+  try{
+  asignarPlantas(candidatos);
+  document.getElementById('grafico-monedas').innerHTML = renderGraficoMonedas();
+
+  const nSig = candidatos.filter(c=>c.siguiendo).length;
+  const elSig = document.getElementById('n-siguiendo');
+  if(elSig.textContent !== '' && elSig.textContent !== String(nSig)){
+    elSig.classList.add('resalta');
+    setTimeout(()=>elSig.classList.remove('resalta'), 350);
+  }
+  elSig.textContent = nSig;
+  document.getElementById('n-total').textContent = candidatos.length;
+
+  const seguro = (fn, nombre)=>{
+    try{ return fn(); }
+    catch(e){ console.error('fallo renderizando ' + nombre, e); return `<div class="estado">Error renderizando "${nombre}": ${e.message}</div>`; }
+  };
+
+  root.innerHTML = `
+    <div class="page-panel ${paginaActiva==='seguimiento'?'':'oculto'}" data-pagina="seguimiento">${seguro(renderPaginaSeguimiento,'seguimiento')}</div>
+    <div class="page-panel ${paginaActiva==='posiciones'?'':'oculto'}" data-pagina="posiciones">${seguro(renderPaginaPosiciones,'posiciones de seguimiento')}</div>
+    <div class="page-panel ${paginaActiva==='mias'?'':'oculto'}" data-pagina="mias">${seguro(renderPaginaMias,'posiciones abiertas')}</div>
+    <div class="page-panel ${paginaActiva==='stats'?'':'oculto'}" data-pagina="stats">${seguro(renderPaginaStats,'estadísticas')}</div>`;
+
+  root.querySelectorAll('.sw').forEach(btn=>{
+    btn.onclick = async (ev)=>{
+      ev.stopPropagation();
+      const addr = btn.dataset.addr;
+      const nuevoEstado = btn.dataset.on !== '1';
+      btn.disabled = true;
+      try{
+        if(db){
+          await apiEnviar('PATCH', `/candidatos/${addr}`, {siguiendo: nuevoEstado});
+        }
+        const c = candidatos.find(x=>x.address===addr);
+        if(c) c.siguiendo = nuevoEstado;
+        render();
+      }catch(e){
+        console.error('fallo al guardar', e);
+      }finally{
+        btn.disabled = false;
+      }
+    };
+  });
+
+  root.querySelectorAll('[data-abre-modal], .pf-trader').forEach(card=>{
+    card.onclick = ()=>{
+      const c = candidatos.find(x=>x.address===card.dataset.addr);
+      if(c) abrirModal(c);
+    };
+  });
+
+  root.querySelectorAll('.op-flecha').forEach(fl=>{
+    fl.onclick = (ev)=>{
+      ev.stopPropagation();
+      const id = fl.dataset.bloque;
+      const seAbre = fl.textContent === '▸';
+      fl.textContent = seAbre ? '▾' : '▸';
+      root.querySelectorAll(`[data-hijo-de="${id}"]`).forEach(tr=> tr.classList.toggle('oculto', !seAbre));
+    };
+  });
+
+  root.querySelectorAll('.btn-abrir').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const a = alertas[id];
+      if(!a) return;
+      btn.disabled = true;
+      try{
+        const posId = 'mp_' + id;
+        await apiEnviar('POST', '/mis_posiciones', {
+          id: posId, addr: a.addr, tipo: a.tipo, coin: a.coin, lado: a.lado || null, alerta_id: id,
+        });
+        alertas[id] = {...a, estado:'hecho'};
+        misPosiciones[posId] = {addr:a.addr, tipo:a.tipo, coin:a.coin, lado:a.lado||null, estado:'abierta', fecha_apertura:Date.now(), alerta_id:id};
+        render();
+      }catch(e){
+        console.error('fallo al abrir posicion', e);
+        btn.disabled = false;
+      }
+    };
+  });
+
+  root.querySelectorAll('.btn-cerrar').forEach(btn=>{
+    btn.onclick = async ()=>{
+      const id = btn.dataset.id;
+      const m = misPosiciones[id];
+      if(!m) return;
+      const texto = prompt(`¿Cuánto has ganado o perdido cerrando ${m.coin}? (en $, negativo si has perdido)`);
+      if(texto === null) return;
+      const pnl = parseFloat(texto.replace(',', '.'));
+      if(isNaN(pnl)){ alert('Eso no es un número.'); return; }
+      btn.disabled = true;
+      try{
+        await apiEnviar('PATCH', `/mis_posiciones/${id}`, {pnl});
+        misPosiciones[id] = {...m, estado:'cerrada', pnl, fecha_cierre:Date.now()};
+        render();
+      }catch(e){
+        console.error('fallo al cerrar posicion', e);
+        btn.disabled = false;
+      }
+    };
+  });
+
+  actualizarBadgesTabs();
+  }catch(e){
+    console.error('fallo renderizando la pagina', e);
+    root.innerHTML = `<div class="estado">Error cargando la página: ${e.message}</div>`;
+  }
+}
+
+function actualizarBadgesTabs(){
+  // punto rojo en las pestañas de arriba cuando hay algo que mirar: movimientos
+  // nuevos en lo que sigues, o posiciones pendientes de abrir en "las tuyas"
+  const siguiendo = candidatos.filter(c=>c.siguiendo);
+  let hayNuevo = false;
+  for(const c of siguiendo){
+    for(const p of (c.posicion_actual||[])){
+      const b = bloqueDePosicion(c, p.lado, p.coin);
+      const ultima = b ? b.filas[b.filas.length-1] : null;
+      if(ultima && ultimaVisitaAnterior && ultima.ts > ultimaVisitaAnterior) hayNuevo = true;
+    }
+    for(const h of (c.holdings_spot||[])){
+      const b = bloqueDePosicion(c, 'Spot', h.coin);
+      const ultima = b ? b.filas[b.filas.length-1] : null;
+      if(ultima && ultimaVisitaAnterior && ultima.ts > ultimaVisitaAnterior) hayNuevo = true;
+    }
+  }
+  const hayPendientes = Object.values(alertas).some(a=>a.estado!=='hecho');
+
+  const tabSeg = document.querySelector('.page-tab[data-pagina="posiciones"]');
+  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Hay movimientos nuevos"></span>':'');
+  const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
+  if(tabMias) tabMias.innerHTML = 'Posiciones abiertas' + (hayPendientes?'<span class="alerta-tab" title="Hay posiciones nuevas pendientes"></span>':'');
+}
+
+document.querySelectorAll('.page-tab').forEach(btn=>{
+  btn.onclick = ()=>{
+    paginaActiva = btn.dataset.pagina;
+    document.querySelectorAll('.page-tab').forEach(b=>b.classList.remove('activo'));
+    btn.classList.add('activo');
+    document.querySelectorAll('.page-panel').forEach(p=> p.classList.toggle('oculto', p.dataset.pagina !== paginaActiva));
+  };
+});
+
+function agruparEpisodios(ops){
+  // el exchange parte una sola decision en muchos fills pequenos ejecutados
+  // en el mismo minuto; se agrupan por moneda+lado+accion+minuto en una sola fila
+  const grupos = [];
+  const indice = {};
+  for(const o of ops){
+    const clave = `${o.coin}|${o.lado}|${o.accion}|${o.time}`;
+    if(indice[clave] == null){
+      indice[clave] = grupos.length;
+      grupos.push({coin:o.coin, lado:o.lado, accion:o.accion, time:o.time, ts:o.ts, sz:0, notional:0, closedPnl:0, nFills:0});
+    }
+    const g = grupos[indice[clave]];
+    g.sz += o.sz; g.notional += o.notional||0; g.closedPnl += o.closedPnl||0; g.nFills += 1;
+  }
+  return grupos.map(g=>({...g, sz: +g.sz.toPrecision(8), notional: Math.round(g.notional), closedPnl: +g.closedPnl.toFixed(2), px: g.sz ? +(g.notional/g.sz).toPrecision(6) : 0}));
+}
+
+function construirBloques(ops){
+  // ops viene de mas reciente a mas antigua; se procesa en orden cronologico para
+  // detectar rachas de "ir añadiendo/reduciendo la misma posicion" por moneda+lado,
+  // de forma que no se interrumpan visualmente con operaciones de otras monedas.
+  const cronologico = [...ops].reverse();
+  const bloques = [];
+  const abiertoPorClave = {};
+  for(const o of cronologico){
+    if(o.lado !== 'Long' && o.lado !== 'Short' && o.lado !== 'Spot'){
+      bloques.push({coin:o.coin, lado:'', filas:[o], neto:0, abierta:false});
+      continue;
+    }
+    const clave = `${o.coin}|${o.lado}`;
+    let idx = abiertoPorClave[clave];
+    if(idx == null){
+      idx = bloques.length;
+      // si el primer movimiento que vemos de esta posicion ya es un "Cierra",
+      // es que la posicion existia antes de lo que tenemos en estos datos:
+      // no sabemos su tamaño real, solo lo que cambia a partir de aqui.
+      bloques.push({coin:o.coin, lado:o.lado, filas:[], neto:0, abierta:true, truncada: o.accion === 'Cierra'});
+      abiertoPorClave[clave] = idx;
+    }
+    const b = bloques[idx];
+    b.filas.push(o);
+    b.neto = +(b.neto + (o.accion === 'Abre' ? o.sz : -o.sz)).toPrecision(8);
+    if(Math.abs(b.neto) < 0.00001){
+      b.abierta = false;
+      delete abiertoPorClave[clave];
+    }
+  }
+  return bloques.reverse(); // mas reciente primero
+}
+
+function abrirModal(c){
+  const addrCorta = c.address.slice(0,8)+'…'+c.address.slice(-4);
+  const planta = plantaFor(c.address);
+  const ops = agruparEpisodios(c.operaciones_recientes || []);
+
+  // la posicion actual viene de clearinghouseState/spotClearinghouseState
+  // (dato en vivo, preguntado directamente a Hyperliquid), no se calcula
+  // sumando fills -- eso es lo que antes daba numeros sin sentido. Tambien
+  // corrige el estado abierta/cerrada: el calculo por fills puede decir
+  // "abierta" por error si el cierre real paso fuera de los 500 fills que
+  // guardamos -- el dato en vivo manda siempre que este disponible.
+  const posicionReal = c.posicion_actual || [];
+  const holdingsSpot = c.holdings_spot || [];
+  const bloquesSinCorregir = construirBloques(ops);
+  // bloquesSinCorregir viene ordenado de mas reciente a mas antiguo, asi que
+  // el primero que aparece para cada clave coin+lado es el mas reciente --
+  // SOLO ese puede ser "la" posicion abierta ahora mismo. Episodios mas
+  // antiguos de la misma moneda+lado que ya se cerraron en su momento (p.ej.
+  // abrio y cerro un short en HYPE hace semanas, y ahora tiene otro short en
+  // HYPE abierto) no deben heredar el estado "abierta" del actual.
+  const masRecientePorClave = {};
+  for(const b of bloquesSinCorregir){
+    const clave = `${b.lado}|${b.coin}`;
+    if(b.lado && masRecientePorClave[clave] == null) masRecientePorClave[clave] = b;
+  }
+  const bloques = bloquesSinCorregir.map(b=>{
+    if(!b.lado || masRecientePorClave[`${b.lado}|${b.coin}`] !== b) return b;
+    const abiertaReal = b.lado === 'Spot'
+      ? holdingsSpot.some(h=>h.coin===nombreMonedaBase(b.coin))
+      : posicionReal.some(p=>p.coin===b.coin && p.lado===b.lado);
+    return {...b, abierta: abiertaReal};
+  });
+
+  const spotTablaHtml = holdingsSpot.length ? holdingsSpot.map(h=>{
+    const coste = h.costeBase!=null ? `$${h.costeBase.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span title="Hyperliquid no tiene registrado cuánto le costó comprar esto — puede que lo recibiera (airdrop, transferencia) en vez de comprarlo aquí" style="color:var(--fg-muted)">sin dato</span>`;
+    const valor = h.valorActual!=null ? `$${h.valorActual.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const pnlClase = h.pnlNoRealizado > 0 ? 'pos' : (h.pnlNoRealizado < 0 ? 'neg' : '');
+    const pnl = h.pnlNoRealizado!=null ? `<span class="op-pnl ${pnlClase}">${h.pnlNoRealizado>0?'+':''}$${h.pnlNoRealizado.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
+    return `
+    <tr>
+      <td>${h.coin}</td>
+      <td>${h['tamaño']}</td>
+      <td>${coste}</td>
+      <td>${valor}</td>
+      <td>${pnl}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="5" class="estado">Sin nada en cartera spot ahora mismo.</td></tr>';
+
+  const filaHijo = (o, bloqueId)=>{
+    const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+    const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+    const notional = o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const verbo = o.lado === 'Spot'
+      ? (o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'))
+      : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
+    return `
+      <tr class="op-hijo oculto" data-hijo-de="${bloqueId}">
+        <td>${verbo}</td>
+        <td></td>
+        <td>${o.sz}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''}</td>
+        <td>$${o.px}</td>
+        <td>${notional}</td>
+        <td>${o.time}</td>
+        <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+      </tr>`;
+  };
+
+  // dato en vivo para rellenar el "Resultado" de lo que sigue abierto -- el
+  // historial de fills por si solo no sabe cuanto vale AHORA una posicion
+  // abierta, eso hay que preguntarselo a la API, no inventarlo.
+  const pnlEnVivoPerp = (coin, lado)=>{
+    const p = posicionReal.find(x=>x.coin===coin && x.lado===lado);
+    return p ? p.pnlNoRealizado : null;
+  };
+  const pnlEnVivoSpot = (coin)=>{
+    const h = holdingsSpot.find(x=>x.coin===nombreMonedaBase(coin));
+    return h ? h.pnlNoRealizado : null;
+  };
+
+  let contadorBloque = 0;
+  const renderBloques = (listaBloques, mensajeVacio)=>{
+    // las posiciones abiertas van siempre primero, da igual la fecha de su
+    // ultimo movimiento; el resto (ya cerradas) va despues, de mas reciente
+    // a mas antigua.
+    const ordenados = [...listaBloques].sort((a,b)=> (b.abierta?1:0) - (a.abierta?1:0));
+    if(!ordenados.length) return `<tr><td colspan="7" class="estado">${mensajeVacio}</td></tr>`;
+    return ordenados.map(b=>{
+      const lado = b.lado.toLowerCase();
+      const tituloLado = b.lado==='Long' ? 'Long: apuesta a que el precio SUBE' : (b.lado==='Short' ? 'Short: apuesta a que el precio BAJA' : 'Spot: compra/venta al contado, sin apalancamiento');
+      const pnlRealizado = b.filas.reduce((acc,o)=>acc+(o.closedPnl||0),0);
+      const ultima = b.filas[b.filas.length-1]; // mas reciente fila del bloque
+      const estadoTxt = b.abierta ? 'abierta' : 'cerrada';
+      const bloqueId = 'b'+(contadorBloque++);
+      const avisoTruncada = b.truncada
+        ? `<span class="op-estado cerrada" title="El primer movimiento que tenemos de esto ya es una reducción/venta: existía antes de nuestro historial, así que esta cifra es solo lo que cambió en estas fechas, no el tamaño total.">⚠ histórico incompleto</span>`
+        : '';
+
+      // resultado a mostrar en la cabecera: si sigue abierta, lo que vale
+      // AHORA (dato en vivo); si no, lo realmente ganado/perdido al cerrar
+      let pnlHtml;
+      if(b.abierta){
+        const pnlVivo = b.lado === 'Spot' ? pnlEnVivoSpot(b.coin) : pnlEnVivoPerp(b.coin, b.lado);
+        if(pnlVivo != null){
+          const clase = pnlVivo > 0 ? 'pos' : (pnlVivo < 0 ? 'neg' : '');
+          pnlHtml = `<span class="op-pnl ${clase}" title="Lo que gana o pierde AHORA MISMO si cerrara ya, dato en vivo">${pnlVivo>0?'+':''}$${pnlVivo.toLocaleString('es-ES',{maximumFractionDigits:0})} (sin realizar)</span>`;
+        } else {
+          pnlHtml = `<span class="op-pnl" title="No tenemos coste base en vivo para calcular cuánto gana o pierde ahora mismo">— (sin dato en vivo)</span>`;
+        }
+      } else {
+        const clase = pnlRealizado > 0 ? 'pos' : (pnlRealizado < 0 ? 'neg' : '');
+        pnlHtml = pnlRealizado ? `<span class="op-pnl ${clase}">${pnlRealizado>0?'+':''}$${pnlRealizado.toFixed(2)}</span>` : '—';
+      }
+
+      const flecha = b.filas.length > 1 ? `<span class="op-flecha" data-bloque="${bloqueId}">▸</span>` : '';
+      const cabecera = `
+        <tr class="op-cabecera">
+          <td>${flecha}<span class="op-lado ${lado}" title="${tituloLado}">${b.lado}</span></td>
+          <td>${nombreMoneda(b.coin)}</td>
+          <td title="Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí">${b.neto>=0?'+':''}${b.neto} (cambio visible)</td>
+          <td>—</td>
+          <td>—</td>
+          <td>${ultima.time}<span class="op-estado ${estadoTxt}" style="margin-left:6px" title="${b.abierta?'Sigue abierta ahora mismo':'Ya está cerrada del todo'}">${estadoTxt}</span> ${avisoTruncada}</td>
+          <td>${pnlHtml}</td>
+        </tr>`;
+      const hijos = b.filas.length > 1 ? marcarCierres(b.filas).reverse().map(o=>filaHijo(o, bloqueId)).join('') : '';
+      return cabecera + hijos;
+    }).join('');
+  };
+
+  const tradingTablaHtml = renderBloques(bloques.filter(b=>b.lado === 'Long' || b.lado === 'Short'), 'Sin operaciones de trading (long/short) registradas todavía.');
+  const spotMovimientosHtml = renderBloques(bloques.filter(b=>b.lado === 'Spot'), 'Sin compras/ventas spot registradas todavía.');
+
+  const fondo = document.createElement('div');
+  fondo.className = 'modal-fondo';
+  fondo.innerHTML = `
+    <div class="modal">
+      <div class="modal-cabecera">
+        <div class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</div>
+        <div>
+          <div class="addr">${planta} <span style="color:var(--fg-muted);font-size:.72rem">(${addrCorta})</span></div>
+          <div style="font-size:.76rem;color:var(--fg-muted)">${ops.length} operaciones más recientes (instantánea)</div>
+        </div>
+        <button class="modal-cerrar" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-tabs">
+        <button class="modal-tab activo" data-tab="trading">Trading (long/short)</button>
+        <button class="modal-tab" data-tab="spot">Spot (cartera)</button>
+      </div>
+      <div class="modal-lista">
+        <div class="panel" data-panel="trading">
+          <table class="ops">
+            <thead><tr>
+              <th title="Si apostaba a que el precio sube (Long) o baja (Short)">Dirección</th>
+              <th title="La moneda sobre la que operó">Moneda</th>
+              <th title="En la cabecera: cambio neto SOLO dentro de este historial (no el tamaño real). En cada movimiento: lo añadido o reducido en ese momento">Tamaño</th>
+              <th title="Precio al que se ejecutó esa operación">Precio</th>
+              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Invertido</th>
+              <th title="Fecha y hora UTC. En la cabecera, fecha del último movimiento de esa posición">Fecha</th>
+              <th title="Ganancia o pérdida ya realizada; vacío si la posición seguía abierta">Resultado</th>
+            </tr></thead>
+            <tbody>${tradingTablaHtml}</tbody>
+          </table>
+        </div>
+        <div class="panel oculto" data-panel="spot">
+          <h3 class="panel-subtitulo">Cartera actual (en vivo)</h3>
+          <table class="ops">
+            <thead><tr>
+              <th title="La moneda que tiene comprada al contado">Moneda</th>
+              <th title="Cantidad que tiene en cartera ahora mismo (dato en vivo)">Cantidad</th>
+              <th title="Lo que ha invertido en total para tener esta cantidad (coste medio acumulado). 'Sin dato' si Hyperliquid no tiene registrada una compra (p.ej. lo recibió, no lo compró)">Coste base</th>
+              <th title="Lo que vale esa cantidad ahora mismo, al precio de mercado actual">Valor actual</th>
+              <th title="Valor actual menos coste base: lo que ganaría o perdería si lo vendiera ahora">Resultado</th>
+            </tr></thead>
+            <tbody>${spotTablaHtml}</tbody>
+          </table>
+          <h3 class="panel-subtitulo">Compras y ventas recientes</h3>
+          <table class="ops">
+            <thead><tr>
+              <th title="Compra o venta al contado">Dirección</th>
+              <th title="La moneda sobre la que operó">Moneda</th>
+              <th title="En la cabecera: cambio neto SOLO dentro de este historial. En cada movimiento: lo comprado o vendido en ese momento">Tamaño</th>
+              <th title="Precio al que se ejecutó esa operación">Precio</th>
+              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Invertido</th>
+              <th title="Fecha y hora UTC">Fecha</th>
+              <th title="Ganancia o pérdida ya realizada en ventas; vacío si es una compra que sigue en cartera">Resultado</th>
+            </tr></thead>
+            <tbody>${spotMovimientosHtml}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+  fondo.onclick = (ev)=>{ if(ev.target===fondo) document.body.removeChild(fondo); };
+  fondo.querySelector('.modal-cerrar').onclick = ()=> document.body.removeChild(fondo);
+  fondo.querySelectorAll('.modal-tab').forEach(btn=>{
+    btn.onclick = ()=>{
+      fondo.querySelectorAll('.modal-tab').forEach(b=>b.classList.remove('activo'));
+      btn.classList.add('activo');
+      fondo.querySelectorAll('.panel').forEach(p=> p.classList.toggle('oculto', p.dataset.panel !== btn.dataset.tab));
+    };
+  });
+  fondo.querySelectorAll('.op-flecha').forEach(fl=>{
+    fl.onclick = (ev)=>{
+      ev.stopPropagation();
+      const id = fl.dataset.bloque;
+      const seAbre = fl.textContent === '▸';
+      fl.textContent = seAbre ? '▾' : '▸';
+      fondo.querySelectorAll(`[data-hijo-de="${id}"]`).forEach(tr=> tr.classList.toggle('oculto', !seAbre));
+    };
+  });
+  document.body.appendChild(fondo);
+}
+
+const INTERVALO_SONDEO_MS = 30000;
+
+async function cargarTodo(){
+  const [listaCandidatos, listaAlertas, listaMisPosiciones] = await Promise.all([
+    apiGet('/candidatos'), apiGet('/alertas'), apiGet('/mis_posiciones'),
+  ]);
+  candidatos = listaCandidatos;
+  alertas = {}; listaAlertas.forEach(a=>{ alertas[a.id] = a; });
+  misPosiciones = {}; listaMisPosiciones.forEach(m=>{ misPosiciones[m.id] = m; });
+}
+
+async function iniciar(){
+  try{
+    await cargarTodo();
+    render();
+  }catch(e){
+    console.error('fallo cargando del backend', e);
+    document.getElementById('root').innerHTML = `<div class="estado">No se pudo conectar al backend: ${e.message}</div>`;
+    return;
+  }
+  // sin WebSocket/onSnapshot aqui -- el backend se refresca solo cada 5 min
+  // (ver backend/refresher.py), asi que a esta pagina le basta con volver a
+  // pedir los datos de vez en cuando en vez de mantener una conexion viva.
+  setInterval(async ()=>{
+    try{ await cargarTodo(); render(); }
+    catch(e){ console.error('fallo en el sondeo periodico', e); }
+  }, INTERVALO_SONDEO_MS);
+}
+iniciar();
+</script>

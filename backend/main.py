@@ -1,8 +1,10 @@
 import os
 import time
+from pathlib import Path
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
 import db
@@ -132,3 +134,13 @@ def cerrar_posicion(id: str, body: CerrarBody, x_api_key: str | None = Header(de
 @app.get("/salud")
 def salud():
     return {"ok": True}
+
+
+INDEX_HTML_PATH = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", response_class=HTMLResponse)
+def pagina_principal():
+    # la API_KEY se inyecta aqui en vez de dejarla escrita en el HTML a mano
+    html = INDEX_HTML_PATH.read_text()
+    return html.replace("PON_AQUI_TU_API_KEY", API_KEY or "")
