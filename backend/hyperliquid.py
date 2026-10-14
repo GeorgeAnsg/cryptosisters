@@ -16,6 +16,8 @@ MAX_LOTES_FILLS = 10  # tope de llamadas paginando por si alguien es hiperactivo
 MAX_FILLS_GUARDADOS = 2000  # cuantos fills se guardan en la BD para mostrar en el detalle -- el backtest usa TODOS los que haya en la ventana de 365 dias, no este limite (ver obtener_fills)
 MIN_CIERRES_PARA_PUNTUAR = 10  # menos que esto es una muestra demasiado pequeña -- una buena/mala racha domina el resultado
 MIN_DIAS_HISTORIAL_PARA_PUNTUAR = 30  # necesitamos verlo operar en mas de una sola racha/sesion, no solo "tuvo una buena tarde"
+MAX_DIAS_INACTIVO_PARA_PUNTUAR = 21  # si su ultimo cierre es mas viejo que esto, ya no esta operando AHORA -- un historial genial de hace meses no sirve para copiarlo hoy
+MIN_VALOR_HOLDING_SPOT = 5  # $ -- restos de centimos en la cartera (polvo/airdrops) no se muestran como si fueran una posicion real
 UMBRAL_RETORNO_VETO = -15  # retorno (%) por debajo de esto descalifica del todo, aunque la otra faceta (trading/spot) vaya genial -- sangrar asi de mal en una no se compensa con ir bien en la otra
 MIN_NOTIONAL_SPOT_PARA_CONTAR = 10  # $ -- ventas de shitcoins en centimos (polvo/airdrops) no cuentan como "trade": inflan el win rate y el profit factor sin representar capital real asignado
 # se probo tambien exigir que la moneda fuera de una lista "seria" (BTC/ETH/
@@ -164,6 +166,12 @@ def holdings_spot_de(address, idx_por_nombre, precios):
         idx = idx_por_nombre.get(b["coin"])
         precio_actual = precios.get(f"@{idx}") if idx is not None else None
         valor_actual = total * float(precio_actual) if precio_actual is not None else None
+        # polvo: restos de airdrops/memecoins que valen centimos -- mostrarlos
+        # como si fueran "la cartera" es enganoso (parece activo cuando no lo
+        # esta). Si no sabemos el valor (precio_actual None) se deja pasar,
+        # mejor mostrar de mas que ocultar algo real por falta de dato.
+        if valor_actual is not None and valor_actual < MIN_VALOR_HOLDING_SPOT:
+            continue
         holdings.append({
             "coin": b["coin"], "tamaño": round(total, 8),
             "costeBase": round(coste, 2) if coste > 1e-9 else None,
@@ -277,6 +285,9 @@ def backtest_trader(operaciones, cuenta=None, lados=("Long", "Short")):
     dias_cubiertos = (eventos_no_cero[-1][0] - eventos_no_cero[0][0]) / 86400000
     if dias_cubiertos < MIN_DIAS_HISTORIAL_PARA_PUNTUAR:
         return None  # necesitamos verlo actuar en mas de una racha/sesion, no solo una buena tarde
+    dias_desde_ultimo_cierre = (time.time() * 1000 - eventos_no_cero[-1][0]) / 86400000
+    if dias_desde_ultimo_cierre > MAX_DIAS_INACTIVO_PARA_PUNTUAR:
+        return None  # lleva demasiado sin operar -- un historial bueno de hace meses no dice nada de si lo esta haciendo bien AHORA
     pnl_total = sum(cierres)
     ganadores = [c for c in cierres if c > 0]
     perdedores = [c for c in cierres if c < 0]
@@ -320,10 +331,16 @@ def veto_catastrofico(retorno_pct):
 
 def _demo():
     DIA = 86400000
+    # todo el demo usa ts relativos pequeños (0, DIA, 2*DIA...) como si fuera
+    # 1970 -- con el nuevo filtro de inactividad (MAX_DIAS_INACTIVO_PARA_PUNTUAR)
+    # eso haria que todo pareciera "inactivo desde hace 56 años" y nada
+    # puntuara. BASE ancla el final de la linea de tiempo sintetica a hace
+    # pocos dias (el timeline mas largo del demo no pasa de ~50*DIA).
+    BASE = int(time.time() * 1000) - 60 * DIA
 
     def fill(coin, lado, accion, sz, closed_pnl, ts):
         return {"coin": coin, "lado": lado, "accion": accion, "sz": sz, "px": 1,
-                "notional": sz, "time": "x", "ts": ts, "closedPnl": closed_pnl}
+                "notional": sz, "time": "x", "ts": BASE + ts, "closedPnl": closed_pnl}
 
     def relleno(n, lado, ts_inicio, paso_ms, pnl_cada_uno=1):
         """n episodios triviales open+close en monedas distintas, solo para
