@@ -81,6 +81,8 @@ h2 .n{font-family:var(--font-mono);font-size:.74rem;color:var(--fg-muted);font-w
 .b-agresivo{background:rgba(213,54,42,.1);color:var(--bad)}
 
 .sw{position:absolute;top:16px;right:16px;width:42px;height:25px;border-radius:99px;background:var(--border);border:none;cursor:pointer;transition:background .15s;z-index:2}
+.btn-borrar-candidato{position:absolute;top:18px;right:66px;width:21px;height:21px;border-radius:50%;background:var(--panel);border:1px solid var(--border);color:var(--fg-muted);font-size:.7rem;line-height:1;cursor:pointer;z-index:2}
+.btn-borrar-candidato:hover{background:var(--bad);color:#fff;border-color:var(--bad)}
 .sw.on{background:var(--panel-dark)}
 .sw::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
 .sw.on::after{transform:translateX(17px)}
@@ -281,12 +283,13 @@ function tarjeta(c, filtroActividad){
   const facetaSwitch = filtroActividad==='trading' ? 'trading' : (filtroActividad==='spot' ? 'spot' : 'ambos');
   const sigueFacetaSwitch = facetaSwitch==='trading' ? c.sigue_trading : (facetaSwitch==='spot' ? c.sigue_spot : c.siguiendo);
   const switchHtml = `<button class="sw ${sigueFacetaSwitch?'on':''}" data-addr="${c.address}" data-on="${sigueFacetaSwitch?'1':'0'}" data-faceta="${facetaSwitch}" aria-label="Seguir a ${planta} (${facetaSwitch})"></button>`;
+  const borrarHtml = `<button class="btn-borrar-candidato" data-addr="${c.address}" data-planta="${planta}" title="Quitar de la lista del todo">✕</button>`;
   const esNuevoDescubrimiento = esReciente(c.descubierto_ts);
 
   if(esEspeculativo){
     return `
       <div class="tarjeta especulativo ${sigueFacetaSwitch?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
-        ${switchHtml}
+        ${switchHtml}${borrarHtml}
         <div class="cabecera-tarjeta">
           ${avatar}
           <div class="id-wrap">
@@ -304,7 +307,7 @@ function tarjeta(c, filtroActividad){
   const winRateMostrado = mostrarSpot ? c.win_rate_spot : c.win_rate;
   return `
     <div class="tarjeta ${sigueFacetaSwitch?'':'no-sigue'} ${esNuevoDescubrimiento?'nuevo-descubrimiento':''}" data-addr="${c.address}" data-abre-modal="1">
-      ${switchHtml}
+      ${switchHtml}${borrarHtml}
       <div class="cabecera-tarjeta">
         ${avatar}
         <div class="id-wrap">
@@ -745,6 +748,23 @@ function render(){
     <div class="page-panel ${paginaActiva==='posiciones'?'':'oculto'}" data-pagina="posiciones">${seguro(renderPaginaPosiciones,'posiciones de seguimiento')}</div>
     <div class="page-panel ${paginaActiva==='mias'?'':'oculto'}" data-pagina="mias">${seguro(renderPaginaMias,'posiciones abiertas')}</div>
     <div class="page-panel ${paginaActiva==='stats'?'':'oculto'}" data-pagina="stats">${seguro(renderPaginaStats,'estadísticas')}</div>`;
+
+  root.querySelectorAll('.btn-borrar-candidato').forEach(btn=>{
+    btn.onclick = async (ev)=>{
+      ev.stopPropagation();
+      const addr = btn.dataset.addr;
+      if(!confirm(`¿Quitar a ${btn.dataset.planta} de la lista del todo? Esto no se puede deshacer.`)) return;
+      btn.disabled = true;
+      try{
+        await apiEnviar('DELETE', `/candidatos/${addr}`);
+        candidatos = candidatos.filter(c=>c.address!==addr);
+        render();
+      }catch(e){
+        console.error('fallo al borrar candidato', e);
+        btn.disabled = false;
+      }
+    };
+  });
 
   root.querySelectorAll('.sw').forEach(btn=>{
     btn.onclick = async (ev)=>{

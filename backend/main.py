@@ -49,6 +49,19 @@ def listar_candidatos(x_api_key: str | None = Header(default=None)):
     return [db.fila_a_candidato(f) for f in filas]
 
 
+@app.delete("/candidatos/{addr}")
+def borrar_candidato(addr: str, x_api_key: str | None = Header(default=None)):
+    """Quitar un candidato de la lista del todo -- para limpiar entradas sin
+    sentido (cuentas vacías, pruebas) a mano, sin esperar a que el ciclo de
+    permanencia decida borrarlo solo."""
+    comprobar_clave(x_api_key)
+    conn = db.conectar()
+    conn.execute("DELETE FROM candidatos WHERE address=?", (addr,))
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 class SeguirBody(BaseModel):
     # se puede seguir/dejar de seguir trading y spot por separado -- cada uno
     # es opcional, solo se toca el que venga informado
