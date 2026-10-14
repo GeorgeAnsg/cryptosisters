@@ -403,6 +403,7 @@ function renderPaginaSeguimiento(){
     <div class="filtro-pills">${filtros.map(([v,l])=>
       `<button class="filtro-pill ${filtroActividad===v?'activo':''}" data-filtro="${v}">${l}</button>`).join('')}</div>
     <button class="filtro-pill" data-orden="1" title="Cambiar orden">Puntuación ${ordenAsc?'▲':'▼'}</button>
+    <button class="filtro-pill" data-forzar-descubrimiento="1" title="Recalcula ya a todo el mundo no seguido, en vez de esperar al ciclo semanal">↻ Recalcular ahora</button>
   </div>`;
 
   // solo trading o solo spot -- nunca mezclados en la misma vista; las
@@ -792,6 +793,22 @@ function render(){
     btn.onclick = ()=>{
       ordenAsc = !ordenAsc;
       render();
+    };
+  });
+
+  root.querySelectorAll('[data-forzar-descubrimiento]').forEach(btn=>{
+    btn.onclick = async ()=>{
+      btn.disabled = true;
+      const textoOriginal = btn.textContent;
+      btn.textContent = 'Recalculando…';
+      try{
+        await apiEnviar('POST', '/admin/forzar_descubrimiento', {});
+        btn.textContent = 'Lanzado, tardará unos minutos';
+      }catch(e){
+        console.error('fallo al forzar el descubrimiento', e);
+        btn.textContent = 'Error, mira la consola';
+      }
+      setTimeout(()=>{ btn.disabled = false; btn.textContent = textoOriginal; }, 8000);
     };
   });
 

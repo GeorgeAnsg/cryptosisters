@@ -217,6 +217,26 @@ def precio_endpoint(coin: str, tipo: str = "trading", x_api_key: str | None = He
     return {"precio": hyperliquid.precio_actual(coin, tipo)}
 
 
+@app.post("/admin/forzar_descubrimiento")
+def forzar_descubrimiento(x_api_key: str | None = Header(default=None)):
+    """Lanza el ciclo de descubrimiento/desestimiento ahora mismo, sin
+    esperar al ciclo semanal -- util para que un cambio en los umbrales de
+    puntuacion (p.ej. el filtro de inactividad) se aplique a quien ya esta
+    en la lista sin esperar hasta una semana. Se ejecuta en un hilo aparte
+    porque tarda (pide el año completo de varios traders); la llamada
+    responde al momento."""
+    comprobar_clave(x_api_key)
+
+    def lanzar():
+        descubrimiento.descubrir_candidatos()
+        conn = db.conectar()
+        db.meta_set(conn, "ultimo_descubrimiento", str(time.time()))
+        conn.close()
+
+    threading.Thread(target=lanzar, daemon=True).start()
+    return {"ok": True, "mensaje": "lanzado en segundo plano, tardará unos minutos"}
+
+
 @app.get("/salud")
 def salud():
     return {"ok": True}
