@@ -60,16 +60,34 @@ def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, prec
     return datos, candidato
 
 
-def refrescar_uno(conn, addr, spot_nombres, idx_por_nombre, precios):
-    datos, candidato = actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios)
-    fila = conn.execute("SELECT sigue_trading, sigue_spot FROM candidatos WHERE address=?", (addr,)).fetchone()
+def refrescar_uno(conn, addr, idx_por_nombre, precios):
+    """El ciclo de 5 minutos: SOLO estado en vivo (2 llamadas baratas), para
+    detectar una posicion nueva o un cambio lo antes posible. El backtest
+    completo (caro, pide un año de fills) no hace falta repetirlo cada 5
+    minutos -- eso lo hace ciclo_backtest_diario, una vez al dia."""
+    posiciones, holdings = hyperliquid.posicion_y_holdings_de(addr, idx_por_nombre, precios)
+    conn.execute(
+        "UPDATE candidatos SET posicion_actual=?, holdings_spot=? WHERE address=?",
+        (json.dumps(posiciones, ensure_ascii=False), json.dumps(holdings, ensure_ascii=False), addr),
+    )
+    fila = conn.execute("SELECT sigue_trading, sigue_spot, puntuacion, win_rate, profit_factor, cuenta FROM candidatos WHERE address=?", (addr,)).fetchone()
+    candidato = {"cuenta": fila["cuenta"], "puntuacion": fila["puntuacion"], "win_rate": fila["win_rate"], "profit_factor": fila["profit_factor"]} if fila else {}
     # solo se avisa de "oportunidad nueva" en la faceta que de verdad se
     # sigue -- si solo se sigue su trading, no tiene sentido recibir avisos
     # de que ha comprado algo en spot, y viceversa
-    posicion_para_alertas = datos["posicion_actual"] if (fila and fila["sigue_trading"]) else []
-    holdings_para_alertas = datos["holdings_spot"] if (fila and fila["sigue_spot"]) else []
+    posicion_para_alertas = posiciones if (fila and fila["sigue_trading"]) else []
+    holdings_para_alertas = holdings if (fila and fila["sigue_spot"]) else []
     detectar_alertas(conn, addr, posicion_para_alertas, holdings_para_alertas, candidato)
-    avisar_posiciones_propias(conn, addr, datos["posicion_actual"], datos["holdings_spot"], candidato)
+    avisar_posiciones_propias(conn, addr, posiciones, holdings, candidato)
+
+
+def refrescar_uno_backtest(conn, addr, spot_nombres, idx_por_nombre, precios):
+    """El backtest completo (caro: un año de fills paginado) -- antes corria
+    cada 5 minutos para todo el mundo que se sigue, lo cual era pedir un año
+    entero de historial constantemente para una puntuacion que no cambia de
+    un momento a otro. Ahora solo lo lanza ciclo_backtest_diario, una vez al
+    dia por trader seguido."""
+    actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios)
 
 
 def refrescar_solo_posicion_propia(conn, addr, idx_por_nombre, precios):
@@ -83,10 +101,8 @@ def refrescar_solo_posicion_propia(conn, addr, idx_por_nombre, precios):
     que necesita avisar_posiciones_propias. Sin detectar_alertas tampoco: no
     tiene sentido avisar de 'oportunidad nueva' de alguien que ya no se esta
     vigilando para eso."""
-    posiciones = hyperliquid.posicion_actual_de(addr)
-    time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
-    holdings = hyperliquid.holdings_spot_de(addr, idx_por_nombre, precios)
-    fila = conn.execute("SELECT puntuacion, win_rate FROM candidatos WHERE address=?", (addr,)).fetchone()
+    posiciones, holdings = hyperliquid.posicion_y_holdings_de(addr, idx_por_nombre, precios)
+    fila = conn.execute("SELECT puntuacion, win_rate, profit_factor FROM candidatos WHERE address=?", (addr,)).fetchone()
     candidato = {"puntuacion": fila["puntuacion"] if fila else None, "win_rate": fila["win_rate"] if fila else None, "profit_factor": fila["profit_factor"] if fila else None}
     avisar_posiciones_propias(conn, addr, posiciones, holdings, candidato)
 
@@ -250,7 +266,7 @@ def ciclo_refresco():
                 precios = hyperliquid.fetch_json({"type": "allMids"})
                 for addr in siguiendo:
                     try:
-                        refrescar_uno(conn, addr, spot_nombres, idx_por_nombre, precios)
+                        refrescar_uno(conn, addr, idx_por_nombre, precios)
                         conn.commit()
                     except Exception:
                         print(f"fallo refrescando {addr}:")
@@ -269,6 +285,43 @@ def ciclo_refresco():
         time.sleep(INTERVALO_SEGUNDOS)
 
 
+INTERVALO_BACKTEST_SEGUNDOS = 24 * 60 * 60  # el backtest de 1 año (caro) solo hace falta repetirlo una vez al dia por trader seguido
+
+
+def ciclo_backtest_diario():
+    # igual que ciclo_descubrimiento: un reinicio del proceso no debe
+    # relanzar el backtest caro de todo el mundo de golpe si ya se hizo hoy
+    conn = db.conectar()
+    ultima = db.meta_get(conn, "ultimo_backtest_diario")
+    conn.close()
+    if ultima:
+        falta = INTERVALO_BACKTEST_SEGUNDOS - (time.time() - float(ultima))
+        if falta > 0:
+            time.sleep(falta)
+
+    while True:
+        try:
+            conn = db.conectar()
+            siguiendo = [r["address"] for r in conn.execute("SELECT address FROM candidatos WHERE siguiendo=1")]
+            if siguiendo:
+                spot_nombres = hyperliquid.cargar_spot_meta()
+                idx_por_nombre = {v: k[1:] for k, v in spot_nombres.items()}
+                precios = hyperliquid.fetch_json({"type": "allMids"})
+                for addr in siguiendo:
+                    try:
+                        refrescar_uno_backtest(conn, addr, spot_nombres, idx_por_nombre, precios)
+                        conn.commit()
+                    except Exception:
+                        print(f"fallo en el backtest diario de {addr}:")
+                        traceback.print_exc()
+            db.meta_set(conn, "ultimo_backtest_diario", str(time.time()))
+            conn.close()
+        except Exception:
+            print("fallo en el ciclo de backtest diario:")
+            traceback.print_exc()
+        time.sleep(INTERVALO_BACKTEST_SEGUNDOS)
+
+
 def arrancar_en_segundo_plano():
-    hilo = threading.Thread(target=ciclo_refresco, daemon=True)
-    hilo.start()
+    threading.Thread(target=ciclo_refresco, daemon=True).start()
+    threading.Thread(target=ciclo_backtest_diario, daemon=True).start()

@@ -173,6 +173,20 @@ def holdings_spot_de(address, idx_por_nombre, precios):
     return holdings
 
 
+def posicion_y_holdings_de(address, idx_por_nombre, precios):
+    """La parte barata de datos_de_trader (2 llamadas en vivo, sin pedir el
+    año de fills) -- lo unico que hace falta para detectar una posicion
+    nueva o un cambio, que es lo que de verdad necesita mirarse cada 5
+    minutos. El backtest completo (obtener_fills + puntuacion) no cambia de
+    un momento a otro, no hace falta repetirlo tan a menudo (ver
+    refresher.ciclo_backtest_diario)."""
+    posiciones = posicion_actual_de(address)
+    time.sleep(SLEEP_ENTRE_LLAMADAS)
+    holdings = holdings_spot_de(address, idx_por_nombre, precios)
+    time.sleep(SLEEP_ENTRE_LLAMADAS)
+    return posiciones, holdings
+
+
 def datos_de_trader(address, spot_nombres, idx_por_nombre, precios):
     """Todo lo que necesitamos de un trader en una pasada: fills, posicion
     actual y holdings spot -- lo que antes escribia actualizar_posiciones.py
