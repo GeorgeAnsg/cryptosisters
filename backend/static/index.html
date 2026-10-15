@@ -144,10 +144,13 @@ tr.op-hijo.oculto{display:none}
 .gb-fila{display:grid;grid-template-columns:110px 1fr 130px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
 .gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gb-pista{display:flex;height:14px;position:relative}
-.gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;background:rgba(255,255,255,.2)}
-.gb-mitad{width:50%;display:flex}
-.gb-izq{justify-content:flex-end}
-.gb-barra{height:100%;border-radius:3px;background:var(--fg-muted)}
+.gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:#000}
+.gb-mitad{width:50%;display:flex;height:100%;background:#242424}
+.gb-izq{justify-content:flex-end;border-radius:3px 0 0 3px}
+.gb-der{border-radius:0 3px 3px 0}
+.gb-barra{height:100%;background:var(--fg-muted)}
+.gb-der .gb-barra{border-radius:0 3px 3px 0}
+.gb-izq .gb-barra{border-radius:3px 0 0 3px}
 .gb-barra.pos{background:var(--ok)}
 .gb-barra.neg{background:var(--bad)}
 .gb-valor{text-align:right;font-weight:700;font-family:var(--font-mono)}
