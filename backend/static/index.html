@@ -1256,15 +1256,21 @@ function abrirModal(c, faceta){
     const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
     const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
     const esEntrada = o.accion === 'Abre';
-    const notional = o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
-    const verbo = o.lado === 'Spot'
+    const esSpot = o.lado === 'Spot';
+    // en spot: tamaño en dolares, en lugar de unidades de la moneda (dificiles
+    // de interpretar) -- compra suma a lo invertido, venta resta
+    const tamañoCelda = esSpot
+      ? (o.notional!=null ? `${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—')
+      : o.sz;
+    const notional = esSpot ? '—' : (o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—');
+    const verbo = esSpot
       ? (esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'))
       : (esEntrada ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
     return `
       <tr class="op-hijo oculto" data-hijo-de="${bloqueId}">
         <td>${verbo}</td>
         <td></td>
-        <td>${o.sz}</td>
+        <td>${tamañoCelda}</td>
         <td>$${o.px}</td>
         <td>${notional}</td>
         <td>${fechaLocal(o.ts)}</td>
@@ -1320,14 +1326,29 @@ function abrirModal(c, faceta){
 
       // en spot da igual el signo o si sigue abierta (eso ya lo dice el
       // badge de estado) -- lo unico que importa es cuanto dinero hay
-      // metido ahi, en dolares, no en unidades de la moneda
+      // metido ahi, en dolares, no en unidades de la moneda.
+      // si sigue abierta: NUNCA restar los $ recibidos en ventas al total
+      // comprado -- si vendio una parte ya revalorizada, los $ recibidos
+      // por esa parte pueden ser MAYORES que lo que costo toda la posicion,
+      // y el resultado se iria a negativo aunque la posicion siga siendo
+      // positiva en cartera. El coste base en vivo (mismo dato que la tabla
+      // "Cartera actual") es el numero correcto, siempre.
       let tamañoCabecera, tituloTamaño;
       if(b.lado === 'Spot'){
-        const notionalAbre = b.filas.filter(o=>o.accion==='Abre').reduce((a,o)=>a+(o.notional||0),0);
-        const notionalCierra = b.filas.filter(o=>o.accion==='Cierra').reduce((a,o)=>a+(o.notional||0),0);
-        const dolares = b.abierta ? notionalAbre - notionalCierra : notionalAbre;
-        tamañoCabecera = `$${Math.round(dolares).toLocaleString('es-ES')}`;
-        tituloTamaño = b.abierta ? 'Dinero invertido que sigue en esta moneda, solo contando lo que vemos aquí' : 'Total invertido en esta moneda a lo largo de todo el historial visible';
+        if(b.abierta){
+          const h = holdingsSpot.find(x=>x.coin===nombreMonedaBase(b.coin));
+          if(h && h.costeBase != null){
+            tamañoCabecera = `$${Math.round(h.costeBase).toLocaleString('es-ES')}`;
+            tituloTamaño = 'Coste base en vivo de lo que tiene ahora en cartera (mismo dato que "Cartera actual")';
+          } else {
+            tamañoCabecera = 'sin dato';
+            tituloTamaño = 'Hyperliquid no tiene registrado un coste base en vivo para esto';
+          }
+        } else {
+          const notionalAbre = b.filas.filter(o=>o.accion==='Abre').reduce((a,o)=>a+(o.notional||0),0);
+          tamañoCabecera = `$${Math.round(notionalAbre).toLocaleString('es-ES')}`;
+          tituloTamaño = 'Total invertido en esta moneda a lo largo de todo el historial visible';
+        }
       } else {
         tamañoCabecera = b.abierta ? `${b.neto>=0?'+':''}${b.neto} (cambio visible)` : `${b.totalAbierto} (tamaño operado)`;
         tituloTamaño = b.abierta?'Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí':'Ya está cerrada del todo -- el neto siempre acaba en 0, así que aquí se muestra lo que se llegó a invertir en total para abrirla';
