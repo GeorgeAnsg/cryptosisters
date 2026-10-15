@@ -586,32 +586,40 @@ function renderPaginaPosiciones(){
     return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
-  // consenso reciente: varios traders independientes han abierto o añadido
-  // a la MISMA moneda+direccion en poco tiempo -- mas señal que uno solo, y
-  // mas interesante que "quien tiene abierto esto desde hace meses". Solo
-  // aperturas/añadidos (lo unico que detectar_alertas registra para trading
-  // -- cerrar no dispara alerta, ver refresher.py), nunca cierres.
+  // consenso reciente: varios traders independientes han hecho lo MISMO
+  // (abrir/añadir, o cerrar del todo) en la misma moneda+direccion en poco
+  // tiempo -- mas señal que uno solo, y mas interesante que "quien tiene
+  // esto abierto desde hace meses". Dos grupos separados porque "3 estan
+  // entrando" y "3 estan saliendo" son señales opuestas, no se mezclan.
   const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
-  const gruposConsenso = {};
   const ahoraMs = Date.now();
-  for(const it of trading){
-    if(it.ts == null || ahoraMs - it.ts > VENTANA_CONSENSO_MS) continue;
-    const clave = `${it.coin}|${it.lado}`;
-    (gruposConsenso[clave] ??= []).push(it.c);
-  }
-  const consensoHtml = Object.entries(gruposConsenso)
-    .filter(([,cs])=>cs.length>=2)
-    .sort(([,a],[,b])=>b.length-a.length)
-    .map(([clave,cs])=>{
-      const [coin, lado] = clave.split('|');
-      const flecha = lado==='Long'?'↑':'↓';
-      const nombres = cs.map(c=>filaPlanta(c, 'trading')).join(' ');
-      return `<div class="consenso-fila">
-        <b>${cs.length} traders en ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
-        <span style="color:var(--fg-muted);font-size:.76rem"> (últimas 72h)</span>
-        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
-      </div>`;
-    }).join('');
+  const agrupar = (items, extraerClave, extraerCandidato)=>{
+    const grupos = {};
+    for(const it of items){
+      const clave = extraerClave(it);
+      if(!clave) continue;
+      (grupos[clave] ??= []).push(extraerCandidato(it));
+    }
+    return Object.entries(grupos).filter(([,cs])=>cs.length>=2).sort(([,a],[,b])=>b.length-a.length);
+  };
+  const filaConsenso = (etiqueta, coin, lado, cs)=>{
+    const flecha = lado==='Long'?'↑':'↓';
+    const nombres = cs.map(c=>filaPlanta(c, 'trading')).join(' ');
+    return `<div class="consenso-fila">
+      <b>${cs.length} traders ${etiqueta} ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
+      <span style="color:var(--fg-muted);font-size:.76rem"> (últimas 72h)</span>
+      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
+    </div>`;
+  };
+  const entrando = agrupar(
+    trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
+    it=>`${it.coin}|${it.lado}`, it=>it.c,
+  ).map(([clave,cs])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('en', coin, lado, cs); });
+  const cerrando = agrupar(
+    Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
+    a=>`${a.coin}|${a.lado}`, a=>candidatos.find(c=>c.address===a.addr),
+  ).filter(([,cs])=>cs.every(c=>c)).map(([clave,cs])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('cerrando', coin, lado, cs); });
+  const consensoHtml = [...entrando, ...cerrando].join('');
 
   return `
     ${consensoHtml?`<div class="seccion-titulo">Consenso reciente</div><div class="consenso-caja">${consensoHtml}</div>`:''}

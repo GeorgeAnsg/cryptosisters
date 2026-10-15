@@ -89,10 +89,11 @@ def refrescar_uno(conn, addr, idx_por_nombre, precios):
     # solo se avisa de "oportunidad nueva" en la faceta que de verdad se
     # sigue -- si solo se sigue su trading, no tiene sentido recibir avisos
     # de que ha comprado algo en spot, y viceversa
+    sigue_trading = bool(fila and fila["sigue_trading"])
     sigue_spot = bool(fila and fila["sigue_spot"])
-    posicion_para_alertas = posiciones if (fila and fila["sigue_trading"]) else []
+    posicion_para_alertas = posiciones if sigue_trading else []
     holdings_para_alertas = holdings if sigue_spot else []
-    detectar_alertas(conn, addr, posicion_para_alertas, holdings_para_alertas, candidato, idx_por_nombre, precios, sigue_spot)
+    detectar_alertas(conn, addr, posicion_para_alertas, holdings_para_alertas, candidato, idx_por_nombre, precios, sigue_trading, sigue_spot)
     avisar_posiciones_propias(conn, addr, posiciones, holdings, candidato)
 
 
@@ -153,20 +154,24 @@ def cabecera(conn, addr, candidato, faceta):
     )
 
 
-def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_por_nombre, precios, sigue_spot=True):
+def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_por_nombre, precios, sigue_trading=True, sigue_spot=True):
     """Compara lo que hay abierto AHORA contra lo que ya conociamos (guardado
     en 'alertas'): si la clave coin+lado no existia, es una posicion nueva;
-    si existia con otro tamaño, es que ha añadido o reducido -- de eso solo
-    avisamos cuando AUMENTA (reducir/cerrar no lo pidio el usuario). En
-    trading reducir no avisa (el usuario no lo pidio); en spot SI, porque
-    vender del todo (eliminado) o en parte (reducido) es informacion util
-    sobre ese trader -- y holdings_spot_de() deja de incluir una moneda en
-    cuanto baja a ~0, asi que un "eliminado" nunca pasaria por el bucle de
-    abajo: hay que detectarlo aparte, comparando contra lo que ya sabiamos."""
+    si existia con otro tamaño, es que ha añadido o reducido -- de eso se
+    avisa en los dos sentidos (antes solo se avisaba de aumentos; una
+    reduccion parcial tambien es informacion util sobre ese trader). Tanto
+    posicion_actual como holdings_spot dejan de incluir del todo una moneda
+    en cuanto se cierra/vende por completo (misma logica en
+    hyperliquid.holdings_spot_de y posicion_actual_de), asi que un cierre
+    TOTAL nunca pasaria por los bucles de abajo -- hay que detectarlo aparte,
+    comparando contra lo que la tabla alertas ya sabia que habia."""
     avisos = []
     ahora = int(time.time() * 1000)
 
-    def precio_de(coin_crudo):
+    def precio_de(coin_crudo, tipo="spot"):
+        if tipo == "trading":
+            p = precios.get(coin_crudo)
+            return float(p) if p is not None else None
         idx = idx_por_nombre.get(coin_crudo)
         p = precios.get(f"@{idx}") if idx is not None else None
         return float(p) if p is not None else None
@@ -200,10 +205,31 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             delta = (p["tamaño"] - antes) * p["entryPx"]
+            signo = "+" if delta >= 0 else "-"
             avisos.append((
-                f"🔵 <b>{p['lado']} en {coin} {flecha} (+${delta:,.0f})</b>\n"
+                f"🔵 <b>{p['lado']} en {coin} {flecha} ({signo}${abs(delta):,.0f})</b>\n"
                 f"Precio de entrada: ${p['entryPx']}\n"
                 f"% de su cartera: {pct}\n\n"
+                f"{cabecera(conn, addr, candidato, 'trading')}",
+                None,
+            ))
+
+    if sigue_trading:
+        # cierre total: posicion_actual_de() ya no incluye una moneda+lado en
+        # cuanto se cierra del todo, asi que no pasa por el bucle de arriba
+        posiciones_actuales = {(p["coin"], p["lado"]) for p in posicion_actual}
+        previas = conn.execute("SELECT id, coin, lado, tamaño, precio FROM alertas WHERE addr=? AND tipo='trading' AND tamaño>0", (addr,)).fetchall()
+        for prev in previas:
+            if (prev["coin"], prev["lado"]) in posiciones_actuales:
+                continue
+            coin = hyperliquid.etiqueta_moneda(prev["coin"])
+            flecha = "↑" if prev["lado"] == "Long" else "↓"
+            precio_cierre = precio_de(prev["coin"], "trading") or prev["precio"]
+            invertido_cerrado = prev["tamaño"] * precio_cierre if precio_cierre is not None else None
+            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, detectado=? WHERE id=?", (prev["tamaño"], ahora, prev["id"]))
+            avisos.append((
+                f"⚪ <b>{prev['lado']} en {coin} {flecha} (cerrada)</b>\n"
+                f"{f'$ cerrado: ${invertido_cerrado:,.0f}' if invertido_cerrado is not None else 'Sin dato de precio para calcular lo cerrado'}\n\n"
                 f"{cabecera(conn, addr, candidato, 'trading')}",
                 None,
             ))
