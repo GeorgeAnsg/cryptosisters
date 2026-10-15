@@ -129,7 +129,10 @@ def refrescar_solo_posicion_propia(conn, addr, idx_por_nombre, precios):
 def cabecera(conn, addr, candidato, faceta):
     """faceta: 'trading' o 'spot' -- cada una tiene su propia puntuacion/win
     rate/profit factor/retorno, nunca se mezclan (antes siempre se mostraban
-    los datos de trading aunque la alerta fuera de spot)."""
+    los datos de trading aunque la alerta fuera de spot). Va al FINAL del
+    mensaje: lo primero que se lee es la posicion en si (ver detectar_alertas),
+    esto es contexto de quien la abrio. Solo spot lleva etiqueta -- en trading
+    no hace falta, por descarte (si no pone SPOT, es trading)."""
     todas = [r[0] for r in conn.execute("SELECT address FROM candidatos").fetchall()]
     nombre = nombres.nombre_de(addr, todas)
     sufijo = "_spot" if faceta == "spot" else ""
@@ -141,8 +144,9 @@ def cabecera(conn, addr, candidato, faceta):
     wr = f"{win_rate*100:.0f}%" if win_rate is not None else "sin dato"
     pf_txt = f"{profit_factor:.2f}" if profit_factor is not None else ("sin dato" if puntuacion is None else "∞")
     ret_txt = f"{retorno:+.1f}%" if retorno is not None else "sin dato"
+    etiqueta = "SPOT\n" if faceta == "spot" else ""
     return (
-        f"{faceta.upper()}\n"
+        f"{etiqueta}"
         f"{nombre} - {rank}\n"
         f"WR: {wr} · Retorno: {ret_txt} · PF: {pf_txt}"
     )
@@ -174,24 +178,22 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
                 (id_, "trading", addr, p["coin"], p["lado"], p["tamaño"], p["entryPx"], "pendiente", ahora),
             )
             avisos.append((
-                f"🟢 Nueva posición\n{cabecera(conn, addr, candidato, 'trading')}\n\n"
-                f"<b>{p['lado']} en {coin} {flecha}</b>\n"
-                f"$ invertido: ${invertido:,.0f}\n"
-                f"% de su cartera: {pct}\n"
-                f"Entrada: ${p['entryPx']}\n"
-                f"{tpsl}",
+                f"🟢 <b>{p['lado']} en {coin} {flecha} (nueva posición)</b>\n"
+                f"Precio de entrada: ${p['entryPx']}\n"
+                f"$ invertido: ${invertido:,.0f} · % de su cartera: {pct}\n"
+                f"{tpsl}\n"
+                f"{cabecera(conn, addr, candidato, 'trading')}",
                 id_,
             ))
         elif abs(fila["tamaño"] - p["tamaño"]) > max(1e-9, p["tamaño"] * 0.001):
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
+            delta = (p["tamaño"] - antes) * p["entryPx"]
             avisos.append((
-                f"🔵 {cabecera(conn, addr, candidato, 'trading')}\n\n"
-                f"<b>{p['lado']} en {coin} {flecha}</b>\n"
-                f"Antes: ${antes * p['entryPx']:,.0f}\n"
-                f"Ahora: ${invertido:,.0f}\n"
-                f"% de su cartera: {pct}\n"
-                f"Entrada: ${p['entryPx']}",
+                f"🔵 <b>{p['lado']} en {coin} {flecha} (+${delta:,.0f})</b>\n"
+                f"Precio de entrada: ${p['entryPx']}\n"
+                f"% de su cartera: {pct}\n\n"
+                f"{cabecera(conn, addr, candidato, 'trading')}",
                 None,
             ))
 
