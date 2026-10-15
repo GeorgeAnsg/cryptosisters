@@ -1255,10 +1255,17 @@ function abrirModal(c, faceta){
   const filaHijo = (o, bloqueId)=>{
     const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
     const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
-    const notional = o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    // "Abre" (compra/añade) = dinero que SALE de tu bolsillo (invertido);
+    // lo contrario (vende/reduce/cierra) = dinero que ENTRA (recibido) --
+    // mismo numero (tamaño x precio), pero son conceptos opuestos y
+    // usar la misma palabra "invertido" para los dos confunde.
+    const esEntrada = o.accion === 'Abre';
+    const notional = o.notional!=null
+      ? `<span title="${esEntrada?'Invertido':'Recibido'}">${esEntrada?'':'+'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>`
+      : '—';
     const verbo = o.lado === 'Spot'
-      ? (o.accion === 'Abre' ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'))
-      : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
+      ? (esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'))
+      : (esEntrada ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
     return `
       <tr class="op-hijo oculto" data-hijo-de="${bloqueId}">
         <td>${verbo}</td>
@@ -1367,8 +1374,8 @@ function abrirModal(c, faceta){
               <th title="La moneda sobre la que operó">Moneda</th>
               <th title="En la cabecera: cambio neto SOLO dentro de este historial (no el tamaño real). En cada movimiento: lo añadido o reducido en ese momento">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
-              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Invertido</th>
-              <th title="Fecha y hora UTC. En la cabecera, fecha del último movimiento de esa posición">Fecha</th>
+              <th title="Tamaño × precio. Si abre/añade: lo invertido (sale de tu bolsillo). Si reduce/cierra: lo recibido (entra en tu bolsillo) -- mismo cálculo, sentido contrario">Invertido / Recibido</th>
+              <th title="Fecha y hora real de la operación (hora local). En la cabecera, fecha del último movimiento de esa posición">Fecha</th>
               <th title="Ganancia o pérdida ya realizada; vacío si la posición seguía abierta">Resultado</th>
             </tr></thead>
             <tbody>${tradingTablaHtml}</tbody>
@@ -1393,8 +1400,8 @@ function abrirModal(c, faceta){
               <th title="La moneda sobre la que operó">Moneda</th>
               <th title="En la cabecera: cambio neto SOLO dentro de este historial. En cada movimiento: lo comprado o vendido en ese momento">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
-              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Invertido</th>
-              <th title="Fecha y hora UTC">Fecha</th>
+              <th title="Tamaño × precio. Si compra: lo invertido (sale de tu bolsillo). Si vende/cierra: lo recibido (entra en tu bolsillo) -- mismo cálculo, sentido contrario">Invertido / Recibido</th>
+              <th title="Fecha y hora real de la operación (hora local)">Fecha</th>
               <th title="Ganancia o pérdida ya realizada en ventas; vacío si es una compra que sigue en cartera">Resultado</th>
             </tr></thead>
             <tbody>${spotMovimientosHtml}</tbody>
