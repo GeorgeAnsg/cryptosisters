@@ -50,7 +50,6 @@ h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 
 .sub-tab.activo{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .sub-panel.oculto{display:none}
 table.ops{background:var(--panel);border-radius:16px;overflow:hidden;box-shadow:var(--shadow)}
-table.ops td,table.ops th{padding:11px 14px}
 .pf-trader{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-family:var(--font-display);font-weight:700}
 .pf-trader .avatar{width:26px;height:26px;font-size:.74rem}
 
@@ -103,7 +102,7 @@ table.ops.oculto,.panel.oculto{display:none}
 .modal-cerrar{margin-left:auto;background:none;border:none;font-size:1.3rem;color:var(--fg-muted);cursor:pointer;line-height:1;padding:4px}
 .modal-lista{overflow:auto;padding:0 22px 22px}
 table.ops{border-collapse:collapse;width:100%;font-size:.78rem}
-table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:10px 20px;border-bottom:1px solid var(--border);cursor:help}
+table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:20px;border-bottom:1px solid var(--border);cursor:help}
 table.ops td{padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap}
 table.ops tr:last-child td{border-bottom:none}
 .op-lado{font-weight:700;padding:3px 9px;border-radius:99px;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em;cursor:help}
@@ -1312,7 +1311,7 @@ function abrirModal(c, faceta){
         const pnlVivo = pnlEnVivoPerp(b.coin, b.lado);
         if(pnlVivo != null){
           const clase = pnlVivo > 0 ? 'pos' : (pnlVivo < 0 ? 'neg' : '');
-          pnlHtml = `<span class="op-pnl ${clase}" title="Lo que gana o pierde AHORA MISMO si cerrara ya, dato en vivo">${pnlVivo>0?'+':''}$${pnlVivo.toLocaleString('es-ES',{maximumFractionDigits:0})} (sin realizar)</span>`;
+          pnlHtml = `<span class="op-pnl ${clase}" title="Lo que gana o pierde AHORA MISMO si cerrara ya, dato en vivo">${pnlVivo>0?'+':''}$${pnlVivo.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>`;
         } else {
           pnlHtml = `<span class="op-pnl" title="No tenemos coste base en vivo para calcular cuánto gana o pierde ahora mismo">— (sin dato en vivo)</span>`;
         }
