@@ -137,8 +137,10 @@ tr.op-hijo.oculto{display:none}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
 .gb-leyenda{font-size:.76rem;color:var(--fg-muted);margin:-4px 2px 12px}
 .grafico-barras{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:18px}
-.consenso-caja{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:22px;display:flex;flex-direction:column;gap:16px}
-.consenso-fila:not(:last-child){padding-bottom:16px;border-bottom:1px solid var(--border)}
+.consenso-caja{background:#000;color:#fff;border-radius:16px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:22px;display:flex;flex-direction:column;gap:16px}
+.consenso-fila{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.consenso-fila:not(:last-child){padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.15)}
+.consenso-fila .pf-trader{color:#fff}
 .gb-fila{display:grid;grid-template-columns:110px 1fr 64px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
 .gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gb-pista{display:flex;height:14px;position:relative}
@@ -593,32 +595,35 @@ function renderPaginaPosiciones(){
   // entrando" y "3 estan saliendo" son señales opuestas, no se mezclan.
   const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
   const ahoraMs = Date.now();
-  const agrupar = (items, extraerClave, extraerCandidato)=>{
+  const agrupar = (items, extraerClave, extraerItem)=>{
     const grupos = {};
     for(const it of items){
       const clave = extraerClave(it);
       if(!clave) continue;
-      (grupos[clave] ??= []).push(extraerCandidato(it));
+      (grupos[clave] ??= []).push(extraerItem(it));
     }
-    return Object.entries(grupos).filter(([,cs])=>cs.length>=2).sort(([,a],[,b])=>b.length-a.length);
+    return Object.entries(grupos).filter(([,is])=>is.length>=2).sort(([,a],[,b])=>b.length-a.length);
   };
-  const filaConsenso = (etiqueta, coin, lado, cs)=>{
+  const dolaresTxt = (d)=> d!=null ? `($${d.toLocaleString('en-US',{maximumFractionDigits:0})})` : '';
+  const filaConsenso = (etiqueta, coin, lado, items)=>{
     const flecha = lado==='Long'?'↑':'↓';
-    const nombres = cs.map(c=>filaPlanta(c, 'trading')).join(' ');
+    const nombres = items.map(({c,dolares})=>
+      `<span style="display:inline-flex;align-items:center;gap:4px">${filaPlanta(c, 'trading')}<span style="font-size:.74rem;opacity:.85">${dolaresTxt(dolares)}</span></span>`
+    ).join('');
     return `<div class="consenso-fila">
-      <b>${cs.length} traders ${etiqueta} ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
-      <span style="color:var(--fg-muted);font-size:.76rem"> (últimas 72h)</span>
-      <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
+      <div><b>${items.length} traders ${etiqueta} ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
+      <span style="opacity:.7;font-size:.76rem"> (últimas 72h)</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
     </div>`;
   };
   const entrando = agrupar(
     trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
-    it=>`${it.coin}|${it.lado}`, it=>it.c,
-  ).map(([clave,cs])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('en', coin, lado, cs); });
+    it=>`${it.coin}|${it.lado}`, it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null}),
+  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('en', coin, lado, items); });
   const cerrando = agrupar(
     Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
-    a=>`${a.coin}|${a.lado}`, a=>candidatos.find(c=>c.address===a.addr),
-  ).filter(([,cs])=>cs.every(c=>c)).map(([clave,cs])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('cerrando', coin, lado, cs); });
+    a=>`${a.coin}|${a.lado}`, a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null}),
+  ).filter(([,items])=>items.every(({c})=>c)).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('cerrando', coin, lado, items); });
   const consensoHtml = [...entrando, ...cerrando].join('');
 
   return `
