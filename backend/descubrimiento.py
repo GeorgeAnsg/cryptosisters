@@ -15,6 +15,7 @@ import urllib.request
 
 import db
 import hyperliquid
+import nombres
 import refresher
 import telegram
 
@@ -105,14 +106,6 @@ def revisar_desestimados(conn):
             desestimados.append((c["address"], "spot", ps))
         conn.execute("UPDATE candidatos SET siguiendo=(sigue_trading OR sigue_spot) WHERE address=?", (c["address"],))
         conn.commit()
-
-    for addr, faceta, puntuacion in desestimados:
-        rank = f"{puntuacion}/100" if puntuacion is not None else "sin dato"
-        telegram.enviar(
-            f"🔻 Dejado de seguir en {faceta} automáticamente — {addr[:10]}...\n\n"
-            f"Ya no cumple el mínimo en esta faceta (puntuación: {rank}).\n"
-            f"Sigue visible en 'Seguimiento' por si quieres revisarlo o volver a seguirlo tú mismo."
-        )
     return desestimados
 
 
@@ -167,14 +160,6 @@ def revisar_requisitos_permanencia(conn, recien_desestimados):
         conn.execute("DELETE FROM candidatos WHERE address=?", (c["address"],))
         conn.commit()
         eliminados.append((c["address"], p, ps))
-
-    for addr, p, ps in eliminados:
-        rank = f"{p}/100" if p is not None else "sin dato"
-        rank_spot = f"{ps}/100" if ps is not None else "sin dato"
-        telegram.enviar(
-            f"🗑️ Eliminado de 'Seguimiento' — {addr[:10]}...\n\n"
-            f"Ya no cumple el mínimo para estar en la lista (puntuación trading: {rank}, spot: {rank_spot})."
-        )
     return eliminados
 
 
@@ -198,7 +183,7 @@ def descubrir_candidatos():
     precios = hyperliquid.fetch_json({"type": "allMids"})
 
     refrescar_no_seguidos(conn, spot_nombres, idx_por_nombre, precios)
-    revisar_requisitos_permanencia(conn, recien_desestimados)
+    eliminados = revisar_requisitos_permanencia(conn, recien_desestimados)
 
     try:
         direcciones_conocidas = {r["address"].lower() for r in conn.execute("SELECT address FROM candidatos")}
@@ -206,11 +191,13 @@ def descubrir_candidatos():
     except Exception:
         print("fallo descargando el leaderboard:")
         traceback.print_exc()
+        _enviar_resumen(conn, recien_desestimados, eliminados, [])
         conn.close()
         return []
 
     preseleccion = _preseleccion(filas, direcciones_conocidas)
     if not preseleccion:
+        _enviar_resumen(conn, recien_desestimados, eliminados, [])
         conn.close()
         return []
 
@@ -261,20 +248,34 @@ def descubrir_candidatos():
         descubiertos.append((addr, puntuacion, puntuacion_spot))
         time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
 
+    _enviar_resumen(conn, recien_desestimados, eliminados, descubiertos)
     conn.close()
-
-    for addr, puntuacion, puntuacion_spot in descubiertos:
-        rank = f"{puntuacion}/100" if puntuacion is not None else "sin dato"
-        rank_spot = f"{puntuacion_spot}/100" if puntuacion_spot is not None else "sin dato"
-        telegram.enviar(
-            f"🆕 Trader nuevo descubierto en el leaderboard\n\n"
-            f"{addr[:10]}...\n"
-            f"Puntuación trading: {rank}\n"
-            f"Puntuación spot: {rank_spot}\n\n"
-            f"Añadido a 'Seguimiento' sin seguirlo todavía -- revísalo tú."
-        )
-
     return descubiertos
+
+
+def _enviar_resumen(conn, desestimados, eliminados, descubiertos):
+    """Un solo aviso por ciclo (semanal) en vez de uno por trader -- antes
+    una semana movida podia mandar media docena de mensajes sueltos. Se
+    manda por Telegram Y se guarda en 'notificaciones' para el modal de la
+    campanita en la web; si no ha pasado nada en todo el ciclo (lo normal
+    la mayoria de semanas), no se manda ni se guarda nada."""
+    if not desestimados and not eliminados and not descubiertos:
+        return
+    todas = [r[0] for r in conn.execute("SELECT address FROM candidatos").fetchall()]
+    rank = lambda p: f"{p}/100" if p is not None else "sin dato"
+    bloques = []
+    if desestimados:
+        lineas = "\n".join(f"• {nombres.nombre_de(addr, todas)} — {faceta} ({rank(p)})" for addr, faceta, p in desestimados)
+        bloques.append(f"<b>Dejado de seguir ({len(desestimados)})</b>\n{lineas}")
+    if eliminados:
+        lineas = "\n".join(f"• {nombres.nombre_de(addr, todas)} — trading: {rank(p)} · spot: {rank(ps)}" for addr, p, ps in eliminados)
+        bloques.append(f"<b>Eliminados de la lista ({len(eliminados)})</b>\n{lineas}")
+    if descubiertos:
+        lineas = "\n".join(f"• {nombres.nombre_de(addr, todas)} — trading: {rank(p)} · spot: {rank(ps)}" for addr, p, ps in descubiertos)
+        bloques.append(f"<b>Nuevos descubiertos ({len(descubiertos)})</b>\n{lineas}")
+    texto = "📋 <b>Resumen semanal de Seguimiento</b>\n\n" + "\n\n".join(bloques)
+    telegram.enviar(texto)
+    db.crear_notificacion(conn, texto)
 
 
 def ciclo_descubrimiento():

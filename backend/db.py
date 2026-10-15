@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS mis_posiciones (
     fecha_apertura INTEGER, fecha_cierre INTEGER, pnl REAL, alerta_id TEXT,
     tamaño REAL, precio_entrada REAL, tamaño_trader_visto REAL
 );
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT, ts INTEGER, leida INTEGER DEFAULT 0
+);
 """
 
 CANDIDATO_JSON_FIELDS = ("posicion_actual", "holdings_spot", "operaciones_recientes")
@@ -89,6 +92,11 @@ def meta_get(conn, clave):
 
 def meta_set(conn, clave, valor):
     conn.execute("INSERT INTO meta (clave, valor) VALUES (?,?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor", (clave, valor))
+    conn.commit()
+
+
+def crear_notificacion(conn, texto):
+    conn.execute("INSERT INTO notificaciones (texto, ts) VALUES (?,?)", (texto, int(time.time() * 1000)))
     conn.commit()
 
 

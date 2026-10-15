@@ -38,6 +38,8 @@ h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 
 .gm-n{width:18px;flex:none;text-align:right;color:#9ca0ab;font-family:var(--font-mono);font-size:.72rem}
 
 .page-tabs{display:flex;gap:8px;margin-top:18px}
+.btn-campana{margin-left:auto;position:relative;width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--panel);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.btn-campana .alerta-tab{top:6px;right:6px}
 .page-tab{font:inherit;font-size:.86rem;font-weight:700;padding:9px 18px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
 .filtro-actividad{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:14px}
 .filtro-pills{display:flex;gap:6px}
@@ -169,6 +171,7 @@ tr.op-hijo.oculto{display:none}
     <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
     <button class="page-tab" data-pagina="seguimiento">Seguimiento</button>
     <button class="page-tab" data-pagina="stats">Estadísticas</button>
+    <button id="btn-notificaciones" class="btn-campana" title="Notificaciones">🔔<span class="alerta-tab" id="punto-notificaciones" style="display:none"></span></button>
   </div>
 </header>
 
@@ -179,6 +182,7 @@ tr.op-hijo.oculto{display:none}
 let candidatos = [];
 let alertas = {};
 let misPosiciones = {};
+let notificaciones = [];
 let expandidos = new Set(); // que flechas estan desplegadas -- sobrevive al sondeo periodico (cargarTodo+render cada 30s)
 
 // backend propio (ver carpeta backend/) -- mismo origen que esta pagina,
@@ -1101,7 +1105,38 @@ function actualizarBadgesTabs(){
   if(tabMias) tabMias.innerHTML = 'Mis posiciones';
   const tabSeguimiento = document.querySelector('.page-tab[data-pagina="seguimiento"]');
   if(tabSeguimiento) tabSeguimiento.innerHTML = 'Seguimiento' + (hayDescubrimientoNuevoDesdeUltimaVisita()?'<span class="alerta-tab" title="Hay un trader nuevo descubierto"></span>':'');
+
+  const puntoNotif = document.getElementById('punto-notificaciones');
+  if(puntoNotif) puntoNotif.style.display = notificaciones.some(n=>!n.leida) ? '' : 'none';
 }
+
+function abrirModalNotificaciones(){
+  const fondo = document.createElement('div');
+  fondo.className = 'modal-fondo';
+  const lista = notificaciones.length
+    ? notificaciones.map(n=>`<div style="padding:16px 0;border-bottom:1px solid var(--border);font-size:.86rem;line-height:1.5">
+        <div style="color:var(--fg-muted);font-size:.72rem;margin-bottom:6px">${fechaLocal(n.ts)}</div>
+        ${n.texto.replace(/\n/g,'<br>')}
+      </div>`).join('')
+    : '<div class="estado">Todavía no hay notificaciones.</div>';
+  fondo.innerHTML = `
+    <div class="modal" style="max-width:520px">
+      <div class="modal-cabecera">
+        <div class="addr">Notificaciones</div>
+        <button class="modal-cerrar" aria-label="Cerrar">×</button>
+      </div>
+      <div class="modal-lista">${lista}</div>
+    </div>`;
+  fondo.onclick = (ev)=>{ if(ev.target===fondo) document.body.removeChild(fondo); };
+  fondo.querySelector('.modal-cerrar').onclick = ()=> document.body.removeChild(fondo);
+  document.body.appendChild(fondo);
+  if(notificaciones.some(n=>!n.leida)){
+    notificaciones.forEach(n=> n.leida = 1);
+    actualizarBadgesTabs();
+    apiEnviar('POST', '/notificaciones/leidas', {}).catch(e=>console.error('fallo marcando notificaciones leidas', e));
+  }
+}
+document.getElementById('btn-notificaciones').onclick = abrirModalNotificaciones;
 
 document.querySelectorAll('.page-tab').forEach(btn=>{
   btn.onclick = ()=>{
@@ -1464,12 +1499,13 @@ function abrirModal(c, faceta){
 const INTERVALO_SONDEO_MS = 30000;
 
 async function cargarTodo(){
-  const [listaCandidatos, listaAlertas, listaMisPosiciones] = await Promise.all([
-    apiGet('/candidatos'), apiGet('/alertas'), apiGet('/mis_posiciones'),
+  const [listaCandidatos, listaAlertas, listaMisPosiciones, listaNotificaciones] = await Promise.all([
+    apiGet('/candidatos'), apiGet('/alertas'), apiGet('/mis_posiciones'), apiGet('/notificaciones'),
   ]);
   candidatos = listaCandidatos;
   alertas = {}; listaAlertas.forEach(a=>{ alertas[a.id] = a; });
   misPosiciones = {}; listaMisPosiciones.forEach(m=>{ misPosiciones[m.id] = m; });
+  notificaciones = listaNotificaciones;
 }
 
 async function iniciar(){

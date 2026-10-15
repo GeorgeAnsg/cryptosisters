@@ -108,6 +108,25 @@ def actualizar_alerta(id: str, body: EstadoBody, x_api_key: str | None = Header(
     return {"ok": True}
 
 
+@app.get("/notificaciones")
+def listar_notificaciones(x_api_key: str | None = Header(default=None)):
+    comprobar_clave(x_api_key)
+    conn = db.conectar()
+    filas = [dict(f) for f in conn.execute("SELECT * FROM notificaciones ORDER BY id DESC LIMIT 50").fetchall()]
+    conn.close()
+    return filas
+
+
+@app.post("/notificaciones/leidas")
+def marcar_notificaciones_leidas(x_api_key: str | None = Header(default=None)):
+    comprobar_clave(x_api_key)
+    conn = db.conectar()
+    conn.execute("UPDATE notificaciones SET leida=1 WHERE leida=0")
+    conn.commit()
+    conn.close()
+    return {"ok": True}
+
+
 @app.get("/mis_posiciones")
 def listar_mis_posiciones(x_api_key: str | None = Header(default=None)):
     comprobar_clave(x_api_key)
