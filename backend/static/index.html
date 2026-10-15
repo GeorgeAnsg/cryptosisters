@@ -143,14 +143,14 @@ tr.op-hijo.oculto{display:none}
 .consenso-fila .pf-trader{color:#fff}
 .gb-fila{display:grid;grid-template-columns:110px 1fr 130px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
 .gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gb-pista{display:flex;height:14px;position:relative}
-.gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:#000}
+.gb-pista{display:flex;height:9px;position:relative}
+.gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:#999}
 .gb-mitad{width:50%;display:flex;height:100%;background:#242424}
-.gb-izq{justify-content:flex-end;border-radius:3px 0 0 3px}
-.gb-der{border-radius:0 3px 3px 0}
+.gb-izq{justify-content:flex-end;border-radius:999px 0 0 999px}
+.gb-der{border-radius:0 999px 999px 0}
 .gb-barra{height:100%;background:var(--fg-muted)}
-.gb-der .gb-barra{border-radius:0 3px 3px 0}
-.gb-izq .gb-barra{border-radius:3px 0 0 3px}
+.gb-der .gb-barra{border-radius:0 999px 999px 0}
+.gb-izq .gb-barra{border-radius:999px 0 0 999px}
 .gb-barra.pos{background:var(--ok)}
 .gb-barra.neg{background:var(--bad)}
 .gb-valor{text-align:right;font-weight:700;font-family:var(--font-mono)}
@@ -782,7 +782,7 @@ async function cargarPnlVivoMisPosiciones(abiertas){
     const pnl = (precio - m.precio_entrada) * m.tamaño * signo;
     const invertido = m.precio_entrada * m.tamaño;
     const pct = invertido ? (pnl / invertido * 100) : null;
-    barras.push({etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
+    barras.push({coin: etiquetaMoneda(m.coin), lado: m.lado, etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
     const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
     ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase: pnl>0?'pos':(pnl<0?'neg':'')};
     if(celda){ // puede haber cambiado de pagina mientras se pedian los precios
@@ -808,8 +808,9 @@ function construirGraficoPosicionesAbiertas(barras){
       ? `<div class="gb-mitad gb-izq"></div><div class="gb-mitad gb-der"><div class="gb-barra ${clase}" style="width:${ancho}%"></div></div>`
       : `<div class="gb-mitad gb-izq"><div class="gb-barra ${clase}" style="width:${ancho}%;margin-left:auto"></div></div><div class="gb-mitad gb-der"></div>`;
     const valorTxt = `${pct>0?'+':''}${pct.toFixed(1)}% (${b.pnl>0?'+':''}$${b.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})})`;
+    const etiquetaHtml = b.lado ? `${b.coin} <span class="op-lado ${b.lado.toLowerCase()}">${b.lado}</span>` : b.etiqueta;
     return `<div class="gb-fila" title="${titulo}">
-      <div class="gb-etiqueta">${b.etiqueta}</div>
+      <div class="gb-etiqueta">${etiquetaHtml}</div>
       <div class="gb-pista">${barraHtml}</div>
       <div class="gb-valor ${clase}">${valorTxt}</div>
     </div>`;
