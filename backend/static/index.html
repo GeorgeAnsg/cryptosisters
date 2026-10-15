@@ -1,4 +1,4 @@
-<title>Seguimiento de traders</title>
+<title>Corvus 5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -157,7 +157,7 @@ tr.op-hijo.oculto{display:none}
 
 <div class="envoltorio">
 <header>
-  <h1>Seguimiento de traders</h1>
+  <h1>Corvus 5</h1>
   <div class="cabecera-negra">
     <div class="resumen-item"><span class="n" id="n-siguiendo">—</span><span class="l">Siguiendo</span></div>
     <div class="resumen-item"><span class="n" id="n-total">—</span><span class="l">Total</span></div>
@@ -169,7 +169,7 @@ tr.op-hijo.oculto{display:none}
   <div class="page-tabs">
     <button class="page-tab activo" data-pagina="mias">Mis posiciones</button>
     <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
-    <button class="page-tab" data-pagina="seguimiento">Seguimiento</button>
+    <button class="page-tab" data-pagina="seguimiento">Traders</button>
     <button class="page-tab" data-pagina="stats">Estadísticas</button>
     <button id="btn-notificaciones" class="btn-campana" title="Notificaciones">🔔<span class="alerta-tab" id="punto-notificaciones" style="display:none"></span></button>
   </div>
@@ -730,7 +730,6 @@ function construirGraficoPosicionesAbiertas(barras){
     return `<div class="gb-fila" title="${titulo}">
       <div class="gb-etiqueta">${b.etiqueta}</div>
       <div class="gb-pista">${barraHtml}</div>
-      <div class="gb-valor ${clase}">${pct>0?'+':''}${pct.toFixed(1)}%</div>
     </div>`;
   }).join('');
   return `<div class="seccion-titulo" style="margin-top:4px">Tus posiciones, de más a menos rentable</div>
@@ -1104,7 +1103,7 @@ function actualizarBadgesTabs(){
   const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
   if(tabMias) tabMias.innerHTML = 'Mis posiciones';
   const tabSeguimiento = document.querySelector('.page-tab[data-pagina="seguimiento"]');
-  if(tabSeguimiento) tabSeguimiento.innerHTML = 'Seguimiento' + (hayDescubrimientoNuevoDesdeUltimaVisita()?'<span class="alerta-tab" title="Hay un trader nuevo descubierto"></span>':'');
+  if(tabSeguimiento) tabSeguimiento.innerHTML = 'Traders' + (hayDescubrimientoNuevoDesdeUltimaVisita()?'<span class="alerta-tab" title="Hay un trader nuevo descubierto"></span>':'');
 
   const puntoNotif = document.getElementById('punto-notificaciones');
   if(puntoNotif) puntoNotif.style.display = notificaciones.some(n=>!n.leida) ? '' : 'none';
