@@ -350,21 +350,29 @@ VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
 
 def detectar_consenso(conn):
     """Consenso = 2+ traders seguidos con la misma coin+lado abierta/añadida
-    (entrando) o cerrada (cerrando) en las ultimas 72h. Solo avisa cuando el
-    grupo CRECE respecto a la ultima vez que se aviso de esa clave (si no,
-    cada ciclo de 5 min repetiria el mismo aviso sin novedad real)."""
+    (entrando), reducida mientras sigue abierta (reduciendo) o cerrada del
+    todo (cerrando) en las ultimas 72h. Solo avisa cuando el grupo CRECE
+    respecto a la ultima vez que se aviso de esa clave (si no, cada ciclo de
+    5 min repetiria el mismo aviso sin novedad real)."""
     ahora = int(time.time() * 1000)
     desde = ahora - VENTANA_CONSENSO_MS
     grupos = {}
     for fila in conn.execute(
-        "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño>0 AND detectado>=?", (desde,)
+        "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño>0 AND detectado>=? "
+        "AND (tamaño_antes IS NULL OR tamaño>tamaño_antes)", (desde,)
     ):
         grupos.setdefault(("entrando", fila["coin"], fila["lado"]), set()).add(fila["addr"])
+    for fila in conn.execute(
+        "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño>0 AND detectado>=? "
+        "AND tamaño_antes IS NOT NULL AND tamaño<tamaño_antes", (desde,)
+    ):
+        grupos.setdefault(("reduciendo", fila["coin"], fila["lado"]), set()).add(fila["addr"])
     for fila in conn.execute(
         "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño=0 AND detectado>=?", (desde,)
     ):
         grupos.setdefault(("cerrando", fila["coin"], fila["lado"]), set()).add(fila["addr"])
 
+    verbos = {"entrando": "en", "reduciendo": "reduciendo en", "cerrando": "cerrando"}
     for (tipo_grupo, coin, lado), direcciones in grupos.items():
         n = len(direcciones)
         if n < 2:
@@ -379,8 +387,7 @@ def detectar_consenso(conn):
         )
         etiqueta = hyperliquid.etiqueta_moneda(coin)
         flecha = "↑" if lado == "Long" else "↓"
-        verbo = f"{lado} en" if tipo_grupo == "entrando" else f"cerrando {lado} en"
-        texto = f"🟠 Consenso: {n} traders {verbo} {etiqueta} {flecha} (últimas 72h)"
+        texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha} (últimas 72h)"
         telegram.enviar(texto)
         db.crear_notificacion(conn, texto)
     conn.commit()
