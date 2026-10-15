@@ -179,7 +179,7 @@ def descubrir_candidatos():
     recien_desestimados = revisar_desestimados(conn)
 
     spot_nombres = hyperliquid.cargar_spot_meta()
-    idx_por_nombre = {v: k[1:] for k, v in spot_nombres.items()}
+    idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
     precios = hyperliquid.fetch_json({"type": "allMids"})
 
     refrescar_no_seguidos(conn, spot_nombres, idx_por_nombre, precios)

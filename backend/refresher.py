@@ -406,7 +406,7 @@ def ciclo_refresco():
             solo_posicion_propia = con_posicion_propia - siguiendo
             if siguiendo or solo_posicion_propia:
                 spot_nombres = hyperliquid.cargar_spot_meta()
-                idx_por_nombre = {v: k[1:] for k, v in spot_nombres.items()}
+                idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
                 precios = hyperliquid.fetch_json({"type": "allMids"})
                 for addr in siguiendo:
                     try:
@@ -454,7 +454,7 @@ def ciclo_backtest_diario():
             siguiendo = [r["address"] for r in conn.execute("SELECT address FROM candidatos WHERE siguiendo=1")]
             if siguiendo:
                 spot_nombres = hyperliquid.cargar_spot_meta()
-                idx_por_nombre = {v: k[1:] for k, v in spot_nombres.items()}
+                idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
                 precios = hyperliquid.fetch_json({"type": "allMids"})
                 for addr in siguiendo:
                     try:

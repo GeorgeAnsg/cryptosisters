@@ -81,8 +81,7 @@ def etiqueta_moneda(coin):
 def precio_actual(coin, tipo="trading"):
     precios = fetch_json({"type": "allMids"})
     if tipo == "spot":
-        spot_nombres = cargar_spot_meta()
-        idx = next((k[1:] for k, v in spot_nombres.items() if v == coin), None)
+        idx = cargar_idx_por_nombre().get(coin)
         clave = f"@{idx}" if idx is not None else None
     else:
         clave = coin
@@ -97,6 +96,26 @@ def cargar_spot_meta():
         base, _quote = u["tokens"]
         nombres[f"@{u['index']}"] = tokens.get(base, u["name"])
     return nombres
+
+
+def cargar_idx_por_nombre():
+    """Nombre de moneda spot -> indice de su par, para precios.get(f"@{idx}").
+    Algunas monedas (p.ej. UBTC) cotizan en mas de un par (UBTC/USDC Y
+    UBTC/USDH) -- invertir cargar_spot_meta() a lo bruto (ultimo que aparezca
+    en la lista gana) podia quedarse con el par equivocado, mas iliquido y con
+    precio distinto al de verdad (bug real detectado: se cogia @234 UBTC/USDH,
+    ~4000$ mas bajo que @142 UBTC/USDC, en una alerta de "añadido en spot").
+    Aqui se prioriza siempre el par cotizado en USDC, el canonico."""
+    data = fetch_json({"type": "spotMeta"})
+    tokens = {t["index"]: t["name"] for t in data["tokens"]}
+    idx_por_nombre = {}
+    for u in data["universe"]:
+        base, quote = u["tokens"]
+        nombre = tokens.get(base, u["name"])
+        es_usdc = tokens.get(quote) == "USDC"
+        if nombre not in idx_por_nombre or es_usdc:
+            idx_por_nombre[nombre] = str(u["index"])
+    return idx_por_nombre
 
 
 def formatear_time(ms):
