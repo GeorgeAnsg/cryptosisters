@@ -255,7 +255,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             ))
         elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
             antes = fila["tamaño"]
-            conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, detectado=? WHERE id=?", (h["tamaño"], antes, ahora, id_))
+            conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (h["tamaño"], antes, precio, ahora, id_))
             antes_dolares = antes * precio if precio is not None else None
             antes_txt = f"${antes_dolares:,.0f}" if antes_dolares is not None else "sin dato"
             aumenta = h["tamaño"] > antes
@@ -284,7 +284,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             precio_txt = f"${precio:,.0f}" if precio is not None else "sin dato"
             antes_dolares = prev["tamaño"] * precio if precio is not None else None
             antes_txt = f"${antes_dolares:,.0f}" if antes_dolares is not None else "sin dato"
-            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, detectado=? WHERE id=?", (prev["tamaño"], ahora, prev["id"]))
+            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (prev["tamaño"], precio, ahora, prev["id"]))
             avisos.append((
                 f"🟣 <b>Eliminado de spot: {coin} ({f'-{antes_txt}' if antes_dolares is not None else 'sin dato'})</b>\n"
                 f"Precio (en ese momento): {precio_txt}\n\n"

@@ -383,6 +383,33 @@ function marcarCierres(filas){
   });
 }
 
+// si el ciclo de 5 min acaba de ver un cambio (añadido O reducido/vendido)
+// que el backtest diario todavia no tiene como fill de verdad, se construye
+// un fill "sintetico" con lo que SI sabemos (antes/ahora de la tabla
+// alertas) para que se vea igual -- si no, el cambio reciente no se podia
+// ver hasta el siguiente backtest (hasta 24h de retraso). Funcion global:
+// la usan tanto "Posiciones de seguimiento" como el modal de cada trader --
+// antes solo la tenia la primera, asi que el modal se quedaba "congelado"
+// sin la ultima compra/venta aunque Telegram ya hubiera avisado de ella.
+// costeProm (opcional): coste medio por unidad de lo que queda ahora -- sirve
+// para aproximar el resultado realizado de una venta reciente (el coste
+// medio de Hyperliquid no cambia al vender, solo al comprar, asi que el
+// coste medio ACTUAL es tambien el que aplicaba en el momento de vender).
+function movimientoSintetico(clave, ts, coin, precio, costeProm){
+  const al = alertas[clave];
+  if(!al || al.tamaño_antes == null || al.detectado !== ts) return null;
+  const delta = al.tamaño - al.tamaño_antes;
+  if(delta === 0) return null;
+  const esAñadido = delta > 0;
+  const sz = Math.abs(delta);
+  const closedPnl = (!esAñadido && costeProm!=null) ? Math.round((precio-costeProm)*sz*100)/100 : 0;
+  return {
+    ts, accion: esAñadido ? 'Abre' : 'Cierra', esInicio:false,
+    cierraDelTodo: !esAñadido && al.tamaño <= Math.max(1e-9, al.tamaño_antes*0.001),
+    sz:+sz.toPrecision(8), notional:Math.round(sz*precio), px:precio, nFills:1, closedPnl, coin,
+  };
+}
+
 function filaMovimientoTrading(o, filaId, abierta){
   // columnas alineadas con la cabecera de la tabla padre: Fecha, Dirección,
   // Moneda, $ invertido, % de su cartera, Entrada, Trader, Resultado, (Abrir)
@@ -532,33 +559,6 @@ function renderPaginaPosiciones(){
     const diasDesdeInicio = (Date.now() - primera.ts) / 86400000;
     if(diasDesdeInicio > UMBRAL_DIAS_ABRIR) return `Posición abierta hace más de ${UMBRAL_DIAS_ABRIR} días — ya ha pasado demasiado tiempo para copiarla al precio de hoy.`;
     return null;
-  };
-
-  // si el ciclo de 5 min acaba de ver un cambio (añadido O reducido/vendido)
-  // que el backtest diario todavia no tiene como fill de verdad (ver
-  // masReciente arriba), se construye un fill "sintetico" con lo que SI
-  // sabemos (antes/ahora de la tabla alertas) para que la fila sea
-  // expandible igualmente -- si no, el cambio reciente no se podia ver
-  // desglosado hasta el siguiente backtest (hasta 24h de retraso), que es
-  // justo lo que pasaba con las reducciones/ventas: esta funcion solo
-  // generaba el sintetico para delta>0 (añadidos), nunca para delta<0.
-  // costeProm (opcional): coste medio por unidad de lo que queda ahora --
-  // sirve para aproximar el resultado realizado de una venta reciente (el
-  // coste medio de Hyperliquid no cambia al vender, solo al comprar, asi que
-  // el coste medio ACTUAL es tambien el que aplicaba en el momento de vender)
-  const movimientoSintetico = (clave, ts, coin, precio, costeProm)=>{
-    const al = alertas[clave];
-    if(!al || al.tamaño_antes == null || al.detectado !== ts) return null;
-    const delta = al.tamaño - al.tamaño_antes;
-    if(delta === 0) return null;
-    const esAñadido = delta > 0;
-    const sz = Math.abs(delta);
-    const closedPnl = (!esAñadido && costeProm!=null) ? Math.round((precio-costeProm)*sz*100)/100 : 0;
-    return {
-      ts, accion: esAñadido ? 'Abre' : 'Cierra', esInicio:false,
-      cierraDelTodo: !esAñadido && al.tamaño <= Math.max(1e-9, al.tamaño_antes*0.001),
-      sz:+sz.toPrecision(8), notional:Math.round(sz*precio), px:precio, nFills:1, closedPnl, coin,
-    };
   };
 
   const filasTrading = trading.length ? trading.map(it=>{
@@ -1341,12 +1341,38 @@ function abrirModal(c, faceta){
     const clave = `${b.lado}|${b.coin}`;
     if(b.lado && masRecientePorClave[clave] == null) masRecientePorClave[clave] = b;
   }
+  // misma fila "sintetica" que en Posiciones de seguimiento (ver
+  // movimientoSintetico): si el ciclo de 5 min ya vio un cambio que el
+  // backtest diario (estas filas de aqui, ops) todavia no tiene como fill
+  // real, se añade igual -- antes el modal se quedaba sin verlo hasta 24h
+  // despues, aunque Telegram ya hubiera avisado y "Posiciones de
+  // seguimiento" ya lo mostrara. Solo aplica al bloque mas reciente de su
+  // clave (los antiguos, ya cerrados hace tiempo, no tienen nada pendiente).
   const bloques = bloquesSinCorregir.map(b=>{
     if(!b.lado || masRecientePorClave[`${b.lado}|${b.coin}`] !== b) return b;
     const abiertaReal = b.lado === 'Spot'
       ? holdingsSpot.some(h=>h.coin===nombreMonedaBase(b.coin))
       : posicionReal.some(p=>p.coin===b.coin && p.lado===b.lado);
-    return {...b, abierta: abiertaReal};
+    const clave = b.lado === 'Spot' ? `${c.address}_spot_${b.coin}` : `${c.address}_trading_${b.coin}_${b.lado}`;
+    const al = alertas[clave];
+    const ultimaReal = b.filas[b.filas.length-1];
+    let filas = b.filas;
+    if(al && al.detectado!=null && (!ultimaReal || al.detectado > ultimaReal.ts)){
+      let precio, costeProm = null;
+      if(b.lado === 'Spot'){
+        const h = holdingsSpot.find(x=>x.coin===b.coin);
+        precio = (al.precio!=null) ? al.precio
+          : (h && h.valorActual!=null && h.tamaño) ? h.valorActual/h.tamaño
+          : (h && h.costeBase!=null && h.tamaño) ? h.costeBase/h.tamaño : null;
+        costeProm = (h && h.costeBase!=null && h.tamaño) ? h.costeBase/h.tamaño : null;
+      } else {
+        const p = posicionReal.find(x=>x.coin===b.coin && x.lado===b.lado);
+        precio = al.precio!=null ? al.precio : (p ? p.entryPx : null);
+      }
+      const sintetico = precio!=null ? movimientoSintetico(clave, al.detectado, b.coin, precio, costeProm) : null;
+      if(sintetico) filas = [...b.filas, sintetico];
+    }
+    return {...b, filas, abierta: abiertaReal};
   });
 
   // igual que en Posiciones de seguimiento: una venta total deja de aparecer
