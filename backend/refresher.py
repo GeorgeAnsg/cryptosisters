@@ -223,8 +223,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             )
             avisos.append((
                 f"🟣 <b>Nuevo en spot: {coin} ({'+'+ahora_txt if ahora_dolares is not None else 'sin dato'})</b>\n"
-                f"Precio: {precio_txt}\n"
-                f"Antes: $0 · Ahora: {ahora_txt}\n\n"
+                f"Precio: {precio_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
                 id_,
             ))
@@ -262,8 +261,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, detectado=? WHERE id=?", (prev["tamaño"], ahora, prev["id"]))
             avisos.append((
                 f"🟣 <b>Eliminado de spot: {coin} ({f'-{antes_txt}' if antes_dolares is not None else 'sin dato'})</b>\n"
-                f"Precio: {precio_txt}\n"
-                f"Antes: {antes_txt} · Ahora: $0\n\n"
+                f"Precio: {precio_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
                 None,
             ))
