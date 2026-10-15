@@ -32,6 +32,9 @@ CREATE TABLE IF NOT EXISTS mis_posiciones (
 CREATE TABLE IF NOT EXISTS notificaciones (
     id INTEGER PRIMARY KEY AUTOINCREMENT, texto TEXT, ts INTEGER, leida INTEGER DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS consenso_visto (
+    clave TEXT PRIMARY KEY, n INTEGER
+);
 """
 
 CANDIDATO_JSON_FIELDS = ("posicion_actual", "holdings_spot", "operaciones_recientes")

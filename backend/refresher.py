@@ -345,6 +345,47 @@ def avisar_posiciones_propias(conn, addr, posicion_actual, holdings_spot, candid
         telegram.enviar(texto)
 
 
+VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
+
+
+def detectar_consenso(conn):
+    """Consenso = 2+ traders seguidos con la misma coin+lado abierta/añadida
+    (entrando) o cerrada (cerrando) en las ultimas 72h. Solo avisa cuando el
+    grupo CRECE respecto a la ultima vez que se aviso de esa clave (si no,
+    cada ciclo de 5 min repetiria el mismo aviso sin novedad real)."""
+    ahora = int(time.time() * 1000)
+    desde = ahora - VENTANA_CONSENSO_MS
+    grupos = {}
+    for fila in conn.execute(
+        "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño>0 AND detectado>=?", (desde,)
+    ):
+        grupos.setdefault(("entrando", fila["coin"], fila["lado"]), set()).add(fila["addr"])
+    for fila in conn.execute(
+        "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño=0 AND detectado>=?", (desde,)
+    ):
+        grupos.setdefault(("cerrando", fila["coin"], fila["lado"]), set()).add(fila["addr"])
+
+    for (tipo_grupo, coin, lado), direcciones in grupos.items():
+        n = len(direcciones)
+        if n < 2:
+            continue
+        clave = f"{tipo_grupo}|{coin}|{lado}"
+        visto = conn.execute("SELECT n FROM consenso_visto WHERE clave=?", (clave,)).fetchone()
+        if visto is not None and visto["n"] >= n:
+            continue
+        conn.execute(
+            "INSERT INTO consenso_visto (clave, n) VALUES (?,?) ON CONFLICT(clave) DO UPDATE SET n=excluded.n",
+            (clave, n),
+        )
+        etiqueta = hyperliquid.etiqueta_moneda(coin)
+        flecha = "↑" if lado == "Long" else "↓"
+        verbo = f"{lado} en" if tipo_grupo == "entrando" else f"cerrando {lado} en"
+        texto = f"🟠 Consenso: {n} traders {verbo} {etiqueta} {flecha} (últimas 72h)"
+        telegram.enviar(texto)
+        db.crear_notificacion(conn, texto)
+    conn.commit()
+
+
 def ciclo_refresco():
     while True:
         try:
@@ -374,6 +415,11 @@ def ciclo_refresco():
                     except Exception:
                         print(f"fallo refrescando (solo posicion propia) {addr}:")
                         traceback.print_exc()
+                try:
+                    detectar_consenso(conn)
+                except Exception:
+                    print("fallo detectando consenso:")
+                    traceback.print_exc()
             conn.close()
         except Exception:
             print("fallo en el ciclo de refresco:")
