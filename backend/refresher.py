@@ -75,8 +75,17 @@ def refrescar_uno(conn, addr, idx_por_nombre, precios):
         "UPDATE candidatos SET posicion_actual=?, holdings_spot=? WHERE address=?",
         (json.dumps(posiciones, ensure_ascii=False), json.dumps(holdings, ensure_ascii=False), addr),
     )
-    fila = conn.execute("SELECT sigue_trading, sigue_spot, puntuacion, win_rate, profit_factor, cuenta FROM candidatos WHERE address=?", (addr,)).fetchone()
-    candidato = {"cuenta": fila["cuenta"], "puntuacion": fila["puntuacion"], "win_rate": fila["win_rate"], "profit_factor": fila["profit_factor"]} if fila else {}
+    fila = conn.execute(
+        """SELECT sigue_trading, sigue_spot, cuenta,
+           puntuacion, win_rate, profit_factor, retorno_pct,
+           puntuacion_spot, win_rate_spot, profit_factor_spot, retorno_pct_spot
+           FROM candidatos WHERE address=?""",
+        (addr,),
+    ).fetchone()
+    # faltaba retorno_pct (y todo lo de spot) aqui -- por eso las alertas que
+    # salen de este ciclo rapido (el que de verdad dispara los avisos) decian
+    # "sin dato" aunque el candidato SI tuviera esos datos guardados
+    candidato = dict(fila) if fila else {}
     # solo se avisa de "oportunidad nueva" en la faceta que de verdad se
     # sigue -- si solo se sigue su trading, no tiene sentido recibir avisos
     # de que ha comprado algo en spot, y viceversa
@@ -135,7 +144,7 @@ def cabecera(conn, addr, candidato, faceta):
     return (
         f"{faceta.upper()}\n"
         f"{nombre} - {rank}\n"
-        f"Win rate: {wr} · Retorno: {ret_txt} · Profit factor: {pf_txt}"
+        f"WR: {wr} · Retorno: {ret_txt} · PF: {pf_txt}"
     )
 
 
@@ -178,9 +187,8 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             avisos.append((
                 f"🔵 {cabecera(conn, addr, candidato, 'trading')}\n\n"
                 f"<b>{p['lado']} en {coin}</b>\n"
-                f"Antes: {antes}\n"
-                f"Ahora: {p['tamaño']}\n"
-                f"$ invertido ahora: ${invertido:,.0f}\n"
+                f"Antes: ${antes * p['entryPx']:,.0f}\n"
+                f"Ahora: ${invertido:,.0f}\n"
                 f"% de su cartera: {pct}\n"
                 f"Entrada: ${p['entryPx']}",
                 None,
