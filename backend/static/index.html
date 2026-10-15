@@ -1332,20 +1332,44 @@ function abrirModal(c, faceta){
     return {...b, abierta: abiertaReal};
   });
 
-  const spotTablaHtml = holdingsSpot.length ? holdingsSpot.map(h=>{
-    const coste = h.costeBase!=null ? `$${h.costeBase.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span title="Hyperliquid no tiene registrado cuánto le costó comprar esto — puede que lo recibiera (airdrop, transferencia) en vez de comprarlo aquí" style="color:var(--fg-muted)">sin dato</span>`;
-    const valor = h.valorActual!=null ? `$${h.valorActual.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
-    const pnlClase = h.pnlNoRealizado > 0 ? 'pos' : (h.pnlNoRealizado < 0 ? 'neg' : '');
-    const pnl = h.pnlNoRealizado!=null ? `<span class="op-pnl ${pnlClase}">${h.pnlNoRealizado>0?'+':''}$${h.pnlNoRealizado.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
-    return `
-    <tr>
-      <td>${etiquetaMoneda(h.coin)}</td>
-      <td>${h['tamaño']}</td>
-      <td>${coste}</td>
-      <td>${valor}</td>
-      <td>${pnl}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="5" class="estado">Sin nada en cartera spot ahora mismo.</td></tr>';
+  // igual que en Posiciones de seguimiento: una venta total deja de aparecer
+  // en holdingsSpot (dato en vivo) al instante -- sin esto, esta tabla la
+  // mostraba vacia para esa moneda como si nunca hubiera pasado nada, aunque
+  // Telegram si hubiera avisado. Se muestra igual mientras siga "reciente".
+  const VENTANA_SPOT_CERRADO_RECIENTE_MS = 72 * 3600 * 1000;
+  const spotCerradoReciente = Object.values(alertas).filter(a =>
+    a.tipo === 'spot' && a.addr === c.address && a.tamaño === 0 && a.detectado != null
+    && Date.now() - a.detectado <= VENTANA_SPOT_CERRADO_RECIENTE_MS
+    && !holdingsSpot.some(h => h.coin === a.coin)
+  );
+  const spotTablaHtml = (holdingsSpot.length || spotCerradoReciente.length) ? [
+    ...holdingsSpot.map(h=>{
+      const coste = h.costeBase!=null ? `$${h.costeBase.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span title="Hyperliquid no tiene registrado cuánto le costó comprar esto — puede que lo recibiera (airdrop, transferencia) en vez de comprarlo aquí" style="color:var(--fg-muted)">sin dato</span>`;
+      const valor = h.valorActual!=null ? `$${h.valorActual.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+      const pnlClase = h.pnlNoRealizado > 0 ? 'pos' : (h.pnlNoRealizado < 0 ? 'neg' : '');
+      const pnl = h.pnlNoRealizado!=null ? `<span class="op-pnl ${pnlClase}">${h.pnlNoRealizado>0?'+':''}$${h.pnlNoRealizado.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
+      return `
+      <tr>
+        <td>${etiquetaMoneda(h.coin)}</td>
+        <td>${h['tamaño']}</td>
+        <td>${coste}</td>
+        <td>${valor}</td>
+        <td>${pnl}</td>
+      </tr>`;
+    }),
+    ...spotCerradoReciente.map(a=>{
+      const valorVendido = (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null;
+      const costeTxt = valorVendido!=null ? `-$${valorVendido.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`;
+      return `
+      <tr>
+        <td>${etiquetaMoneda(a.coin)} <span class="op-estado cerrada">vendida</span></td>
+        <td>0</td>
+        <td>${costeTxt}</td>
+        <td>—</td>
+        <td>—</td>
+      </tr>`;
+    }),
+  ].join('') : '<tr><td colspan="5" class="estado">Sin nada en cartera spot ahora mismo.</td></tr>';
 
   // solo para trading (long/short) -- spot ya no agrupa por bloque, ver
   // filasSpotPlanas mas abajo
