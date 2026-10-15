@@ -137,6 +137,8 @@ tr.op-hijo.oculto{display:none}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
 .gb-leyenda{font-size:.76rem;color:var(--fg-muted);margin:-4px 2px 12px}
 .grafico-barras{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:18px}
+.consenso-caja{background:var(--panel);border-radius:16px;box-shadow:var(--shadow);padding:16px 20px;margin-bottom:22px;display:flex;flex-direction:column;gap:16px}
+.consenso-fila:not(:last-child){padding-bottom:16px;border-bottom:1px solid var(--border)}
 .gb-fila{display:grid;grid-template-columns:110px 1fr 64px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
 .gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gb-pista{display:flex;height:14px;position:relative}
@@ -584,7 +586,35 @@ function renderPaginaPosiciones(){
     return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
+  // consenso reciente: varios traders independientes han abierto o añadido
+  // a la MISMA moneda+direccion en poco tiempo -- mas señal que uno solo, y
+  // mas interesante que "quien tiene abierto esto desde hace meses". Solo
+  // aperturas/añadidos (lo unico que detectar_alertas registra para trading
+  // -- cerrar no dispara alerta, ver refresher.py), nunca cierres.
+  const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
+  const gruposConsenso = {};
+  const ahoraMs = Date.now();
+  for(const it of trading){
+    if(it.ts == null || ahoraMs - it.ts > VENTANA_CONSENSO_MS) continue;
+    const clave = `${it.coin}|${it.lado}`;
+    (gruposConsenso[clave] ??= []).push(it.c);
+  }
+  const consensoHtml = Object.entries(gruposConsenso)
+    .filter(([,cs])=>cs.length>=2)
+    .sort(([,a],[,b])=>b.length-a.length)
+    .map(([clave,cs])=>{
+      const [coin, lado] = clave.split('|');
+      const flecha = lado==='Long'?'↑':'↓';
+      const nombres = cs.map(c=>filaPlanta(c, 'trading')).join(' ');
+      return `<div class="consenso-fila">
+        <b>${cs.length} traders en ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
+        <span style="color:var(--fg-muted);font-size:.76rem"> (últimas 72h)</span>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
+      </div>`;
+    }).join('');
+
   return `
+    ${consensoHtml?`<div class="seccion-titulo">Consenso reciente</div><div class="consenso-caja">${consensoHtml}</div>`:''}
     <div class="seccion-titulo">Trading (${trading.length})</div>
     <div class="sub-panel" data-sub="trading">
       <table class="ops">
@@ -733,7 +763,7 @@ function construirGraficoPosicionesAbiertas(barras){
     </div>`;
   }).join('');
   return `<div class="seccion-titulo" style="margin-top:4px">Tus posiciones, de más a menos rentable</div>
-    <div class="gb-leyenda">Cada barra es el % de ganancia o pérdida de esa posición ahora mismo. ← pierdes · ganas →, partiendo del 0% en el centro.</div>
+    <div class="gb-leyenda">Cada barra compara tus posiciones entre sí ahora mismo. ← pierdes · ganas →, partiendo del centro.</div>
     <div class="grafico-barras">${filas}</div>`;
 }
 
