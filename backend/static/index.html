@@ -1252,25 +1252,19 @@ function abrirModal(c, faceta){
     </tr>`;
   }).join('') : '<tr><td colspan="5" class="estado">Sin nada en cartera spot ahora mismo.</td></tr>';
 
+  // solo para trading (long/short) -- spot ya no agrupa por bloque, ver
+  // filasSpotPlanas mas abajo
   const filaHijo = (o, bloqueId)=>{
     const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
     const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
     const esEntrada = o.accion === 'Abre';
-    const esSpot = o.lado === 'Spot';
-    // en spot: tamaño en dolares, en lugar de unidades de la moneda (dificiles
-    // de interpretar) -- compra suma a lo invertido, venta resta
-    const tamañoCelda = esSpot
-      ? (o.notional!=null ? `${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—')
-      : o.sz;
-    const notional = esSpot ? '—' : (o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—');
-    const verbo = esSpot
-      ? (esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'))
-      : (esEntrada ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
+    const notional = o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const verbo = esEntrada ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce');
     return `
       <tr class="op-hijo oculto" data-hijo-de="${bloqueId}">
         <td>${verbo}</td>
         <td></td>
-        <td>${tamañoCelda}</td>
+        <td>${o.sz}</td>
         <td>$${o.px}</td>
         <td>${notional}</td>
         <td>${fechaLocal(o.ts)}</td>
@@ -1285,11 +1279,11 @@ function abrirModal(c, faceta){
     const p = posicionReal.find(x=>x.coin===coin && x.lado===lado);
     return p ? p.pnlNoRealizado : null;
   };
-  const pnlEnVivoSpot = (coin)=>{
-    const h = holdingsSpot.find(x=>x.coin===nombreMonedaBase(coin));
-    return h ? h.pnlNoRealizado : null;
-  };
 
+  // solo para trading (long/short): agrupa por posicion con una fila
+  // cabecera resumen + sus movimientos desplegables. Spot NO usa esto (ver
+  // filasSpotPlanas) porque ahi la cabecera por moneda duplicaba el dato en
+  // vivo que ya se ve en la tabla "Spot (en vivo)" de arriba.
   let contadorBloque = 0;
   const renderBloques = (listaBloques, mensajeVacio)=>{
     // las posiciones abiertas van siempre primero, da igual la fecha de su
@@ -1299,7 +1293,7 @@ function abrirModal(c, faceta){
     if(!ordenados.length) return `<tr><td colspan="7" class="estado">${mensajeVacio}</td></tr>`;
     return ordenados.map(b=>{
       const lado = b.lado.toLowerCase();
-      const tituloLado = b.lado==='Long' ? 'Long: apuesta a que el precio SUBE' : (b.lado==='Short' ? 'Short: apuesta a que el precio BAJA' : 'Spot: compra/venta al contado, sin apalancamiento');
+      const tituloLado = b.lado==='Long' ? 'Long: apuesta a que el precio SUBE' : 'Short: apuesta a que el precio BAJA';
       const pnlRealizado = b.filas.reduce((acc,o)=>acc+(o.closedPnl||0),0);
       const ultima = b.filas[b.filas.length-1]; // mas reciente fila del bloque
       const estadoTxt = b.abierta ? 'abierta' : 'cerrada';
@@ -1312,7 +1306,7 @@ function abrirModal(c, faceta){
       // AHORA (dato en vivo); si no, lo realmente ganado/perdido al cerrar
       let pnlHtml;
       if(b.abierta){
-        const pnlVivo = b.lado === 'Spot' ? pnlEnVivoSpot(b.coin) : pnlEnVivoPerp(b.coin, b.lado);
+        const pnlVivo = pnlEnVivoPerp(b.coin, b.lado);
         if(pnlVivo != null){
           const clase = pnlVivo > 0 ? 'pos' : (pnlVivo < 0 ? 'neg' : '');
           pnlHtml = `<span class="op-pnl ${clase}" title="Lo que gana o pierde AHORA MISMO si cerrara ya, dato en vivo">${pnlVivo>0?'+':''}$${pnlVivo.toLocaleString('es-ES',{maximumFractionDigits:0})} (sin realizar)</span>`;
@@ -1324,35 +1318,8 @@ function abrirModal(c, faceta){
         pnlHtml = pnlRealizado ? `<span class="op-pnl ${clase}">${pnlRealizado>0?'+':''}$${pnlRealizado.toFixed(2)}</span>` : '—';
       }
 
-      // en spot da igual el signo o si sigue abierta (eso ya lo dice el
-      // badge de estado) -- lo unico que importa es cuanto dinero hay
-      // metido ahi, en dolares, no en unidades de la moneda.
-      // si sigue abierta: NUNCA restar los $ recibidos en ventas al total
-      // comprado -- si vendio una parte ya revalorizada, los $ recibidos
-      // por esa parte pueden ser MAYORES que lo que costo toda la posicion,
-      // y el resultado se iria a negativo aunque la posicion siga siendo
-      // positiva en cartera. El coste base en vivo (mismo dato que la tabla
-      // "Cartera actual") es el numero correcto, siempre.
-      let tamañoCabecera, tituloTamaño;
-      if(b.lado === 'Spot'){
-        if(b.abierta){
-          const h = holdingsSpot.find(x=>x.coin===nombreMonedaBase(b.coin));
-          if(h && h.costeBase != null){
-            tamañoCabecera = `$${Math.round(h.costeBase).toLocaleString('es-ES')}`;
-            tituloTamaño = 'Coste base en vivo de lo que tiene ahora en cartera (mismo dato que "Cartera actual")';
-          } else {
-            tamañoCabecera = 'sin dato';
-            tituloTamaño = 'Hyperliquid no tiene registrado un coste base en vivo para esto';
-          }
-        } else {
-          const notionalAbre = b.filas.filter(o=>o.accion==='Abre').reduce((a,o)=>a+(o.notional||0),0);
-          tamañoCabecera = `$${Math.round(notionalAbre).toLocaleString('es-ES')}`;
-          tituloTamaño = 'Total invertido en esta moneda a lo largo de todo el historial visible';
-        }
-      } else {
-        tamañoCabecera = b.abierta ? `${b.neto>=0?'+':''}${b.neto} (cambio visible)` : `${b.totalAbierto} (tamaño operado)`;
-        tituloTamaño = b.abierta?'Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí':'Ya está cerrada del todo -- el neto siempre acaba en 0, así que aquí se muestra lo que se llegó a invertir en total para abrirla';
-      }
+      const tamañoCabecera = b.abierta ? `${b.neto>=0?'+':''}${b.neto} (cambio visible)` : `${b.totalAbierto} (tamaño operado)`;
+      const tituloTamaño = b.abierta?'Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí':'Ya está cerrada del todo -- el neto siempre acaba en 0, así que aquí se muestra lo que se llegó a invertir en total para abrirla';
       const flecha = b.filas.length > 1 ? `<span class="op-flecha" data-bloque="${bloqueId}">▸</span>` : '';
       const cabecera = `
         <tr class="op-cabecera">
@@ -1371,7 +1338,29 @@ function abrirModal(c, faceta){
 
   const bloquesTrading = bloques.filter(b=>b.lado === 'Long' || b.lado === 'Short');
   const tradingTablaHtml = renderBloques(bloquesTrading, 'Sin operaciones de trading (long/short) registradas todavía.');
-  const spotMovimientosHtml = renderBloques(bloques.filter(b=>b.lado === 'Spot'), 'Sin compras/ventas spot registradas todavía.');
+
+  // en spot, a diferencia de trading, NO hay cabecera de agrupacion por
+  // moneda -- esa cabecera duplicaba lo que ya se ve en vivo en la tabla
+  // "Spot (en vivo)" de arriba (p.ej. "-$815"). Aqui es solo el listado
+  // plano de compras/ventas, una fila por operacion, sin agrupar.
+  const filasSpotPlanas = bloques.filter(b=>b.lado==='Spot').flatMap(b=>marcarCierres(b.filas)).sort((a,b)=>b.ts-a.ts);
+  const spotMovimientosHtml = filasSpotPlanas.length ? filasSpotPlanas.map(o=>{
+    const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+    const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+    const esEntrada = o.accion === 'Abre';
+    const tamañoCelda = o.notional!=null ? `${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const verbo = esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende');
+    return `
+      <tr>
+        <td>${verbo}</td>
+        <td>${nombreMoneda(o.coin)}</td>
+        <td>${tamañoCelda}</td>
+        <td>$${o.px}</td>
+        <td>—</td>
+        <td>${fechaLocal(o.ts)}</td>
+        <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
+      </tr>`;
+  }).join('') : '<tr><td colspan="7" class="estado">Sin compras/ventas spot registradas todavía.</td></tr>';
   // si no hace trading de verdad, o si se abrio el modal desde la faceta
   // spot (tarjeta/fila de spot), la pestaña de trading solo estorba -- se
   // abre directamente en spot y ni se muestra el boton de esa pestaña.
@@ -1427,9 +1416,9 @@ function abrirModal(c, faceta){
             <thead><tr>
               <th title="Compra o venta al contado">Dirección</th>
               <th title="La moneda sobre la que operó">Moneda</th>
-              <th title="En la cabecera: cambio neto SOLO dentro de este historial. En cada movimiento: lo comprado o vendido en ese momento">Tamaño</th>
+              <th title="Lo comprado (+) o vendido (-) en esa operación, en dólares">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
-              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Inversión</th>
+              <th title="Dato en la tabla 'Spot (en vivo)' de arriba">Inversión</th>
               <th title="Fecha y hora real de la operación (hora local)">Fecha</th>
               <th title="Ganancia o pérdida ya realizada en ventas; vacío si es una compra que sigue en cartera">Resultado</th>
             </tr></thead>
