@@ -392,7 +392,7 @@ function filaMovimientoTrading(o, filaId, abierta){
   return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
     <td>${fechaLocal(o.ts)}</td>
     <td>${verbo}</td>
-    <td>${o.coin}${o.nFills>1?` <span style="font-size:.68rem">(${o.nFills} fills)</span>`:''} · ${o.sz}</td>
+    <td></td>
     <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
     <td>—</td>
     <td>$${o.px}</td>
