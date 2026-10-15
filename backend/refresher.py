@@ -89,9 +89,10 @@ def refrescar_uno(conn, addr, idx_por_nombre, precios):
     # solo se avisa de "oportunidad nueva" en la faceta que de verdad se
     # sigue -- si solo se sigue su trading, no tiene sentido recibir avisos
     # de que ha comprado algo en spot, y viceversa
+    sigue_spot = bool(fila and fila["sigue_spot"])
     posicion_para_alertas = posiciones if (fila and fila["sigue_trading"]) else []
-    holdings_para_alertas = holdings if (fila and fila["sigue_spot"]) else []
-    detectar_alertas(conn, addr, posicion_para_alertas, holdings_para_alertas, candidato)
+    holdings_para_alertas = holdings if sigue_spot else []
+    detectar_alertas(conn, addr, posicion_para_alertas, holdings_para_alertas, candidato, idx_por_nombre, precios, sigue_spot)
     avisar_posiciones_propias(conn, addr, posiciones, holdings, candidato)
 
 
@@ -152,13 +153,23 @@ def cabecera(conn, addr, candidato, faceta):
     )
 
 
-def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
+def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_por_nombre, precios, sigue_spot=True):
     """Compara lo que hay abierto AHORA contra lo que ya conociamos (guardado
     en 'alertas'): si la clave coin+lado no existia, es una posicion nueva;
     si existia con otro tamaño, es que ha añadido o reducido -- de eso solo
-    avisamos cuando AUMENTA (reducir/cerrar no lo pidio el usuario)."""
+    avisamos cuando AUMENTA (reducir/cerrar no lo pidio el usuario). En
+    trading reducir no avisa (el usuario no lo pidio); en spot SI, porque
+    vender del todo (eliminado) o en parte (reducido) es informacion util
+    sobre ese trader -- y holdings_spot_de() deja de incluir una moneda en
+    cuanto baja a ~0, asi que un "eliminado" nunca pasaria por el bucle de
+    abajo: hay que detectarlo aparte, comparando contra lo que ya sabiamos."""
     avisos = []
     ahora = int(time.time() * 1000)
+
+    def precio_de(coin_crudo):
+        idx = idx_por_nombre.get(coin_crudo)
+        p = precios.get(f"@{idx}") if idx is not None else None
+        return float(p) if p is not None else None
 
     for p in posicion_actual:
         id_ = f"{addr}_trading_{p['coin']}_{p['lado']}"
@@ -201,25 +212,59 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
         id_ = f"{addr}_spot_{h['coin']}"
         fila = conn.execute("SELECT tamaño FROM alertas WHERE id=?", (id_,)).fetchone()
         coin = hyperliquid.etiqueta_moneda(h["coin"])
+        precio = (h["valorActual"] / h["tamaño"]) if (h.get("valorActual") is not None and h["tamaño"]) else precio_de(h["coin"])
+        precio_txt = f"${precio:,.0f}" if precio is not None else "sin dato"
+        ahora_dolares = h["valorActual"] if h.get("valorActual") is not None else (h["tamaño"] * precio if precio is not None else None)
+        ahora_txt = f"${ahora_dolares:,.0f}" if ahora_dolares is not None else "sin dato"
         if fila is None:
             conn.execute(
                 "INSERT INTO alertas (id, tipo, addr, coin, tamaño, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?)",
                 (id_, "spot", addr, h["coin"], h["tamaño"], h.get("costeBase"), "pendiente", ahora),
             )
             avisos.append((
-                f"🟢 Nueva compra spot\n{cabecera(conn, addr, candidato, 'spot')}\n\n"
-                f"{coin}\n"
-                f"Tamaño: {h['tamaño']}",
+                f"🟣 <b>Nuevo en spot: {coin} ({'+'+ahora_txt if ahora_dolares is not None else 'sin dato'})</b>\n"
+                f"Precio: {precio_txt}\n"
+                f"Antes: $0 · Ahora: {ahora_txt}\n\n"
+                f"{cabecera(conn, addr, candidato, 'spot')}",
                 id_,
             ))
         elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, detectado=? WHERE id=?", (h["tamaño"], antes, ahora, id_))
+            antes_dolares = antes * precio if precio is not None else None
+            antes_txt = f"${antes_dolares:,.0f}" if antes_dolares is not None else "sin dato"
+            aumenta = h["tamaño"] > antes
+            delta_dolares = (ahora_dolares - antes_dolares) if (ahora_dolares is not None and antes_dolares is not None) else None
+            delta_txt = f"{'+' if aumenta else '-'}${abs(delta_dolares):,.0f}" if delta_dolares is not None else "sin dato"
+            titulo = "Añadido en spot" if aumenta else "Reducido en spot"
             avisos.append((
-                f"🔵 Ha añadido a su cartera spot\n{cabecera(conn, addr, candidato, 'spot')}\n\n"
-                f"{coin}\n"
-                f"Antes: {antes}\n"
-                f"Ahora: {h['tamaño']}",
+                f"🟣 <b>{titulo}: {coin} ({delta_txt})</b>\n"
+                f"Precio: {precio_txt}\n"
+                f"Antes: {antes_txt} · Ahora: {ahora_txt}\n\n"
+                f"{cabecera(conn, addr, candidato, 'spot')}",
+                None,
+            ))
+
+    if sigue_spot:
+        # eliminado del todo: holdings_spot_de() ya no incluye una moneda en
+        # cuanto baja a ~0, asi que no pasa por el bucle de arriba -- hay que
+        # comparar contra lo que la tabla alertas ya sabia que tenia
+        monedas_actuales = {h["coin"] for h in holdings_spot}
+        previos = conn.execute("SELECT id, coin, tamaño FROM alertas WHERE addr=? AND tipo='spot' AND tamaño>0", (addr,)).fetchall()
+        for prev in previos:
+            if prev["coin"] in monedas_actuales:
+                continue
+            coin = hyperliquid.etiqueta_moneda(prev["coin"])
+            precio = precio_de(prev["coin"])
+            precio_txt = f"${precio:,.0f}" if precio is not None else "sin dato"
+            antes_dolares = prev["tamaño"] * precio if precio is not None else None
+            antes_txt = f"${antes_dolares:,.0f}" if antes_dolares is not None else "sin dato"
+            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, detectado=? WHERE id=?", (prev["tamaño"], ahora, prev["id"]))
+            avisos.append((
+                f"🟣 <b>Eliminado de spot: {coin} ({f'-{antes_txt}' if antes_dolares is not None else 'sin dato'})</b>\n"
+                f"Precio: {precio_txt}\n"
+                f"Antes: {antes_txt} · Ahora: $0\n\n"
+                f"{cabecera(conn, addr, candidato, 'spot')}",
                 None,
             ))
 
