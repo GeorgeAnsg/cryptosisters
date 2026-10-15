@@ -534,17 +534,26 @@ function renderPaginaPosiciones(){
     return null;
   };
 
-  // si el ciclo de 5 min acaba de ver un añadido que el backtest diario
-  // todavia no tiene como fill de verdad (ver masReciente arriba), se
-  // construye un fill "sintetico" con lo que SI sabemos (antes/ahora de la
-  // tabla alertas) para que la fila sea expandible igualmente -- si no,
-  // "acaba de añadir" no se podia ver desglosado hasta el siguiente backtest
+  // si el ciclo de 5 min acaba de ver un cambio (añadido O reducido/vendido)
+  // que el backtest diario todavia no tiene como fill de verdad (ver
+  // masReciente arriba), se construye un fill "sintetico" con lo que SI
+  // sabemos (antes/ahora de la tabla alertas) para que la fila sea
+  // expandible igualmente -- si no, el cambio reciente no se podia ver
+  // desglosado hasta el siguiente backtest (hasta 24h de retraso), que es
+  // justo lo que pasaba con las reducciones/ventas: esta funcion solo
+  // generaba el sintetico para delta>0 (añadidos), nunca para delta<0.
   const movimientoSintetico = (clave, ts, coin, precio)=>{
     const al = alertas[clave];
     if(!al || al.tamaño_antes == null || al.detectado !== ts) return null;
     const delta = al.tamaño - al.tamaño_antes;
-    if(delta <= 0) return null; // una reduccion no es "ha añadido"
-    return {ts, accion:'Abre', esInicio:false, cierraDelTodo:false, sz:+delta.toPrecision(8), notional:Math.round(delta*precio), px:precio, nFills:1, closedPnl:0, coin};
+    if(delta === 0) return null;
+    const esAñadido = delta > 0;
+    const sz = Math.abs(delta);
+    return {
+      ts, accion: esAñadido ? 'Abre' : 'Cierra', esInicio:false,
+      cierraDelTodo: !esAñadido && al.tamaño <= Math.max(1e-9, al.tamaño_antes*0.001),
+      sz:+sz.toPrecision(8), notional:Math.round(sz*precio), px:precio, nFills:1, closedPnl:0, coin,
+    };
   };
 
   const filasTrading = trading.length ? trading.map(it=>{
