@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS candidatos (
     categoria TEXT, prioridad INTEGER, antiguedad INTEGER, estilo TEXT, riesgo TEXT, monedas TEXT,
     cuenta REAL, siguiendo INTEGER DEFAULT 0, sigue_trading INTEGER DEFAULT 0, sigue_spot INTEGER DEFAULT 0,
     retorno_pct REAL, profit_factor REAL, puntuacion INTEGER, win_rate REAL, drawdown REAL,
-    puntuacion_spot INTEGER, win_rate_spot REAL, retorno_pct_spot REAL, drawdown_spot REAL,
+    puntuacion_spot INTEGER, win_rate_spot REAL, retorno_pct_spot REAL, drawdown_spot REAL, profit_factor_spot REAL,
     descubierto_ts INTEGER,
     posicion_actual TEXT DEFAULT '[]',
     holdings_spot TEXT DEFAULT '[]',
@@ -63,6 +63,8 @@ def iniciar():
         conn.execute("ALTER TABLE candidatos ADD COLUMN retorno_pct_spot REAL")
     if "drawdown_spot" not in columnas_c:
         conn.execute("ALTER TABLE candidatos ADD COLUMN drawdown_spot REAL")
+    if "profit_factor_spot" not in columnas_c:
+        conn.execute("ALTER TABLE candidatos ADD COLUMN profit_factor_spot REAL")
     columnas_a = {f[1] for f in conn.execute("PRAGMA table_info(alertas)")}
     if "tamaño_antes" not in columnas_a:
         conn.execute("ALTER TABLE alertas ADD COLUMN tamaño_antes REAL")

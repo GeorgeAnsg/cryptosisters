@@ -37,7 +37,7 @@ def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, prec
     conn.execute(
         """UPDATE candidatos SET posicion_actual=?, holdings_spot=?, operaciones_recientes=?,
            retorno_pct=?, profit_factor=?, win_rate=?, drawdown=?, puntuacion=?,
-           puntuacion_spot=?, win_rate_spot=?, retorno_pct_spot=?, drawdown_spot=?
+           puntuacion_spot=?, win_rate_spot=?, retorno_pct_spot=?, drawdown_spot=?, profit_factor_spot=?
            WHERE address=?""",
         (
             json.dumps(datos["posicion_actual"], ensure_ascii=False),
@@ -52,11 +52,16 @@ def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, prec
             bt_spot["win_rate"] if bt_spot else None,
             bt_spot["retorno_pct"] if bt_spot else None,
             bt_spot["drawdown"] if bt_spot else None,
+            bt_spot["profit_factor"] if bt_spot else None,
             addr,
         ),
     )
 
-    candidato = {"cuenta": cuenta, "puntuacion": puntuacion, "win_rate": bt["win_rate"] if bt else None, "profit_factor": bt["profit_factor"] if bt else None}
+    candidato = {
+        "cuenta": cuenta,
+        "puntuacion": puntuacion, "win_rate": bt["win_rate"] if bt else None, "profit_factor": bt["profit_factor"] if bt else None, "retorno_pct": bt["retorno_pct"] if bt else None,
+        "puntuacion_spot": puntuacion_spot, "win_rate_spot": bt_spot["win_rate"] if bt_spot else None, "profit_factor_spot": bt_spot["profit_factor"] if bt_spot else None, "retorno_pct_spot": bt_spot["retorno_pct"] if bt_spot else None,
+    }
     return datos, candidato
 
 
@@ -102,19 +107,36 @@ def refrescar_solo_posicion_propia(conn, addr, idx_por_nombre, precios):
     tiene sentido avisar de 'oportunidad nueva' de alguien que ya no se esta
     vigilando para eso."""
     posiciones, holdings = hyperliquid.posicion_y_holdings_de(addr, idx_por_nombre, precios)
-    fila = conn.execute("SELECT puntuacion, win_rate, profit_factor FROM candidatos WHERE address=?", (addr,)).fetchone()
-    candidato = {"puntuacion": fila["puntuacion"] if fila else None, "win_rate": fila["win_rate"] if fila else None, "profit_factor": fila["profit_factor"] if fila else None}
+    fila = conn.execute(
+        """SELECT puntuacion, win_rate, profit_factor, retorno_pct,
+           puntuacion_spot, win_rate_spot, profit_factor_spot, retorno_pct_spot
+           FROM candidatos WHERE address=?""",
+        (addr,),
+    ).fetchone()
+    candidato = dict(fila) if fila else {}
     avisar_posiciones_propias(conn, addr, posiciones, holdings, candidato)
 
 
-def cabecera(conn, addr, candidato):
+def cabecera(conn, addr, candidato, faceta):
+    """faceta: 'trading' o 'spot' -- cada una tiene su propia puntuacion/win
+    rate/profit factor/retorno, nunca se mezclan (antes siempre se mostraban
+    los datos de trading aunque la alerta fuera de spot)."""
     todas = [r[0] for r in conn.execute("SELECT address FROM candidatos").fetchall()]
     nombre = nombres.nombre_de(addr, todas)
-    rank = f"{candidato['puntuacion']}/100" if candidato.get("puntuacion") is not None else "sin puntuación"
-    wr = f"{candidato['win_rate']*100:.0f}%" if candidato.get("win_rate") is not None else "sin dato"
-    pf = candidato.get("profit_factor")
-    pf_txt = f"{pf:.2f}" if pf is not None else ("sin dato" if candidato.get("puntuacion") is None else "∞")
-    return f"{nombre} ({addr[:8]}...) · Ranking: {rank} · Win rate: {wr} · Profit factor: {pf_txt}"
+    sufijo = "_spot" if faceta == "spot" else ""
+    puntuacion = candidato.get(f"puntuacion{sufijo}")
+    win_rate = candidato.get(f"win_rate{sufijo}")
+    profit_factor = candidato.get(f"profit_factor{sufijo}")
+    retorno = candidato.get(f"retorno_pct{sufijo}")
+    rank = f"{puntuacion}/100" if puntuacion is not None else "sin puntuación"
+    wr = f"{win_rate*100:.0f}%" if win_rate is not None else "sin dato"
+    pf_txt = f"{profit_factor:.2f}" if profit_factor is not None else ("sin dato" if puntuacion is None else "∞")
+    ret_txt = f"{retorno:+.1f}%" if retorno is not None else "sin dato"
+    return (
+        f"{faceta.upper()}\n"
+        f"{nombre} - {rank}\n"
+        f"Win rate: {wr} · Retorno: {ret_txt} · Profit factor: {pf_txt}"
+    )
 
 
 def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
@@ -124,13 +146,13 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
     avisamos cuando AUMENTA (reducir/cerrar no lo pidio el usuario)."""
     avisos = []
     ahora = int(time.time() * 1000)
-    fecha = hyperliquid.formatear_time(ahora)
 
     for p in posicion_actual:
         id_ = f"{addr}_trading_{p['coin']}_{p['lado']}"
         fila = conn.execute("SELECT tamaño FROM alertas WHERE id=?", (id_,)).fetchone()
         invertido = p["tamaño"] * p["entryPx"]
         pct = f"{invertido/candidato['cuenta']*100:.1f}%" if candidato.get("cuenta") else "—"
+        coin = hyperliquid.etiqueta_moneda(p["coin"])
         tpsl = ""
         if p.get("takeProfit") is not None:
             tpsl += f"Take profit: ${p['takeProfit']}\n"
@@ -142,54 +164,51 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
                 (id_, "trading", addr, p["coin"], p["lado"], p["tamaño"], p["entryPx"], "pendiente", ahora),
             )
             avisos.append((
-                f"🟢 Nueva posición — {cabecera(conn, addr, candidato)}\n\n"
-                f"{p['lado'].upper()} {p['coin']}\n"
+                f"🟢 Nueva posición\n{cabecera(conn, addr, candidato, 'trading')}\n\n"
+                f"{p['lado'].upper()} {coin}\n"
                 f"$ invertido: ${invertido:,.0f}\n"
                 f"% de su cartera: {pct}\n"
                 f"Entrada: ${p['entryPx']}\n"
-                f"{tpsl}"
-                f"Hora: {fecha}",
+                f"{tpsl}",
                 id_,
             ))
         elif abs(fila["tamaño"] - p["tamaño"]) > max(1e-9, p["tamaño"] * 0.001):
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             avisos.append((
-                f"🔵 Ha añadido — {cabecera(conn, addr, candidato)}\n\n"
-                f"{p['lado'].upper()} {p['coin']}\n"
+                f"🔵 Ha añadido\n{cabecera(conn, addr, candidato, 'trading')}\n\n"
+                f"{p['lado'].upper()} {coin}\n"
                 f"Antes: {antes}\n"
                 f"Ahora: {p['tamaño']}\n"
                 f"$ invertido ahora: ${invertido:,.0f}\n"
                 f"% de su cartera: {pct}\n"
-                f"Entrada: ${p['entryPx']}\n"
-                f"Hora: {fecha}",
+                f"Entrada: ${p['entryPx']}",
                 None,
             ))
 
     for h in holdings_spot:
         id_ = f"{addr}_spot_{h['coin']}"
         fila = conn.execute("SELECT tamaño FROM alertas WHERE id=?", (id_,)).fetchone()
+        coin = hyperliquid.etiqueta_moneda(h["coin"])
         if fila is None:
             conn.execute(
                 "INSERT INTO alertas (id, tipo, addr, coin, tamaño, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?)",
                 (id_, "spot", addr, h["coin"], h["tamaño"], h.get("costeBase"), "pendiente", ahora),
             )
             avisos.append((
-                f"🟢 Nueva compra spot — {cabecera(conn, addr, candidato)}\n\n"
-                f"{h['coin']}\n"
-                f"Tamaño: {h['tamaño']}\n"
-                f"Hora: {fecha}",
+                f"🟢 Nueva compra spot\n{cabecera(conn, addr, candidato, 'spot')}\n\n"
+                f"{coin}\n"
+                f"Tamaño: {h['tamaño']}",
                 id_,
             ))
         elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, detectado=? WHERE id=?", (h["tamaño"], antes, ahora, id_))
             avisos.append((
-                f"🔵 Ha añadido a su cartera spot — {cabecera(conn, addr, candidato)}\n\n"
-                f"{h['coin']}\n"
+                f"🔵 Ha añadido a su cartera spot\n{cabecera(conn, addr, candidato, 'spot')}\n\n"
+                f"{coin}\n"
                 f"Antes: {antes}\n"
-                f"Ahora: {h['tamaño']}\n"
-                f"Hora: {fecha}",
+                f"Ahora: {h['tamaño']}",
                 None,
             ))
 
@@ -209,36 +228,33 @@ def avisar_posiciones_propias(conn, addr, posicion_actual, holdings_spot, candid
 
     trading_actual = {(p["coin"], p["lado"]): p["tamaño"] for p in posicion_actual}
     spot_actual = {h["coin"]: h["tamaño"] for h in holdings_spot}
-    ahora = int(time.time() * 1000)
-    fecha = hyperliquid.formatear_time(ahora)
     avisos = []
 
     for mp in propias:
-        if mp["tipo"] == "trading":
+        faceta = mp["tipo"]  # 'trading' o 'spot'
+        if faceta == "trading":
             actual = trading_actual.get((mp["coin"], mp["lado"]))
-            etiqueta = f"{(mp['lado'] or '').upper()} {mp['coin']}"
+            etiqueta = f"{(mp['lado'] or '').upper()} {hyperliquid.etiqueta_moneda(mp['coin'])}"
         else:
             actual = spot_actual.get(mp["coin"])
-            etiqueta = mp["coin"]
+            etiqueta = hyperliquid.etiqueta_moneda(mp["coin"])
         visto = mp["tamaño_trader_visto"]
 
         if actual is None:
             if visto:  # None o 0 = ya avisamos de este cierre, no repetir cada ciclo
                 avisos.append(
-                    f"🔴 TU POSICIÓN COPIADA — {cabecera(conn, addr, candidato)}\n\n"
+                    f"🔴 TU POSICIÓN COPIADA\n{cabecera(conn, addr, candidato, faceta)}\n\n"
                     f"{etiqueta}: el trader la ha CERRADO del todo.\n"
-                    f"Tú la sigues teniendo abierta con tu propio tamaño — decide si la cierras también.\n"
-                    f"Hora: {fecha}"
+                    f"Tú la sigues teniendo abierta con tu propio tamaño — decide si la cierras también."
                 )
                 conn.execute("UPDATE mis_posiciones SET tamaño_trader_visto=0 WHERE id=?", (mp["id"],))
         elif visto is not None and abs(actual - visto) > max(1e-9, visto * 0.001):
             aumenta = actual > visto
             avisos.append(
-                f"{'🔵' if aumenta else '🟠'} TU POSICIÓN COPIADA — {cabecera(conn, addr, candidato)}\n\n"
+                f"{'🔵' if aumenta else '🟠'} TU POSICIÓN COPIADA\n{cabecera(conn, addr, candidato, faceta)}\n\n"
                 f"{etiqueta}: el trader ha {'AUMENTADO' if aumenta else 'REDUCIDO'} la suya.\n"
                 f"Antes: {visto}\n"
-                f"Ahora: {actual}\n"
-                f"Hora: {fecha}"
+                f"Ahora: {actual}"
             )
             conn.execute("UPDATE mis_posiciones SET tamaño_trader_visto=? WHERE id=?", (actual, mp["id"]))
         elif visto is None:

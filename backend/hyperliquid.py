@@ -68,6 +68,16 @@ def obtener_fills(address, desde_ms):
     return todos
 
 
+# UBTC/UETH/USOL en spot son el mismo activo que BTC/ETH/SOL (tokenizado via
+# Unit) -- mismo alias que ya usa el frontend (ALIAS_MONEDA en index.html)
+# para no dar la impresion de que son monedas distintas
+ALIAS_MONEDA = {"UBTC": "BTC", "UETH": "ETH", "USOL": "SOL"}
+
+
+def etiqueta_moneda(coin):
+    return ALIAS_MONEDA.get(coin, coin)
+
+
 def precio_actual(coin, tipo="trading"):
     precios = fetch_json({"type": "allMids"})
     if tipo == "spot":

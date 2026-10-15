@@ -243,14 +243,14 @@ def descubrir_candidatos():
         conn.execute(
             """INSERT INTO candidatos (address, categoria, antiguedad, estilo, riesgo, cuenta, siguiendo,
                retorno_pct, profit_factor, puntuacion, win_rate, drawdown, puntuacion_spot, win_rate_spot,
-               retorno_pct_spot, drawdown_spot, posicion_actual, holdings_spot, operaciones_recientes, descubierto_ts)
-               VALUES (?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+               retorno_pct_spot, drawdown_spot, profit_factor_spot, posicion_actual, holdings_spot, operaciones_recientes, descubierto_ts)
+               VALUES (?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 addr, "descubierto", _antiguedad_dias(ops), "activo", "moderado", cuenta,
                 bt["retorno_pct"] if bt else None, bt["profit_factor"] if bt else None,
                 puntuacion, bt["win_rate"] if bt else None, bt["drawdown"] if bt else None,
                 puntuacion_spot, bt_spot["win_rate"] if bt_spot else None, retorno_spot,
-                bt_spot["drawdown"] if bt_spot else None,
+                bt_spot["drawdown"] if bt_spot else None, bt_spot["profit_factor"] if bt_spot else None,
                 json.dumps(datos["posicion_actual"], ensure_ascii=False),
                 json.dumps(datos["holdings_spot"], ensure_ascii=False),
                 json.dumps(datos["operaciones_recientes"], ensure_ascii=False),
