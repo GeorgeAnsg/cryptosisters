@@ -176,8 +176,8 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             antes = fila["tamaño"]
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             avisos.append((
-                f"🔵 Ha añadido\n{cabecera(conn, addr, candidato, 'trading')}\n\n"
-                f"{p['lado'].upper()} {coin}\n"
+                f"🔵 {cabecera(conn, addr, candidato, 'trading')}\n\n"
+                f"<b>{p['lado']} en {coin}</b>\n"
                 f"Antes: {antes}\n"
                 f"Ahora: {p['tamaño']}\n"
                 f"$ invertido ahora: ${invertido:,.0f}\n"
