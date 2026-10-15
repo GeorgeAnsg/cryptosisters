@@ -1258,15 +1258,18 @@ function abrirModal(c, faceta){
     const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
     const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
     const esEntrada = o.accion === 'Abre';
-    const notional = o.notional!=null ? `$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    // en dolares, igual que la cabecera y que el resto de la tabla -- antes
+    // esta celda era la unica en unidades de la moneda (0.5, 1.84...) en
+    // medio de columnas que son todas $, sin ningun sentido visual
+    const tamañoCelda = o.notional!=null ? `${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
     const verbo = esEntrada ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce');
     return `
       <tr class="op-hijo oculto" data-hijo-de="${bloqueId}">
         <td>${verbo}</td>
         <td></td>
-        <td>${o.sz}</td>
+        <td>${tamañoCelda}</td>
         <td>$${o.px}</td>
-        <td>${notional}</td>
+        <td>—</td>
         <td>${fechaLocal(o.ts)}</td>
         <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
       </tr>`;
@@ -1402,7 +1405,7 @@ function abrirModal(c, faceta){
             <thead><tr>
               <th title="Si apostaba a que el precio sube (Long) o baja (Short)">Dirección</th>
               <th title="La moneda sobre la que operó">Moneda</th>
-              <th title="En la cabecera: lo invertido en dólares en esta posición. En cada movimiento: lo añadido o reducido, en unidades de la moneda">Tamaño</th>
+              <th title="Lo invertido en dólares: en la cabecera, en esta posición entera; en cada movimiento, lo añadido (+) o reducido (-) esa vez">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
               <th title="Tamaño × precio: el valor en dólares que movió esa operación">Inversión</th>
               <th title="Fecha y hora real de la operación (hora local). En la cabecera, fecha del último movimiento de esa posición">Fecha</th>
