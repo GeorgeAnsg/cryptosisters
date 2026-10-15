@@ -162,6 +162,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
         invertido = p["tamaño"] * p["entryPx"]
         pct = f"{invertido/candidato['cuenta']*100:.1f}%" if candidato.get("cuenta") else "—"
         coin = hyperliquid.etiqueta_moneda(p["coin"])
+        flecha = "↑" if p["lado"] == "Long" else "↓"
         tpsl = ""
         if p.get("takeProfit") is not None:
             tpsl += f"Take profit: ${p['takeProfit']}\n"
@@ -174,7 +175,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             )
             avisos.append((
                 f"🟢 Nueva posición\n{cabecera(conn, addr, candidato, 'trading')}\n\n"
-                f"{p['lado'].upper()} {coin}\n"
+                f"<b>{p['lado']} en {coin} {flecha}</b>\n"
                 f"$ invertido: ${invertido:,.0f}\n"
                 f"% de su cartera: {pct}\n"
                 f"Entrada: ${p['entryPx']}\n"
@@ -186,7 +187,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato):
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             avisos.append((
                 f"🔵 {cabecera(conn, addr, candidato, 'trading')}\n\n"
-                f"<b>{p['lado']} en {coin}</b>\n"
+                f"<b>{p['lado']} en {coin} {flecha}</b>\n"
                 f"Antes: ${antes * p['entryPx']:,.0f}\n"
                 f"Ahora: ${invertido:,.0f}\n"
                 f"% de su cartera: {pct}\n"
