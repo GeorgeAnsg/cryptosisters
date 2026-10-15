@@ -481,12 +481,26 @@ function renderPaginaPosiciones(){
       trading.push({c, bloque:b, lado:p.lado, coin:p.coin, tamaño:p['tamaño'], precio:p.entryPx, pnl:p.pnlNoRealizado, stopLoss:p.stopLoss, takeProfit:p.takeProfit, ts, fecha:ts?fechaLocal(ts):'sin fecha reciente'});
     }
   }
+  // una venta total (o una reduccion tan grande que deja el resto en polvo)
+  // hace que holdings_spot_de() deje de incluir la moneda del todo -- sin
+  // esto, esa venta desaparecia de esta tabla sin dejar rastro aunque la
+  // alerta de Telegram si hubiera avisado: se muestra igual mientras siga
+  // "reciente", leyendo lo que ya sabe la tabla alertas (tamaño=0).
+  const VENTANA_SPOT_CERRADO_RECIENTE_MS = 72 * 3600 * 1000;
   for(const c of siguiendoSpot){
     for(const h of (c.holdings_spot||[])){
       const b = bloqueDePosicion(c, 'Spot', h.coin);
       const ultima = b ? b.filas[b.filas.length-1] : null;
       const ts = masReciente(ultima?.ts, `${c.address}_spot_${h.coin}`);
       spot.push({c, bloque:b, coin:h.coin, tamaño:h['tamaño'], coste:h.costeBase, valor:h.valorActual, pnl:h.pnlNoRealizado, ts, fecha:ts?fechaLocal(ts):'sin fecha reciente'});
+    }
+    for(const al of Object.values(alertas)){
+      if(al.tipo!=='spot' || al.addr!==c.address || al.tamaño!==0 || al.detectado==null) continue;
+      if(Date.now()-al.detectado > VENTANA_SPOT_CERRADO_RECIENTE_MS) continue;
+      if((c.holdings_spot||[]).some(h=>h.coin===al.coin)) continue; // se ha vuelto a comprar, ya tiene su fila arriba
+      const b = bloqueDePosicion(c, 'Spot', al.coin);
+      const valorVendido = (al.tamaño_antes!=null && al.precio!=null) ? al.tamaño_antes*al.precio : null;
+      spot.push({c, bloque:b, coin:al.coin, tamaño:0, coste:null, valor:0, pnl:null, ts:al.detectado, fecha:fechaLocal(al.detectado), cerrado:true, valorVendido});
     }
   }
   const porFecha = (a,b)=> (b.ts??-1) - (a.ts??-1);
@@ -562,8 +576,10 @@ function renderPaginaPosiciones(){
   }).join('') : '<tr><td colspan="9" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
 
   const filasSpot = spot.length ? spot.map(it=>{
-    const coste = it.coste!=null ? `$${it.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`;
-    const valor = it.valor!=null ? `$${it.valor.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—';
+    const coste = it.cerrado
+      ? (it.valorVendido!=null ? `-$${it.valorVendido.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`)
+      : (it.coste!=null ? `$${it.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`);
+    const valor = it.cerrado ? '—' : (it.valor!=null ? `$${it.valor.toLocaleString('es-ES',{maximumFractionDigits:0})}` : '—');
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
     const claveAlerta = `${it.c.address}_spot_${it.coin}`;
@@ -576,13 +592,13 @@ function renderPaginaPosiciones(){
     const flecha = tieneDetalle ? `<span class="op-flecha" data-bloque="${filaId}">${abierta?'▾':'▸'}</span>` : '';
     const cabecera = `<tr>
       <td>${puntoMov(it.ts)}${it.fecha}</td>
-      <td>${flecha}${etiquetaMoneda(it.coin)}</td>
+      <td>${flecha}${etiquetaMoneda(it.coin)}${it.cerrado?' <span class="op-estado cerrada">vendida</span>':''}</td>
       <td>${coste}</td>
       <td>${pctCartera(it.coste, it.c.cuenta)}</td>
       <td>${filaPlanta(it.c, 'spot')}</td>
       <td>${valor}</td>
       <td>${pnl}</td>
-      <td>${botonAbrir(it.c.address, 'spot', it.coin, null, null, it.tamaño)}</td>
+      <td>${it.cerrado ? '' : botonAbrir(it.c.address, 'spot', it.coin, null, null, it.tamaño)}</td>
     </tr>`;
     const hijosReales = filasReales.length > 1 ? marcarCierres(filasReales).reverse().map(o=>filaMovimientoSpot(o, filaId, abierta)) : [];
     const hijos = sintetico ? [filaMovimientoSpot(sintetico, filaId, abierta), ...hijosReales] : hijosReales;
