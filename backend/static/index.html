@@ -107,9 +107,9 @@ table.ops{border-collapse:collapse;width:100%;font-size:.78rem}
 table.ops th{position:sticky;top:0;background:var(--panel);text-align:left;font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);font-weight:700;padding:20px;border-bottom:1px solid var(--border);cursor:help}
 table.ops td{padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-mono);white-space:nowrap}
 table.ops tr:last-child td{border-bottom:none}
-.op-lado{font-weight:700;padding:3px 9px;border-radius:99px;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em;cursor:help}
+.op-lado{display:inline-block;line-height:1.6;font-weight:700;padding:3px 9px;border-radius:99px;font-size:.66rem;text-transform:uppercase;letter-spacing:.02em;cursor:help}
 .op-lado.long{background:#e3ecfd;color:#2f5bf0}
-.op-lado.short{background:#fde9e7;color:#c24a3b}
+.op-lado.short{background:#ffd3cd;color:#d6301f}
 .op-lado.spot{background:var(--border);color:var(--fg-muted)}
 .op-pnl.pos{color:var(--ok);font-weight:700}
 .op-pnl.neg{color:var(--bad);font-weight:700}
@@ -142,7 +142,8 @@ tr.op-hijo.oculto{display:none}
 .consenso-fila:not(:last-child){padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.15)}
 .consenso-fila .pf-trader{color:#fff}
 .gb-fila{display:grid;grid-template-columns:110px 1fr 130px;align-items:center;gap:8px;font-size:.8rem;padding:5px 0;cursor:default}
-.gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gb-etiqueta{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.8}
+.gb-etiqueta .op-lado{margin-left:5px}
 .gb-pista{display:flex;height:9px;position:relative}
 .gb-pista::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:#999}
 .gb-mitad{width:50%;display:flex;height:100%;background:rgba(255,255,255,.12)}
