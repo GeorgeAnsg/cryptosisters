@@ -92,13 +92,13 @@ h2 .n{font-family:var(--font-mono);font-size:.74rem;color:var(--fg-muted);font-w
 .tarjeta:hover{border-color:var(--fg-muted)}
 
 .modal-fondo{position:fixed;inset:0;background:rgba(19,20,23,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
-.modal{background:var(--panel);border-radius:20px;max-width:1020px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.modal{background:var(--bg);border-radius:20px;max-width:1020px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow)}
 .modal-cabecera{display:flex;align-items:center;gap:12px;padding:22px 22px 14px;flex:none}
 .modal-tabs{display:flex;gap:6px;padding:0 22px 14px;flex:none}
 .modal-tab{font:inherit;font-size:.82rem;font-weight:700;padding:7px 16px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
 .modal-tab.activo{background:var(--panel-dark);color:var(--fg-on-dark);border-color:var(--panel-dark)}
 table.ops.oculto,.panel.oculto{display:none}
-.panel-subtitulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);margin:18px 0 8px;font-weight:700}
+.panel-subtitulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-muted);margin:20px 0 12px;font-weight:700}
 .panel-subtitulo:first-child{margin-top:0}
 .modal-cerrar{margin-left:auto;background:none;border:none;font-size:1.3rem;color:var(--fg-muted);cursor:pointer;line-height:1;padding:4px}
 .modal-lista{overflow:auto;padding:0 22px 22px}
@@ -1318,8 +1318,20 @@ function abrirModal(c, faceta){
         pnlHtml = pnlRealizado ? `<span class="op-pnl ${clase}">${pnlRealizado>0?'+':''}$${pnlRealizado.toFixed(2)}</span>` : '—';
       }
 
-      const tamañoCabecera = b.abierta ? `${b.neto>=0?'+':''}${b.neto} (cambio visible)` : `${b.totalAbierto} (tamaño operado)`;
-      const tituloTamaño = b.abierta?'Suma de lo comprado/añadido menos lo vendido/reducido SOLO en los movimientos que vemos aquí':'Ya está cerrada del todo -- el neto siempre acaba en 0, así que aquí se muestra lo que se llegó a invertir en total para abrirla';
+      // en dolares, como todo lo demas en esta tabla -- antes se mezclaba
+      // "+5 (cambio visible)" en unidades de la moneda entre columnas que
+      // son todas $, y no habia manera de leerlo con sentido.
+      let tamañoCabecera, tituloTamaño;
+      if(b.abierta){
+        const p = posicionReal.find(x=>x.coin===b.coin && x.lado===b.lado);
+        const dolares = p ? p['tamaño']*p.entryPx : b.filas.reduce((a,o)=>a+(o.accion==='Abre'?(o.notional||0):-(o.notional||0)),0);
+        tamañoCabecera = `$${Math.round(dolares).toLocaleString('es-ES')}`;
+        tituloTamaño = 'Lo invertido ahora mismo en esta posición (precio de entrada × tamaño en vivo)';
+      } else {
+        const notionalAbre = b.filas.filter(o=>o.accion==='Abre').reduce((a,o)=>a+(o.notional||0),0);
+        tamañoCabecera = `$${Math.round(notionalAbre).toLocaleString('es-ES')}`;
+        tituloTamaño = 'Total invertido en esta posición a lo largo de todo el historial visible';
+      }
       const flecha = b.filas.length > 1 ? `<span class="op-flecha" data-bloque="${bloqueId}">▸</span>` : '';
       const cabecera = `
         <tr class="op-cabecera">
@@ -1390,7 +1402,7 @@ function abrirModal(c, faceta){
             <thead><tr>
               <th title="Si apostaba a que el precio sube (Long) o baja (Short)">Dirección</th>
               <th title="La moneda sobre la que operó">Moneda</th>
-              <th title="En la cabecera: cambio neto SOLO dentro de este historial (no el tamaño real). En cada movimiento: lo añadido o reducido en ese momento">Tamaño</th>
+              <th title="En la cabecera: lo invertido en dólares en esta posición. En cada movimiento: lo añadido o reducido, en unidades de la moneda">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
               <th title="Tamaño × precio: el valor en dólares que movió esa operación">Inversión</th>
               <th title="Fecha y hora real de la operación (hora local). En la cabecera, fecha del último movimiento de esa posición">Fecha</th>
@@ -1400,7 +1412,6 @@ function abrirModal(c, faceta){
           </table>
         </div>
         <div class="panel ${hayTrading||!hayModalSpot?'oculto':''}" data-panel="spot">
-          <h3 class="panel-subtitulo">Spot (en vivo)</h3>
           <table class="ops">
             <thead><tr>
               <th title="La moneda que tiene comprada al contado">Moneda</th>
@@ -1418,7 +1429,7 @@ function abrirModal(c, faceta){
               <th title="La moneda sobre la que operó">Moneda</th>
               <th title="Lo comprado (+) o vendido (-) en esa operación, en dólares">Tamaño</th>
               <th title="Precio al que se ejecutó esa operación">Precio</th>
-              <th title="Dato en la tabla 'Spot (en vivo)' de arriba">Inversión</th>
+              <th title="Dato en la tabla de arriba">Inversión</th>
               <th title="Fecha y hora real de la operación (hora local)">Fecha</th>
               <th title="Ganancia o pérdida ya realizada en ventas; vacío si es una compra que sigue en cartera">Resultado</th>
             </tr></thead>
