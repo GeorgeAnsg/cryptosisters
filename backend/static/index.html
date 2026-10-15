@@ -542,17 +542,22 @@ function renderPaginaPosiciones(){
   // desglosado hasta el siguiente backtest (hasta 24h de retraso), que es
   // justo lo que pasaba con las reducciones/ventas: esta funcion solo
   // generaba el sintetico para delta>0 (añadidos), nunca para delta<0.
-  const movimientoSintetico = (clave, ts, coin, precio)=>{
+  // costeProm (opcional): coste medio por unidad de lo que queda ahora --
+  // sirve para aproximar el resultado realizado de una venta reciente (el
+  // coste medio de Hyperliquid no cambia al vender, solo al comprar, asi que
+  // el coste medio ACTUAL es tambien el que aplicaba en el momento de vender)
+  const movimientoSintetico = (clave, ts, coin, precio, costeProm)=>{
     const al = alertas[clave];
     if(!al || al.tamaño_antes == null || al.detectado !== ts) return null;
     const delta = al.tamaño - al.tamaño_antes;
     if(delta === 0) return null;
     const esAñadido = delta > 0;
     const sz = Math.abs(delta);
+    const closedPnl = (!esAñadido && costeProm!=null) ? Math.round((precio-costeProm)*sz*100)/100 : 0;
     return {
       ts, accion: esAñadido ? 'Abre' : 'Cierra', esInicio:false,
       cierraDelTodo: !esAñadido && al.tamaño <= Math.max(1e-9, al.tamaño_antes*0.001),
-      sz:+sz.toPrecision(8), notional:Math.round(sz*precio), px:precio, nFills:1, closedPnl:0, coin,
+      sz:+sz.toPrecision(8), notional:Math.round(sz*precio), px:precio, nFills:1, closedPnl, coin,
     };
   };
 
@@ -592,8 +597,11 @@ function renderPaginaPosiciones(){
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
     const claveAlerta = `${it.c.address}_spot_${it.coin}`;
-    const precioAprox = it.coste!=null && it.tamaño ? it.coste/it.tamaño : (it.valor!=null && it.tamaño ? it.valor/it.tamaño : 0);
-    const sintetico = movimientoSintetico(claveAlerta, it.ts, it.coin, precioAprox);
+    // precio en vivo primero (mas fiel a lo que de verdad cobro al vender)
+    // y solo si no hay valor en vivo se aproxima con el coste medio
+    const precioAprox = it.valor!=null && it.tamaño ? it.valor/it.tamaño : (it.coste!=null && it.tamaño ? it.coste/it.tamaño : 0);
+    const costeProm = it.coste!=null && it.tamaño ? it.coste/it.tamaño : null;
+    const sintetico = movimientoSintetico(claveAlerta, it.ts, it.coin, precioAprox, costeProm);
     const filasReales = it.bloque ? it.bloque.filas : [];
     const tieneDetalle = filasReales.length > 1 || (filasReales.length >= 1 && sintetico);
     const filaId = `s_${it.c.address}_${it.coin}`;
