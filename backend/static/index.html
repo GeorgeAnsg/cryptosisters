@@ -658,19 +658,24 @@ function calcularSeguimiento(){
   };
   // la ganancia en vivo solo tiene sentido para posiciones que siguen
   // abiertas ("han entrado") -- un "han cerrado" ya no tiene precio vivo que comparar
-  const gananciaConsensoHtml = (verbo, coin, lado, precio, dolares)=>{
+  const gananciaConsensoHtml = (verbo, coin, lado, precio, dolares, soloPct)=>{
     if(verbo!=='han entrado' || precio==null) return '';
-    return `<span class="pnl-consenso" data-coin="${coin}" data-lado="${lado}" data-precio="${precio}" data-dolares="${dolares??''}" style="opacity:.6;flex:none">···</span>`;
+    return `<span class="pnl-consenso" data-coin="${coin}" data-lado="${lado}" data-precio="${precio}" data-dolares="${dolares??''}" ${soloPct?'data-solo-pct="1"':''} style="opacity:.6;flex:none">···</span>`;
   };
   // un "han cerrado" ya no tiene precio en vivo que comparar -- se usa el
   // resultado YA REALIZADO del cierre (suma de closedPnl del bloque)
-  const pnlCierreHtml = (pnl)=>{
+  const pnlCierreHtml = (pnl, dolares, soloPct)=>{
     if(pnl==null) return '';
     const clase = pnl>0?'pos':(pnl<0?'neg':'');
+    if(soloPct){
+      const pct = dolares ? pnl/dolares*100 : null;
+      if(pct==null) return '';
+      return `<span class="op-pnl ${clase}">${pct>0?'+':''}${pct.toFixed(1)}%</span>`;
+    }
     return `<span class="op-pnl ${clase}">${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>`;
   };
-  const resultadoConsenso = (verbo, coin, lado, precio, dolares, pnl)=>
-    verbo==='han entrado' ? gananciaConsensoHtml(verbo, coin, lado, precio, dolares) : pnlCierreHtml(pnl);
+  const resultadoConsenso = (verbo, coin, lado, precio, dolares, pnl, soloPct)=>
+    verbo==='han entrado' ? gananciaConsensoHtml(verbo, coin, lado, precio, dolares, soloPct) : pnlCierreHtml(pnl, dolares, soloPct);
   const filaConsenso = (verbo, coin, lado, items)=>{
     const chips = items.map(({c,ts,precio,dolares,pnl})=>{
       return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:.74rem;background:rgba(255,255,255,.08);border-radius:10px;padding:5px 10px;flex:1 1 calc(33.333% - 6px)">
@@ -679,7 +684,7 @@ function calcularSeguimiento(){
             <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
             ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
           </span>
-          ${resultadoConsenso(verbo, coin, lado, precio, dolares, pnl)}
+          ${resultadoConsenso(verbo, coin, lado, precio, dolares, pnl, true)}
       </div>`;
     }).join('');
     return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
@@ -1013,51 +1018,66 @@ async function cargarPnlConsenso(){
     if(actual==null || !entrada){ s.textContent = ''; continue; }
     const signo = s.dataset.lado === 'Short' ? -1 : 1;
     const pct = (actual - entrada) / entrada * 100 * signo;
-    const dolares = parseFloat(s.dataset.dolares);
-    const ganadoUsd = dolares ? dolares*pct/100 : null;
-    const usdTexto = ganadoUsd!=null ? `${ganadoUsd>0?'+':(ganadoUsd<0?'-':'')}$${Math.abs(ganadoUsd).toLocaleString('es-ES',{maximumFractionDigits:0})} ` : '';
-    s.innerHTML = `${usdTexto}<span style="font-weight:400;opacity:.75">(${pct>0?'+':''}${pct.toFixed(1)}%)</span>`;
+    if(s.dataset.soloPct === '1'){
+      s.innerHTML = `${pct>0?'+':''}${pct.toFixed(1)}%`;
+    } else {
+      const dolares = parseFloat(s.dataset.dolares);
+      const ganadoUsd = dolares ? dolares*pct/100 : null;
+      const usdTexto = ganadoUsd!=null ? `${ganadoUsd>0?'+':(ganadoUsd<0?'-':'')}$${Math.abs(ganadoUsd).toLocaleString('es-ES',{maximumFractionDigits:0})} ` : '';
+      s.innerHTML = `${usdTexto}<span style="font-weight:400;opacity:.75">(${pct>0?'+':''}${pct.toFixed(1)}%)</span>`;
+    }
     s.style.opacity = 1;
     s.classList.toggle('pos', pct > 0);
     s.classList.toggle('neg', pct < 0);
   }
 }
 
+let cargandoPnlVivoMisPosiciones = false;
 async function cargarPnlVivoMisPosiciones(abiertas){
-  // se pide el precio actual una vez por (moneda,tipo) distinta, no una vez
-  // por fila -- varias posiciones abiertas pueden compartir la misma moneda
-  const claves = [...new Set(abiertas.map(([,m])=> `${m.coin}|${m.tipo||'trading'}`))];
-  const precios = {};
-  await Promise.all(claves.map(async clave=>{
-    const [coin, tipo] = clave.split('|');
-    try{ const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`); precios[clave] = precio; }
-    catch(e){ precios[clave] = null; }
-  }));
-  const barras = [];
-  for(const [id, m] of abiertas){
-    const celda = document.getElementById(`pnl-vivo-${id}`);
-    const precio = precios[`${m.coin}|${m.tipo||'trading'}`];
-    if(precio == null || m.precio_entrada == null || m.tamaño == null){
-      ultimoPnlVivoPorId[id] = {texto:'— (sin dato en vivo)', clase:''};
-      if(celda) celda.textContent = ultimoPnlVivoPorId[id].texto;
-      continue;
+  // evita lanzar la misma tanda de peticiones en paralelo si render() se
+  // llama varias veces seguidas (sondeo + cambio de pagina casi a la vez)
+  if(cargandoPnlVivoMisPosiciones) return;
+  cargandoPnlVivoMisPosiciones = true;
+  try{
+    // se pide el precio actual una vez por (moneda,tipo) distinta, no una vez
+    // por fila -- varias posiciones abiertas pueden compartir la misma moneda
+    const claves = [...new Set(abiertas.map(([,m])=> `${m.coin}|${m.tipo||'trading'}`))];
+    const precios = {};
+    await Promise.all(claves.map(async clave=>{
+      const [coin, tipo] = clave.split('|');
+      try{ const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`); precios[clave] = precio; }
+      catch(e){ precios[clave] = null; }
+    }));
+    const barras = [];
+    for(const [id, m] of abiertas){
+      const celda = document.getElementById(`pnl-vivo-${id}`);
+      const precio = precios[`${m.coin}|${m.tipo||'trading'}`];
+      if(precio == null || m.precio_entrada == null || m.tamaño == null){
+        ultimoPnlVivoPorId[id] = {texto:'— (sin dato en vivo)', clase:''};
+        if(celda) celda.textContent = ultimoPnlVivoPorId[id].texto;
+        continue;
+      }
+      const signo = m.lado === 'Short' ? -1 : 1;
+      const pnl = (precio - m.precio_entrada) * m.tamaño * signo;
+      const invertido = m.precio_entrada * m.tamaño;
+      const pct = invertido ? (pnl / invertido * 100) : null;
+      barras.push({coin: etiquetaMoneda(m.coin), lado: m.lado, etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
+      const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
+      ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase: pnl>0?'pos':(pnl<0?'neg':'')};
+      if(celda){ // puede haber cambiado de pagina mientras se pedian los precios
+        celda.textContent = ultimoPnlVivoPorId[id].texto;
+        celda.classList.toggle('pos', pnl > 0);
+        celda.classList.toggle('neg', pnl < 0);
+      }
     }
-    const signo = m.lado === 'Short' ? -1 : 1;
-    const pnl = (precio - m.precio_entrada) * m.tamaño * signo;
-    const invertido = m.precio_entrada * m.tamaño;
-    const pct = invertido ? (pnl / invertido * 100) : null;
-    barras.push({coin: etiquetaMoneda(m.coin), lado: m.lado, etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
-    const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
-    ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase: pnl>0?'pos':(pnl<0?'neg':'')};
-    if(celda){ // puede haber cambiado de pagina mientras se pedian los precios
-      celda.textContent = ultimoPnlVivoPorId[id].texto;
-      celda.classList.toggle('pos', pnl > 0);
-      celda.classList.toggle('neg', pnl < 0);
-    }
+    ultimoGraficoMisPosicionesHtml = construirGraficoPosicionesAbiertas(barras);
+    const grafico = document.getElementById('grafico-mis-posiciones');
+    if(grafico) grafico.innerHTML = ultimoGraficoMisPosicionesHtml;
+  }catch(e){
+    console.error('fallo cargando el pnl en vivo de mis posiciones', e);
+  }finally{
+    cargandoPnlVivoMisPosiciones = false;
   }
-  ultimoGraficoMisPosicionesHtml = construirGraficoPosicionesAbiertas(barras);
-  const grafico = document.getElementById('grafico-mis-posiciones');
-  if(grafico) grafico.innerHTML = ultimoGraficoMisPosicionesHtml;
 }
 
 function construirGraficoPosicionesAbiertas(barras){
@@ -1415,10 +1435,11 @@ function render(){
     };
   });
 
-  if(paginaActiva === 'mias'){
-    const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
-    if(abiertas.length) cargarPnlVivoMisPosiciones(abiertas);
-  }
+  // antes solo se pedia el pnl en vivo estando en "Mis posiciones" -- pero la
+  // tarjeta del Dashboard usa la misma cache (ultimoPnlVivoPorId) y se
+  // quedaba en "..." para siempre si nunca visitabas esa pestaña
+  const abiertasPropias = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
+  if(abiertasPropias.length) cargarPnlVivoMisPosiciones(abiertasPropias);
   cargarPnlConsenso();
 
   const elSig = document.getElementById('n-siguiendo');
