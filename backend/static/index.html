@@ -45,10 +45,10 @@ h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 
 .gm-barra{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
 .gm-n{width:18px;flex:none;text-align:right;color:#9ca0ab;font-family:var(--font-mono);font-size:.72rem}
 
-.page-tabs{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:999px;height:48px;flex:none;margin-left:auto;box-shadow:var(--shadow)}
+.page-tabs{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:999px;height:48px;flex:0 1 auto;min-width:0;overflow-x:auto;margin-left:auto;box-shadow:var(--shadow)}
 .btn-campana{position:relative;width:48px;height:48px;border-radius:50%;border:none;background:var(--panel);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);flex:none}
 .btn-campana .alerta-tab{top:8px;right:9px}
-.page-tab{font:inherit;font-size:.82rem;font-weight:500;flex:1;display:flex;align-items:center;justify-content:center;border-radius:999px;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;white-space:nowrap;padding:0 20px}
+.page-tab{font:inherit;font-size:.82rem;font-weight:500;flex:none;display:flex;align-items:center;justify-content:center;border-radius:999px;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;white-space:nowrap;padding:0 16px}
 .filtro-actividad{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:14px}
 .filtro-pills{display:flex;gap:6px}
 .filtro-pill{font:inherit;font-size:.76rem;font-weight:600;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
@@ -123,6 +123,8 @@ table.ops tr:last-child td{border-bottom:none}
 .op-lado.spot{background:var(--border);color:var(--fg-muted)}
 .op-pnl.pos{color:var(--ok);font-weight:700}
 .op-pnl.neg{color:var(--bad);font-weight:700}
+.pnl-consenso.pos{color:var(--ok);font-weight:700}
+.pnl-consenso.neg{color:var(--bad);font-weight:700}
 tr.op-cabecera td{background:var(--accent-weak);font-weight:700;padding:20px}
 tr.op-hijo td{padding-left:26px;color:var(--fg-muted);font-weight:400}
 tr.op-hijo.oculto{display:none}
@@ -199,6 +201,7 @@ tr.op-hijo.oculto{display:none}
       <button class="page-tab activo" data-pagina="posiciones">Dashboard</button>
       <button class="page-tab" data-pagina="mias">Mis posiciones</button>
       <button class="page-tab" data-pagina="seguimiento">Traders</button>
+      <button class="page-tab" data-pagina="consenso">Consenso</button>
       <button class="page-tab" data-pagina="stats">Estadísticas</button>
     </div>
     <div class="topbar-right">
@@ -469,18 +472,19 @@ function filaPlanta(c, faceta){
 }
 
 function renderSubmenuTraders(){
-  const items = [['trading','Trading'],['spot','Spot'],['consenso','Consenso'],['posiciones','Posiciones']];
+  const items = [['trading','Trading'],['spot','Spot'],['posiciones','Posiciones']];
   return `<div class="subtabs-traders">${items.map(([v,l])=>
       `<button class="subtab-traders ${subVistaTraders===v?'activo':''}" data-subvista-traders="${v}">${l}</button>`).join('')}</div>`;
 }
 
+function renderPaginaConsenso(){
+  const d = calcularSeguimiento();
+  if(d.vacio) return `<div class="estado">${d.mensaje}</div>`;
+  return d.consensoBoxExpandidoHtml;
+}
+
 function renderPaginaSeguimiento(){
   const submenu = renderSubmenuTraders();
-
-  if(subVistaTraders==='consenso'){
-    const d = calcularSeguimiento();
-    return `<div style="margin-bottom:14px">${submenu}</div>` + (d.vacio ? `<div class="estado">${d.mensaje}</div>` : d.consensoBoxExpandidoHtml);
-  }
 
   if(subVistaTraders==='posiciones'){
     const d = calcularSeguimiento();
@@ -534,8 +538,8 @@ function resumenMisPosicionesHtml(){
     const texto = pnlCache?.texto ?? '…';
     return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:10px 12px">
       <div style="display:flex;align-items:center;gap:8px">
-        ${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}" style="font-size:.6rem;padding:2px 7px">${m.lado}</span>`:''}
         <span style="font-weight:700;font-size:.82rem">${etiquetaMoneda(m.coin)}</span>
+        ${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}" style="font-size:.6rem;padding:2px 7px">${m.lado}</span>`:''}
       </div>
       <span class="op-pnl ${clase}" style="font-size:.82rem">${texto}</span>
     </div>`;
@@ -643,45 +647,59 @@ function calcularSeguimiento(){
   };
   const infoConsenso = (verbo, coin, lado, items)=>{
     const tsConsenso = items.map(it=>it.ts).filter(ts=>ts!=null).sort((a,b)=>a-b)[1];
-    return `<div style="display:flex;flex-direction:column;gap:6px;flex:none">
-      <div style="font-size:.84rem"><b>${etiquetaMoneda(coin)}</b>${tsConsenso!=null?` <span style="opacity:.55;font-size:.74rem">· ${fechaRelativaCorta(tsConsenso)}</span>`:''}</div>
-      <div style="display:flex;align-items:center;gap:6px">
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-weight:700;font-size:.84rem">${etiquetaMoneda(coin)}</span>
         <span class="op-lado ${lado.toLowerCase()}" style="padding:2px 8px;font-size:.6rem">${lado}</span>
-        <span style="display:inline-flex;align-items:center;background:var(--accent);color:var(--accent-fg);border-radius:999px;padding:3px 10px;font-weight:700;font-size:.68rem;line-height:1.4">${items.length} traders ${verbo}</span>
+        <span style="font-size:.72rem;opacity:.8">${items.length} traders ${verbo}</span>
       </div>
+      ${tsConsenso!=null?`<span style="opacity:.55;font-size:.68rem;background:rgba(255,255,255,.1);padding:3px 10px;border-radius:999px;flex:none">${fechaRelativaCorta(tsConsenso)}</span>`:''}
     </div>`;
   };
+  // la ganancia en vivo solo tiene sentido para posiciones que siguen
+  // abiertas ("han entrado") -- un "han cerrado" ya no tiene precio vivo que comparar
+  const gananciaConsensoHtml = (verbo, coin, lado, precio, dolares)=>{
+    if(verbo!=='han entrado' || precio==null) return '';
+    return `<span class="pnl-consenso" data-coin="${coin}" data-lado="${lado}" data-precio="${precio}" data-dolares="${dolares??''}" style="opacity:.6;flex:none">···</span>`;
+  };
   const filaConsenso = (verbo, coin, lado, items)=>{
-    const chips = items.map(({c,ts})=>{
-      return `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:6px 12px">
-          <span class="avatar" style="width:16px;height:16px;font-size:.55rem;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
-          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
-          ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
+    const chips = items.map(({c,ts,precio})=>{
+      return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:.74rem;background:rgba(255,255,255,.08);border-radius:10px;padding:5px 10px;flex:1 1 calc(33.333% - 6px)">
+          <span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
+            <span class="avatar" style="width:16px;height:16px;font-size:.55rem;flex:none;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
+            <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
+            ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
+          </span>
+          ${gananciaConsensoHtml(verbo, coin, lado, precio)}
       </div>`;
     }).join('');
-    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
       ${infoConsenso(verbo, coin, lado, items)}
-      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px">${chips}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${chips}</div>
     </div>`;
   };
   const filaConsensoExpandido = (verbo, coin, lado, items)=>{
-    const chips = items.map(({c,dolares,precio,ts})=>{
+    // orden de entrada: quien entro antes primero
+    const ordenados = [...items].sort((a,b)=>(a.ts??0)-(b.ts??0));
+    const filas = ordenados.map(({c,dolares,precio,ts})=>{
       const detalle = [
         dolares!=null ? `Tamaño $${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
         precio!=null ? `Entrada $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
       ].filter(Boolean).join(' · ');
-      return `<div style="display:flex;flex-direction:column;gap:2px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:6px 12px">
-        <div style="display:flex;align-items:center;gap:5px">
-          <span class="avatar" style="width:16px;height:16px;font-size:.55rem;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
-          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
+      const ganancia = gananciaConsensoHtml(verbo, coin, lado, precio, dolares);
+      return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px">
+        <div style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap">
+          <span class="avatar" style="width:18px;height:18px;font-size:.58rem;flex:none;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
+          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading" style="font-weight:600">${plantaFor(c.address)}</span>
           ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
+          ${detalle?`<span style="opacity:.6">· ${detalle}</span>`:''}
         </div>
-        ${detalle?`<span style="opacity:.75">${detalle}</span>`:''}
+        ${ganancia?`<div style="font-size:.84rem;font-weight:700;flex:none">${ganancia}</div>`:''}
       </div>`;
     }).join('');
-    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
       ${infoConsenso(verbo, coin, lado, items)}
-      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px">${chips}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">${filas}</div>
     </div>`;
   };
 
@@ -703,14 +721,17 @@ function calcularSeguimiento(){
   const consensoHtml = pintarGrupos(filaConsenso);
   const consensoHtmlExpandido = pintarGrupos(filaConsensoExpandido);
 
-  const cajaConsenso = (contenido)=> `<div class="tarjeta estatica tarjeta-llena" style="background:var(--panel-dark);border-color:var(--panel-dark);color:#fff;display:flex;flex-direction:column;gap:14px">
+  const cajaConsenso = (contenido, verTodo)=> `<div class="tarjeta estatica tarjeta-llena" style="background:var(--panel-dark);border-color:var(--panel-dark);color:#fff;display:flex;flex-direction:column;gap:14px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div class="seccion-titulo" style="margin:0;color:#fff">Consenso reciente</div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <div class="seccion-titulo" style="margin:0;color:#fff">Consenso reciente</div>
+        ${verTodo?`<span data-ir-pagina="consenso" style="font-size:.74rem;color:#9ca0ab;font-weight:600;cursor:pointer">Ver todo →</span>`:''}
+      </div>
       <span style="font-size:.64rem;color:#9ca0ab;background:rgba(255,255,255,.1);padding:3px 10px;border-radius:999px;flex:none">últimas 72h</span>
     </div>
     ${contenido || '<div style="font-size:.84rem;color:#9ca0ab">Nadie ha coincidido todavía en las últimas 72h.</div>'}
   </div>`;
-  const consensoBoxHtml = cajaConsenso(consensoHtml);
+  const consensoBoxHtml = cajaConsenso(consensoHtml, true);
   const consensoBoxExpandidoHtml = cajaConsenso(consensoHtmlExpandido);
 
   const misPosicionesBoxHtml = resumenMisPosicionesHtml()
@@ -722,7 +743,10 @@ function calcularSeguimiento(){
   </span>`;
   const filaResumenTrading = (it)=>{
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
-    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '<span style="color:var(--fg-muted);font-size:.78rem">sin dato</span>';
+    const invertido = (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null;
+    const pct = (it.pnl!=null && invertido) ? it.pnl/invertido*100 : null;
+    const pctTexto = pct!=null ? ` <span class="op-pnl ${pnlClase}" style="font-weight:400;font-size:.72rem">(${pct>0?'+':''}${pct.toFixed(1)}%)</span>` : '';
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>${pctTexto}` : '<span style="color:var(--fg-muted);font-size:.78rem">sin dato</span>';
     return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:9px 12px;font-size:.82rem;gap:10px">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
         <span style="font-weight:700;flex:none">${etiquetaMoneda(it.coin)}</span>
@@ -735,7 +759,9 @@ function calcularSeguimiento(){
   };
   const filaResumenSpot = (it)=>{
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
-    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : `<span style="color:var(--fg-muted);font-size:.78rem">${it.cerrado?'vendida':'sin dato'}</span>`;
+    const pct = (it.pnl!=null && it.coste) ? it.pnl/it.coste*100 : null;
+    const pctTexto = pct!=null ? ` <span class="op-pnl ${pnlClase}" style="font-weight:400;font-size:.72rem">(${pct>0?'+':''}${pct.toFixed(1)}%)</span>` : '';
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>${pctTexto}` : `<span style="color:var(--fg-muted);font-size:.78rem">${it.cerrado?'vendida':'sin dato'}</span>`;
     return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:9px 12px;font-size:.82rem;gap:10px">
       <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
         <span style="font-weight:700;flex:none">${etiquetaMoneda(it.coin)}</span>
@@ -864,19 +890,19 @@ function renderPaginaPosiciones(){
       <div class="span-8">${d.consensoBoxHtml}</div>
       <div class="span-4">${d.misPosicionesBoxHtml}</div>
       <div class="span-6">
-        <div class="tarjeta estatica">
+        <div class="tarjeta estatica tarjeta-llena">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="seccion-titulo" style="margin:0">Trading</div>
-            <span style="font-size:.74rem;color:var(--fg-muted)">${d.trading.length} posiciones</span>
+            <div class="seccion-titulo" style="margin:0">Trading <span style="color:var(--fg-muted);font-weight:600;font-size:.8rem">· ${d.trading.length} posiciones</span></div>
+            <span data-ir-traders="posiciones" style="font-size:.74rem;color:var(--fg-muted);font-weight:600;cursor:pointer;flex:none">Ver todas →</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px">${d.resumenTradingHtml}</div>
         </div>
       </div>
       <div class="span-6">
-        <div class="tarjeta estatica">
+        <div class="tarjeta estatica tarjeta-llena">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="seccion-titulo" style="margin:0">Spot</div>
-            <span style="font-size:.74rem;color:var(--fg-muted)">${d.spot.length} posiciones</span>
+            <div class="seccion-titulo" style="margin:0">Spot <span style="color:var(--fg-muted);font-weight:600;font-size:.8rem">· ${d.spot.length} posiciones</span></div>
+            <span data-ir-traders="posiciones" style="font-size:.74rem;color:var(--fg-muted);font-weight:600;cursor:pointer;flex:none">Ver todas →</span>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px">${d.resumenSpotHtml}</div>
         </div>
@@ -955,6 +981,31 @@ async function actualizarResumenPropio(){
     }
   } finally {
     cargandoResumenPropio = false;
+  }
+}
+
+async function cargarPnlConsenso(){
+  const spans = [...document.querySelectorAll('.pnl-consenso')];
+  if(!spans.length) return;
+  const coins = [...new Set(spans.map(s=>s.dataset.coin))];
+  const precios = {};
+  await Promise.all(coins.map(async coin=>{
+    try{ const {precio} = await apiGet(`/precio/${coin}?tipo=trading`); precios[coin] = precio; }
+    catch(e){ precios[coin] = null; }
+  }));
+  for(const s of spans){
+    const actual = precios[s.dataset.coin];
+    const entrada = parseFloat(s.dataset.precio);
+    if(actual==null || !entrada){ s.textContent = ''; continue; }
+    const signo = s.dataset.lado === 'Short' ? -1 : 1;
+    const pct = (actual - entrada) / entrada * 100 * signo;
+    const dolares = parseFloat(s.dataset.dolares);
+    const ganadoUsd = dolares ? dolares*pct/100 : null;
+    const usdTexto = ganadoUsd!=null ? `${ganadoUsd>0?'+':(ganadoUsd<0?'-':'')}$${Math.abs(ganadoUsd).toLocaleString('es-ES',{maximumFractionDigits:0})} ` : '';
+    s.innerHTML = `${usdTexto}<span style="font-weight:400;opacity:.75">(${pct>0?'+':''}${pct.toFixed(1)}%)</span>`;
+    s.style.opacity = 1;
+    s.classList.toggle('pos', pct > 0);
+    s.classList.toggle('neg', pct < 0);
   }
 }
 
@@ -1117,6 +1168,7 @@ function render(){
 
   root.innerHTML = `
     <div class="page-panel ${paginaActiva==='seguimiento'?'':'oculto'}" data-pagina="seguimiento">${seguro(renderPaginaSeguimiento,'seguimiento')}</div>
+    <div class="page-panel ${paginaActiva==='consenso'?'':'oculto'}" data-pagina="consenso">${seguro(renderPaginaConsenso,'consenso')}</div>
     <div class="page-panel ${paginaActiva==='posiciones'?'':'oculto'}" data-pagina="posiciones">${seguro(renderPaginaPosiciones,'posiciones de seguimiento')}</div>
     <div class="page-panel ${paginaActiva==='mias'?'':'oculto'}" data-pagina="mias">${seguro(renderPaginaMias,'posiciones abiertas')}</div>
     <div class="page-panel ${paginaActiva==='stats'?'':'oculto'}" data-pagina="stats">${seguro(renderPaginaStats,'estadísticas')}</div>`;
@@ -1167,6 +1219,13 @@ function render(){
 
   root.querySelectorAll('.page-tab[data-pagina]').forEach(el=>{
     el.onclick = ()=> irAPagina(el.dataset.pagina);
+  });
+
+  root.querySelectorAll('[data-ir-pagina]').forEach(el=>{
+    el.onclick = ()=> irAPagina(el.dataset.irPagina);
+  });
+  root.querySelectorAll('[data-ir-traders]').forEach(el=>{
+    el.onclick = ()=> irATraders(el.dataset.irTraders);
   });
 
   root.querySelectorAll('[data-toggle-detalle]').forEach(btn=>{
@@ -1346,6 +1405,7 @@ function render(){
     const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
     if(abiertas.length) cargarPnlVivoMisPosiciones(abiertas);
   }
+  cargarPnlConsenso();
 
   const elSig = document.getElementById('n-siguiendo');
   if(elSig){
@@ -1441,6 +1501,12 @@ function irAPagina(pagina){
   paginaActiva = pagina;
   document.querySelectorAll('.page-tabs .page-tab').forEach(b=> b.classList.toggle('activo', b.dataset.pagina===pagina));
   document.querySelectorAll('.page-panel').forEach(p=> p.classList.toggle('oculto', p.dataset.pagina !== pagina));
+}
+function irATraders(subvista){
+  subVistaTraders = subvista;
+  paginaActiva = 'seguimiento';
+  render();
+  document.querySelectorAll('.page-tabs .page-tab').forEach(b=> b.classList.toggle('activo', b.dataset.pagina==='seguimiento'));
 }
 document.querySelectorAll('.page-tabs .page-tab').forEach(btn=>{
   btn.onclick = ()=> irAPagina(btn.dataset.pagina);
