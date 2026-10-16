@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/img", StaticFiles(directory=Path(__file__).parent / "static" / "img"), name="img")
 
 
 def comprobar_clave(x_api_key: str | None = Header(default=None)):

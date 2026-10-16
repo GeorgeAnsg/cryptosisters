@@ -21,7 +21,15 @@ body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);
 header{margin-bottom:22px}
 h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 6px;letter-spacing:-.02em}
 .sub{color:var(--fg-muted);font-size:.9rem;max-width:620px;line-height:1.5;margin:0}
-.cabecera-negra{display:flex;align-items:stretch;gap:0;margin:18px 0 0;background:var(--panel-dark);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;flex-wrap:wrap}
+.topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;margin-right:2px;flex:none}
+.brand-mark{width:34px;height:34px;border-radius:10px;background:var(--panel-dark);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:1rem}
+.brand-name{font-family:var(--font-display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:10px;height:48px;flex:none}
+.stat-pill{height:100%;background:var(--panel);border-radius:999px;padding:0 16px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;line-height:1.2;box-shadow:var(--shadow)}
+.stat-pill .l{font-size:.6rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+.stat-pill .n{font-family:var(--font-display);font-weight:800;font-size:.86rem;font-variant-numeric:tabular-nums}
+.cabecera-negra{display:flex;align-items:stretch;gap:0;margin:0 0 22px;background:var(--panel-dark);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;flex-wrap:wrap}
 .resumen-item{display:flex;flex-direction:column;gap:3px;padding:16px 24px;justify-content:center}
 .resumen-item + .resumen-item{border-left:1px solid rgba(255,255,255,.12)}
 .resumen-item .n{font-family:var(--font-display);font-size:1.6rem;font-weight:800;color:var(--fg-on-dark);font-variant-numeric:tabular-nums;transition:transform .25s, color .25s}
@@ -37,10 +45,10 @@ h1{font-family:var(--font-display);font-weight:800;font-size:1.65rem;margin:0 0 
 .gm-barra{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
 .gm-n{width:18px;flex:none;text-align:right;color:#9ca0ab;font-family:var(--font-mono);font-size:.72rem}
 
-.page-tabs{display:flex;gap:8px;margin-top:18px}
-.btn-campana{margin-left:auto;position:relative;width:38px;height:38px;border-radius:50%;border:1px solid var(--border);background:var(--panel);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center}
-.btn-campana .alerta-tab{top:6px;right:6px}
-.page-tab{font:inherit;font-size:.86rem;font-weight:700;padding:9px 18px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
+.page-tabs{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:999px;height:48px;flex:none;margin-left:auto;box-shadow:var(--shadow)}
+.btn-campana{position:relative;width:48px;height:48px;border-radius:50%;border:none;background:var(--panel);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow);flex:none}
+.btn-campana .alerta-tab{top:8px;right:9px}
+.page-tab{font:inherit;font-size:.82rem;font-weight:500;flex:1;display:flex;align-items:center;justify-content:center;border-radius:999px;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;white-space:nowrap;padding:0 20px}
 .filtro-actividad{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:14px}
 .filtro-pills{display:flex;gap:6px}
 .filtro-pill{font:inherit;font-size:.76rem;font-weight:600;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
@@ -91,6 +99,8 @@ h2 .n{font-family:var(--font-mono);font-size:.74rem;color:var(--fg-muted);font-w
 
 .tarjeta{cursor:pointer}
 .tarjeta:hover{border-color:var(--fg-muted)}
+.tarjeta.estatica{cursor:default}
+.tarjeta.estatica:hover{border-color:var(--border)}
 
 .modal-fondo{position:fixed;inset:0;background:rgba(19,20,23,.5);display:flex;align-items:center;justify-content:center;padding:20px;z-index:10}
 .modal{background:var(--bg);border-radius:20px;max-width:1020px;width:100%;max-height:82vh;display:flex;flex-direction:column;box-shadow:var(--shadow)}
@@ -138,10 +148,24 @@ tr.op-hijo.oculto{display:none}
 .btn-abrir,.btn-cerrar,.btn-añadir,.btn-reducir{font:inherit;font-size:.74rem;font-weight:700;padding:5px 12px;border-radius:99px;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);cursor:pointer}
 .btn-cerrar,.btn-añadir,.btn-reducir{width:26px;height:26px;padding:0;font-size:.95rem;line-height:1}
 .btn-abrir:hover,.btn-cerrar:hover,.btn-añadir:hover,.btn-reducir:hover{background:#000;color:#fff;border-color:#000}
+.btn-abrir:disabled{opacity:.4;cursor:not-allowed;background:var(--panel)}
+.btn-abrir:disabled:hover{background:var(--panel);color:var(--fg-muted);border-color:var(--border)}
 .seccion-titulo{font-family:var(--font-display);font-weight:800;font-size:.95rem;margin:0 2px 10px}
 .gb-leyenda{font-size:.76rem;color:var(--fg-muted);margin:-4px 2px 12px}
 .grafico-barras{background:var(--panel-dark);color:#fff;border-radius:16px;box-shadow:var(--shadow);padding:14px 16px;margin-bottom:18px}
 .consenso-caja{background:var(--panel-dark);color:#fff;border-radius:16px;box-shadow:var(--shadow);padding:16px 16px 16px 20px;margin-bottom:22px;display:flex;flex-direction:column;gap:16px}
+.subtabs-traders{display:flex;gap:4px;background:var(--panel);padding:4px;border-radius:999px;box-shadow:var(--shadow);width:100%;margin-bottom:6px}
+.subtab-traders{font:inherit;font-size:.84rem;font-weight:500;flex:1;display:flex;align-items:center;justify-content:center;border-radius:999px;border:none;background:transparent;color:var(--fg-muted);cursor:pointer;white-space:nowrap;padding:11px 14px}
+.subtab-traders.activo{background:var(--panel-dark);color:var(--fg-on-dark)}
+.btn-icono-redondo{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.btn-icono-redondo:hover{background:#000;color:#fff;border-color:#000}
+.dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:stretch}
+.dashboard-grid .tarjeta-llena{height:100%}
+.dashboard-grid .span-8{grid-column:span 8}
+.dashboard-grid .span-4{grid-column:span 4}
+.dashboard-grid .span-6{grid-column:span 6}
+.dashboard-grid .tarjeta table.ops{box-shadow:none;border-radius:0;margin:0 -18px -18px;width:calc(100% + 36px)}
+@media (max-width:860px){ .dashboard-grid [class*="span-"]{grid-column:1 / -1} }
 .consenso-fila{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
 .consenso-fila:not(:last-child){padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.15)}
 .consenso-fila .pf-trader{color:#fff}
@@ -169,21 +193,22 @@ tr.op-hijo.oculto{display:none}
 
 <div class="envoltorio">
 <header>
-  <h1>Corvus 5</h1>
-  <div class="cabecera-negra">
-    <div class="resumen-item"><span class="n" id="n-siguiendo">—</span><span class="l">Siguiendo</span></div>
-    <div class="resumen-item"><span class="n" id="n-total">—</span><span class="l">Total</span></div>
-    <div class="resumen-item"><span class="n" id="n-pnl-vivo">—</span><span class="l">PnL en vivo (tuyo)</span></div>
-    <div class="resumen-item"><span class="n" id="n-winrate-propio">—</span><span class="l">Win rate (tuyo)</span></div>
-    <div class="cn-divisor"></div>
-    <div id="grafico-monedas" class="cn-grafico"></div>
-  </div>
-  <div class="page-tabs">
-    <button class="page-tab activo" data-pagina="mias">Mis posiciones</button>
-    <button class="page-tab" data-pagina="posiciones">Posiciones de seguimiento</button>
-    <button class="page-tab" data-pagina="seguimiento">Traders</button>
-    <button class="page-tab" data-pagina="stats">Estadísticas</button>
-    <button id="btn-notificaciones" class="btn-campana" title="Notificaciones">🔔<span class="alerta-tab" id="punto-notificaciones" style="display:none"></span></button>
+  <div class="topbar">
+    <div class="brand"><div class="brand-mark"><img src="/img/corvus-bird.png" alt="Corvus" style="width:19px;height:19px;object-fit:contain;filter:invert(1)"></div><div class="brand-name">Corvus</div></div>
+    <div class="page-tabs">
+      <button class="page-tab activo" data-pagina="posiciones">Dashboard</button>
+      <button class="page-tab" data-pagina="mias">Mis posiciones</button>
+      <button class="page-tab" data-pagina="seguimiento">Traders</button>
+      <button class="page-tab" data-pagina="stats">Estadísticas</button>
+    </div>
+    <div class="topbar-right">
+      <span class="n" id="n-pnl-vivo" style="display:none">—</span>
+      <span class="n" id="n-winrate-propio" style="display:none">—</span>
+      <button id="btn-notificaciones" class="btn-campana" title="Notificaciones">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="alerta-tab" id="punto-notificaciones" style="display:none"></span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -206,6 +231,7 @@ let alertas = {};
 let misPosiciones = {};
 let notificaciones = [];
 let expandidos = new Set(); // que flechas estan desplegadas -- sobrevive al sondeo periodico (cargarTodo+render cada 30s)
+let ultimoNSiguiendo = null; // para el destello de "n-siguiendo" al cambiar -- el elemento se recrea en cada render()
 
 // backend propio (ver carpeta backend/) -- mismo origen que esta pagina,
 // ruta relativa. El backend sustituye esto por la API_KEY real al servir
@@ -381,10 +407,11 @@ function tarjeta(c, filtroActividad){
     </div>`;
 }
 
-let paginaActiva = 'mias';
+let paginaActiva = 'posiciones';
 let filtroActividad = 'trading';
 let ordenAsc = false;
 let subPestañaPosiciones = 'trading';
+let subVistaTraders = 'trading'; // trading | spot | consenso | posiciones -- submenu de la pestaña Traders
 
 function bloqueDePosicion(c, lado, coinBase){
   const ops = agruparEpisodios(c.operaciones_recientes || []);
@@ -436,60 +463,51 @@ function movimientoSintetico(clave, ts, coin, precio, costeProm){
   };
 }
 
-function filaMovimientoTrading(o, filaId, abierta){
-  // columnas alineadas con la cabecera de la tabla padre: Fecha, Dirección,
-  // Moneda, $ invertido, % de su cartera, Entrada, Trader, Resultado, (Abrir)
-  const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
-  const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
-  const verbo = (o.esInicio && o.accion==='Abre') ? 'Abre (inicio)' : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
-  return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
-    <td>${fechaLocal(o.ts)}</td>
-    <td>${verbo}</td>
-    <td></td>
-    <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
-    <td>—</td>
-    <td>$${o.px}</td>
-    <td></td>
-    <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
-    <td></td>
-  </tr>`;
-}
-
-function filaMovimientoSpot(o, filaId, abierta){
-  // columnas alineadas con la cabecera: Fecha, Moneda, $ invertido, % de su
-  // cartera, Trader, Valor actual, Resultado, (Abrir)
-  const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
-  const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
-  const esEntrada = o.accion === 'Abre';
-  const verbo = (o.esInicio && esEntrada) ? 'Compra (inicio)' : (esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'));
-  return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
-    <td>${fechaLocal(o.ts)}</td>
-    <td>${verbo}</td>
-    <td>${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
-    <td>—</td>
-    <td></td>
-    <td>—</td>
-    <td class="op-pnl ${pnlClase}">${pnlTexto}</td>
-    <td></td>
-  </tr>`;
-}
-
 function filaPlanta(c, faceta){
   const planta = plantaFor(c.address);
   return `<span class="pf-trader" data-addr="${c.address}" data-faceta="${faceta||''}"><span class="avatar" style="background:${colorFor(c.address)}">${planta[0]}</span>${planta}</span>`;
 }
 
+function renderSubmenuTraders(){
+  const items = [['trading','Trading'],['spot','Spot'],['consenso','Consenso'],['posiciones','Posiciones']];
+  return `<div class="subtabs-traders">${items.map(([v,l])=>
+      `<button class="subtab-traders ${subVistaTraders===v?'activo':''}" data-subvista-traders="${v}">${l}</button>`).join('')}</div>`;
+}
+
 function renderPaginaSeguimiento(){
-  const filtros = [['trading','Trading'],['spot','Spot']];
-  const filtrosHtml = `<div class="filtro-actividad">
-    <div class="filtro-pills">${filtros.map(([v,l])=>
-      `<button class="filtro-pill ${filtroActividad===v?'activo':''}" data-filtro="${v}">${l}</button>`).join('')}</div>
-    <button class="filtro-pill" data-orden="1" title="Cambiar orden">Puntuación ${ordenAsc?'▲':'▼'}</button>
-    <button class="filtro-pill" data-forzar-descubrimiento="1" title="Recalcula ya a todo el mundo no seguido, en vez de esperar al ciclo semanal">↻ Recalcular ahora</button>
+  const submenu = renderSubmenuTraders();
+
+  if(subVistaTraders==='consenso'){
+    const d = calcularSeguimiento();
+    return `<div style="margin-bottom:14px">${submenu}</div>` + (d.vacio ? `<div class="estado">${d.mensaje}</div>` : d.consensoBoxExpandidoHtml);
+  }
+
+  if(subVistaTraders==='posiciones'){
+    const d = calcularSeguimiento();
+    const cuerpo = d.vacio ? `<div class="estado">${d.mensaje}</div>` : `
+      <div class="seccion-titulo">Trading (${d.trading.length})</div>
+      <div class="sub-panel" data-sub="trading" style="margin-bottom:22px">${d.tablaTradingCompletaHtml}</div>
+      <div class="seccion-titulo">Spot (${d.spot.length})</div>
+      <div class="sub-panel" data-sub="spot">${d.tablaSpotCompletaHtml}</div>`;
+    return `<div style="margin-bottom:14px">${submenu}</div>` + cuerpo;
+  }
+
+  // trading / spot: la rejilla de traders a seguir/descubrir -- cada faceta
+  // (trading/spot) cuenta su propio "siguiendo", no el global
+  filtroActividad = subVistaTraders;
+  const nSigFaceta = candidatos.filter(c=> filtroActividad==='spot' ? c.sigue_spot : (c.categoria==='especulativo' ? c.siguiendo : c.sigue_trading)).length;
+  const tituloListado = filtroActividad==='spot' ? 'Listado de billeteras spot' : 'Listado de traders';
+  const controlesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 2px 14px">
+    <div style="display:flex;align-items:center;gap:7px">
+      <div class="seccion-titulo" style="margin:0">${tituloListado}</div>
+      <span style="background:var(--border);color:var(--fg-muted);font-weight:700;font-size:.72rem;padding:3px 9px;border-radius:999px">${nSigFaceta}/${candidatos.length}</span>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-icono-redondo" data-orden="1" title="Cambiar orden (${ordenAsc?'ascendente':'descendente'})">${ordenAsc?'↑':'↓'}</button>
+      <button class="btn-icono-redondo" data-forzar-descubrimiento="1" title="Recalcula ya a todo el mundo no seguido, en vez de esperar al ciclo semanal">↻</button>
+    </div>
   </div>`;
 
-  // solo trading o solo spot -- nunca mezclados en la misma vista; las
-  // especulativas (sin facetas) se ven en el filtro de trading por defecto
   let lista = candidatos;
   if(filtroActividad==='trading') lista = lista.filter(c=>c.categoria==='especulativo' || c.puntuacion!=null);
   if(filtroActividad==='spot') lista = lista.filter(c=>c.puntuacion_spot!=null);
@@ -504,15 +522,39 @@ function renderPaginaSeguimiento(){
   });
   const grid = todos.length ? `<div class="grid">${todos.map(c=>tarjeta(c, filtroActividad)).join('')}</div>`
     : '<div class="estado">Nadie tiene puntuación en esta categoría todavía.</div>';
-  return filtrosHtml + grid;
+  return submenu + controlesHtml + grid;
 }
 
-function renderPaginaPosiciones(){
+function resumenMisPosicionesHtml(){
+  const abiertas = Object.entries(misPosiciones).filter(([,m])=>m.estado==='abierta');
+  if(!abiertas.length) return '';
+  const filas = abiertas.slice(0,6).map(([id,m])=>{
+    const pnlCache = ultimoPnlVivoPorId[id];
+    const clase = pnlCache?.clase || '';
+    const texto = pnlCache?.texto ?? '…';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:10px 12px">
+      <div style="display:flex;align-items:center;gap:8px">
+        ${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}" style="font-size:.6rem;padding:2px 7px">${m.lado}</span>`:''}
+        <span style="font-weight:700;font-size:.82rem">${etiquetaMoneda(m.coin)}</span>
+      </div>
+      <span class="op-pnl ${clase}" style="font-size:.82rem">${texto}</span>
+    </div>`;
+  }).join('');
+  return `<div class="tarjeta estatica tarjeta-llena" style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="seccion-titulo" style="margin:0">Mis posiciones</div>
+      <span class="page-tab" data-pagina="mias" style="padding:4px 10px;font-size:.74rem;color:var(--fg-muted);background:var(--bg);flex:none">Ver todas →</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">${filas}</div>
+  </div>`;
+}
+
+function calcularSeguimiento(){
   // trading y spot se siguen por separado -- cada tabla solo mira a quien
   // tiene SU faceta seguida, no "siguiendo" en general (ver tarjeta())
   const siguiendoTrading = candidatos.filter(c=>c.sigue_trading);
   const siguiendoSpot = candidatos.filter(c=>c.sigue_spot);
-  if(!siguiendoTrading.length && !siguiendoSpot.length) return '<div class="estado">No sigues a nadie todavía — actívalo en la pestaña "Seguimiento".</div>';
+  if(!siguiendoTrading.length && !siguiendoSpot.length) return {vacio:true, mensaje:'No sigues a nadie todavía — actívalo en la pestaña "Traders".'};
 
   // el backtest diario (ver refresher.ciclo_backtest_diario) es lo unico que
   // actualiza los "bloques" (operaciones_recientes), asi que su fecha puede
@@ -559,20 +601,13 @@ function renderPaginaPosiciones(){
   const porFecha = (a,b)=> (b.ts??-1) - (a.ts??-1);
   trading.sort(porFecha); spot.sort(porFecha);
 
-  if(!trading.length && !spot.length) return '<div class="estado">Los que sigues no tienen ninguna posición abierta ahora mismo.</div>';
-
-  const puntoMov = (ts)=>{
-    const esNuevo = esReciente(ts);
-    return `<span class="punto-mov ${esNuevo?'nuevo':''}" title="${esNuevo?'Movimiento posterior a tu última visita':'Ya lo habías visto'}"></span>`;
-  };
-
-  const pctCartera = (invertido, cuenta)=> (invertido!=null && cuenta) ? `${(invertido/cuenta*100).toFixed(1)}%` : '—';
+  if(!trading.length && !spot.length) return {vacio:true, mensaje:'Los que sigues no tienen ninguna posición abierta ahora mismo.'};
 
   const botonAbrir = (addr, tipo, coin, lado, motivoNoAbrir, tamañoTrader)=>{
     const id = `mp_${addr}_${tipo}_${coin}_${lado||'spot'}`;
     const yaAbierta = Object.values(misPosiciones).some(m=>m.estado==='abierta' && m.addr===addr && m.tipo===tipo && m.coin===coin && (m.lado||null)===(lado||null));
-    if(yaAbierta) return `<span style="color:var(--fg-muted);font-size:.74rem">ya abierta</span>`;
-    if(motivoNoAbrir) return `<span style="color:var(--fg-muted);font-size:.68rem" title="${motivoNoAbrir}">—</span>`;
+    if(yaAbierta) return `<button class="btn-abrir" disabled title="Ya la tienes abierta">Abrir</button>`;
+    if(motivoNoAbrir) return `<button class="btn-abrir" disabled title="${motivoNoAbrir}">Abrir</button>`;
     return `<button class="btn-abrir" data-id="${id}" data-addr="${addr}" data-tipo="${tipo}" data-coin="${coin}" data-lado="${lado||''}" data-tamano-trader="${tamañoTrader??''}">Abrir</button>`;
   };
 
@@ -587,7 +622,167 @@ function renderPaginaPosiciones(){
     return null;
   };
 
-  const filasTrading = trading.length ? trading.map(it=>{
+  // consenso reciente: varios traders independientes han hecho lo MISMO
+  // (abrir/añadir, o cerrar del todo) en la misma moneda+direccion en poco
+  // tiempo -- mas señal que uno solo, y mas interesante que "quien tiene
+  // esto abierto desde hace meses". Dos grupos separados porque "3 estan
+  // entrando" y "3 estan saliendo" son señales opuestas, no se mezclan.
+  // la ventana manda puertas adentro (24h: mas corto que antes, para que de
+  // verdad signifique "actuaron casi a la vez"), pero no se le muestra al
+  // usuario el numero -- no aporta nada verlo, solo el resultado agrupado
+  const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
+  const ahoraMs = Date.now();
+  const agrupar = (items, extraerClave, extraerItem)=>{
+    const grupos = {};
+    for(const it of items){
+      const clave = extraerClave(it);
+      if(!clave) continue;
+      (grupos[clave] ??= []).push(extraerItem(it));
+    }
+    return Object.entries(grupos).filter(([,is])=>is.length>=2).sort(([,a],[,b])=>b.length-a.length);
+  };
+  const infoConsenso = (verbo, coin, lado, items)=>{
+    const tsConsenso = items.map(it=>it.ts).filter(ts=>ts!=null).sort((a,b)=>a-b)[1];
+    return `<div style="display:flex;flex-direction:column;gap:6px;flex:none">
+      <div style="font-size:.84rem"><b>${etiquetaMoneda(coin)}</b>${tsConsenso!=null?` <span style="opacity:.55;font-size:.74rem">· ${fechaRelativaCorta(tsConsenso)}</span>`:''}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="op-lado ${lado.toLowerCase()}" style="padding:2px 8px;font-size:.6rem">${lado}</span>
+        <span style="display:inline-flex;align-items:center;background:var(--accent);color:var(--accent-fg);border-radius:999px;padding:3px 10px;font-weight:700;font-size:.68rem;line-height:1.4">${items.length} traders ${verbo}</span>
+      </div>
+    </div>`;
+  };
+  const filaConsenso = (verbo, coin, lado, items)=>{
+    const chips = items.map(({c,ts})=>{
+      return `<div style="display:flex;align-items:center;gap:6px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:6px 12px">
+          <span class="avatar" style="width:16px;height:16px;font-size:.55rem;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
+          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
+          ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      ${infoConsenso(verbo, coin, lado, items)}
+      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px">${chips}</div>
+    </div>`;
+  };
+  const filaConsensoExpandido = (verbo, coin, lado, items)=>{
+    const chips = items.map(({c,dolares,precio,ts})=>{
+      const detalle = [
+        dolares!=null ? `Tamaño $${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
+        precio!=null ? `Entrada $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
+      ].filter(Boolean).join(' · ');
+      return `<div style="display:flex;flex-direction:column;gap:2px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:6px 12px">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="avatar" style="width:16px;height:16px;font-size:.55rem;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
+          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
+          ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
+        </div>
+        ${detalle?`<span style="opacity:.75">${detalle}</span>`:''}
+      </div>`;
+    }).join('');
+    return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+      ${infoConsenso(verbo, coin, lado, items)}
+      <div style="display:flex;flex-wrap:wrap;justify-content:flex-end;gap:10px">${chips}</div>
+    </div>`;
+  };
+
+  const gruposEntrando = agrupar(
+    trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
+    it=>`${it.coin}|${it.lado}`,
+    it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null, precio:it.precio, ts:it.ts}),
+  );
+  const gruposCerrando = agrupar(
+    Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
+    a=>`${a.coin}|${a.lado}`,
+    a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null, precio:a.precio, ts:a.detectado}),
+  ).filter(([,items])=>items.every(({c})=>c));
+
+  const pintarGrupos = (fn)=> [
+    ...gruposEntrando.map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return fn('han entrado', coin, lado, items); }),
+    ...gruposCerrando.map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return fn('han cerrado', coin, lado, items); }),
+  ].join('');
+  const consensoHtml = pintarGrupos(filaConsenso);
+  const consensoHtmlExpandido = pintarGrupos(filaConsensoExpandido);
+
+  const cajaConsenso = (contenido)=> `<div class="tarjeta estatica tarjeta-llena" style="background:var(--panel-dark);border-color:var(--panel-dark);color:#fff;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="seccion-titulo" style="margin:0;color:#fff">Consenso reciente</div>
+      <span style="font-size:.64rem;color:#9ca0ab;background:rgba(255,255,255,.1);padding:3px 10px;border-radius:999px;flex:none">últimas 72h</span>
+    </div>
+    ${contenido || '<div style="font-size:.84rem;color:#9ca0ab">Nadie ha coincidido todavía en las últimas 72h.</div>'}
+  </div>`;
+  const consensoBoxHtml = cajaConsenso(consensoHtml);
+  const consensoBoxExpandidoHtml = cajaConsenso(consensoHtmlExpandido);
+
+  const misPosicionesBoxHtml = resumenMisPosicionesHtml()
+    || `<div class="tarjeta estatica tarjeta-llena" style="display:flex;align-items:center;justify-content:center;text-align:center;color:var(--fg-muted);font-size:.84rem">Todavía no has abierto ninguna posición.</div>`;
+
+  const traderChicoHtml = (addr, faceta)=> `<span class="pf-trader" data-addr="${addr}" data-faceta="${faceta}" style="font-weight:500;color:var(--fg-muted);gap:4px;min-width:0;overflow:hidden">
+    <span class="avatar" style="width:16px;height:16px;font-size:.55rem;flex:none;background:${colorFor(addr)}">${plantaFor(addr)[0]}</span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${plantaFor(addr)}</span>
+  </span>`;
+  const filaResumenTrading = (it)=>{
+    const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '<span style="color:var(--fg-muted);font-size:.78rem">sin dato</span>';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:9px 12px;font-size:.82rem;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
+        <span style="font-weight:700;flex:none">${etiquetaMoneda(it.coin)}</span>
+        <span class="op-lado ${it.lado.toLowerCase()}" style="font-size:.58rem;padding:2px 6px;flex:none">${it.lado}</span>
+        ${traderChicoHtml(it.c.address,'trading')}
+        <span style="font-size:.72rem;color:var(--fg-muted);flex:none">${fechaRelativaCorta(it.ts)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:none">${pnl}${botonAbrir(it.c.address, 'trading', it.coin, it.lado, motivoNoAbrirTrading(it), it.tamaño)}</div>
+    </div>`;
+  };
+  const filaResumenSpot = (it)=>{
+    const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
+    const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : `<span style="color:var(--fg-muted);font-size:.78rem">${it.cerrado?'vendida':'sin dato'}</span>`;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg);border-radius:12px;padding:9px 12px;font-size:.82rem;gap:10px">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;overflow:hidden">
+        <span style="font-weight:700;flex:none">${etiquetaMoneda(it.coin)}</span>
+        ${traderChicoHtml(it.c.address,'spot')}
+        <span style="font-size:.72rem;color:var(--fg-muted);flex:none">${fechaRelativaCorta(it.ts)}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex:none">${pnl}${it.cerrado?'<button class="btn-abrir" disabled title="Posición ya vendida">Abrir</button>':botonAbrir(it.c.address, 'spot', it.coin, null, null, it.tamaño)}</div>
+    </div>`;
+  };
+  const LIMITE_RESUMEN = 5;
+  const resumenTradingHtml = trading.length
+    ? trading.slice(0,LIMITE_RESUMEN).map(filaResumenTrading).join('')
+    : '<div class="estado" style="padding:16px 4px">Nadie que sigas tiene trading abierto ahora mismo.</div>';
+  const resumenSpotHtml = spot.length
+    ? spot.slice(0,LIMITE_RESUMEN).map(filaResumenSpot).join('')
+    : '<div class="estado" style="padding:16px 4px">Nadie que sigas tiene nada en spot ahora mismo.</div>';
+
+  const puntoMov = (ts)=>{
+    const esNuevo = esReciente(ts);
+    return `<span class="punto-mov ${esNuevo?'nuevo':''}" title="${esNuevo?'Movimiento posterior a tu última visita':'Ya lo habías visto'}"></span>`;
+  };
+  const pctCartera = (invertido, cuenta)=> (invertido!=null && cuenta) ? `${(invertido/cuenta*100).toFixed(1)}%` : '—';
+  const filaMovimientoTrading = (o, filaId, abierta)=>{
+    const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+    const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+    const verbo = (o.esInicio && o.accion==='Abre') ? 'Abre (inicio)' : (o.accion === 'Abre' ? 'Añade' : (o.cierraDelTodo ? 'Cierra' : 'Reduce'));
+    return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
+      <td>${fechaLocal(o.ts)}</td><td>${verbo}</td><td></td>
+      <td>$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
+      <td>—</td><td>$${o.px}</td><td></td>
+      <td class="op-pnl ${pnlClase}">${pnlTexto}</td><td></td>
+    </tr>`;
+  };
+  const filaMovimientoSpot = (o, filaId, abierta)=>{
+    const pnlClase = o.closedPnl > 0 ? 'pos' : (o.closedPnl < 0 ? 'neg' : '');
+    const pnlTexto = o.closedPnl ? `${o.closedPnl>0?'+':''}$${o.closedPnl.toFixed(2)}` : '—';
+    const esEntrada = o.accion === 'Abre';
+    const verbo = (o.esInicio && esEntrada) ? 'Compra (inicio)' : (esEntrada ? 'Compra' : (o.cierraDelTodo ? 'Cierra' : 'Vende'));
+    return `<tr class="op-hijo ${abierta?'':'oculto'}" data-hijo-de="${filaId}">
+      <td>${fechaLocal(o.ts)}</td><td>${verbo}</td>
+      <td>${esEntrada?'+':'-'}$${o.notional.toLocaleString('es-ES',{maximumFractionDigits:0})}</td>
+      <td>—</td><td></td><td>—</td>
+      <td class="op-pnl ${pnlClase}">${pnlTexto}</td><td></td>
+    </tr>`;
+  };
+
+  const filasTradingCompleto = trading.length ? trading.map(it=>{
     const lado = it.lado.toLowerCase();
     const invertido = it.tamaño * it.precio;
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
@@ -615,7 +810,7 @@ function renderPaginaPosiciones(){
     return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="9" class="estado">Nadie que sigas tiene trading abierto ahora mismo.</td></tr>';
 
-  const filasSpot = spot.length ? spot.map(it=>{
+  const filasSpotCompleto = spot.length ? spot.map(it=>{
     const coste = it.cerrado
       ? (it.valorVendido!=null ? `-$${it.valorVendido.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`)
       : (it.coste!=null ? `$${it.coste.toLocaleString('es-ES',{maximumFractionDigits:0})}` : `<span style="color:var(--fg-muted)">sin dato</span>`);
@@ -623,8 +818,6 @@ function renderPaginaPosiciones(){
     const pnlClase = it.pnl > 0 ? 'pos' : (it.pnl < 0 ? 'neg' : '');
     const pnl = it.pnl!=null ? `<span class="op-pnl ${pnlClase}">${it.pnl>0?'+':''}$${it.pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>` : '—';
     const claveAlerta = `${it.c.address}_spot_${it.coin}`;
-    // precio en vivo primero (mas fiel a lo que de verdad cobro al vender)
-    // y solo si no hay valor en vivo se aproxima con el coste medio
     const precioAprox = it.valor!=null && it.tamaño ? it.valor/it.tamaño : (it.coste!=null && it.tamaño ? it.coste/it.tamaño : 0);
     const costeProm = it.coste!=null && it.tamaño ? it.coste/it.tamaño : null;
     const sintetico = movimientoSintetico(claveAlerta, it.ts, it.coin, precioAprox, costeProm);
@@ -648,80 +841,46 @@ function renderPaginaPosiciones(){
     return cabecera + hijos.join('');
   }).join('') : '<tr><td colspan="8" class="estado">Nadie que sigas tiene nada en spot ahora mismo.</td></tr>';
 
-  // consenso reciente: varios traders independientes han hecho lo MISMO
-  // (abrir/añadir, o cerrar del todo) en la misma moneda+direccion en poco
-  // tiempo -- mas señal que uno solo, y mas interesante que "quien tiene
-  // esto abierto desde hace meses". Dos grupos separados porque "3 estan
-  // entrando" y "3 estan saliendo" son señales opuestas, no se mezclan.
-  // la ventana manda puertas adentro (24h: mas corto que antes, para que de
-  // verdad signifique "actuaron casi a la vez"), pero no se le muestra al
-  // usuario el numero -- no aporta nada verlo, solo el resultado agrupado
-  const VENTANA_CONSENSO_MS = 30 * 3600 * 1000;
-  const ahoraMs = Date.now();
-  const agrupar = (items, extraerClave, extraerItem)=>{
-    const grupos = {};
-    for(const it of items){
-      const clave = extraerClave(it);
-      if(!clave) continue;
-      (grupos[clave] ??= []).push(extraerItem(it));
-    }
-    return Object.entries(grupos).filter(([,is])=>is.length>=2).sort(([,a],[,b])=>b.length-a.length);
-  };
-  const filaConsenso = (verbo, coin, lado, items)=>{
-    const chips = items.map(({c,dolares,precio,ts})=>{
-      const detalle = [
-        dolares!=null ? `Tamaño $${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
-        precio!=null ? `Entrada $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
-      ].filter(Boolean).join(' · ');
-      return `<div style="display:flex;flex-direction:column;gap:2px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:6px 12px">
-        <div style="display:flex;align-items:center;gap:5px">
-          <span class="avatar" style="width:16px;height:16px;font-size:.55rem;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
-          <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
-          ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
-        </div>
-        ${detalle?`<span style="opacity:.75">${detalle}</span>`:''}
-      </div>`;
-    }).join('');
-    const tsConsenso = items.map(it=>it.ts).filter(ts=>ts!=null).sort((a,b)=>a-b)[1];
-    return `<div class="consenso-fila">
-      <div style="font-size:.82rem;display:flex;flex-direction:column;gap:2px">
-        <div style="display:flex;align-items:center;gap:4px"><b>${etiquetaMoneda(coin)}</b>${tsConsenso!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(tsConsenso)}</span>`:''}</div>
-        <div style="display:flex;align-items:center;gap:6px"><span class="op-lado ${lado.toLowerCase()}" style="padding:2px 7px;font-size:.6rem">${lado}</span><span style="display:inline-flex;align-items:center;background:var(--accent);color:var(--accent-fg);border-radius:999px;padding:2px 9px;font-weight:700;font-size:.68rem;line-height:1.4">${items.length} traders ${verbo}</span></div>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px">${chips}</div>
-    </div>`;
-  };
-  const entrando = agrupar(
-    trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
-    it=>`${it.coin}|${it.lado}`,
-    it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null, precio:it.precio, ts:it.ts}),
-  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('han entrado', coin, lado, items); });
-  const cerrando = agrupar(
-    Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
-    a=>`${a.coin}|${a.lado}`,
-    a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null, precio:a.precio, ts:a.detectado}),
-  ).filter(([,items])=>items.every(({c})=>c)).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('han cerrado', coin, lado, items); });
-  const consensoHtml = [...entrando, ...cerrando].join('');
+  const tablaTradingCompletaHtml = `<table class="ops" style="width:100%">
+    <thead><tr><th>Fecha</th><th>Dirección</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Entrada</th><th>Trader</th><th>Resultado</th><th></th></tr></thead>
+    <tbody>${filasTradingCompleto}</tbody>
+  </table>`;
+  const tablaSpotCompletaHtml = `<table class="ops" style="width:100%">
+    <thead><tr><th>Fecha</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Trader</th><th>Valor actual</th><th>Resultado</th><th></th></tr></thead>
+    <tbody>${filasSpotCompleto}</tbody>
+  </table>`;
 
+  return {
+    vacio:false, trading, spot, consensoHtml, consensoBoxHtml, consensoBoxExpandidoHtml, misPosicionesBoxHtml,
+    resumenTradingHtml, resumenSpotHtml, tablaTradingCompletaHtml, tablaSpotCompletaHtml,
+  };
+}
+
+function renderPaginaPosiciones(){
+  const d = calcularSeguimiento();
+  if(d.vacio) return `<div class="estado">${d.mensaje}</div>`;
   return `
-    ${consensoHtml?`<div class="seccion-titulo">Consenso reciente</div><div class="consenso-caja">${consensoHtml}</div>`:''}
-    <div class="seccion-titulo">Trading (${trading.length})</div>
-    <div class="sub-panel" data-sub="trading">
-      <table class="ops">
-        <thead><tr>
-          <th>Fecha</th><th>Dirección</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Entrada</th><th>Trader</th><th>Resultado</th><th></th>
-        </tr></thead>
-        <tbody>${filasTrading}</tbody>
-      </table>
-    </div>
-    <div class="seccion-titulo" style="margin-top:22px">Spot (${spot.length})</div>
-    <div class="sub-panel" data-sub="spot">
-      <table class="ops">
-        <thead><tr>
-          <th>Fecha</th><th>Moneda</th><th>$ invertido</th><th>% de su cartera</th><th>Trader</th><th>Valor actual</th><th>Resultado</th><th></th>
-        </tr></thead>
-        <tbody>${filasSpot}</tbody>
-      </table>
+    <div class="dashboard-grid">
+      <div class="span-8">${d.consensoBoxHtml}</div>
+      <div class="span-4">${d.misPosicionesBoxHtml}</div>
+      <div class="span-6">
+        <div class="tarjeta estatica">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="seccion-titulo" style="margin:0">Trading</div>
+            <span style="font-size:.74rem;color:var(--fg-muted)">${d.trading.length} posiciones</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${d.resumenTradingHtml}</div>
+        </div>
+      </div>
+      <div class="span-6">
+        <div class="tarjeta estatica">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="seccion-titulo" style="margin:0">Spot</div>
+            <span style="font-size:.74rem;color:var(--fg-muted)">${d.spot.length} posiciones</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">${d.resumenSpotHtml}</div>
+        </div>
+      </div>
     </div>`;
 }
 
@@ -950,16 +1109,6 @@ function render(){
   if(!candidatos.length){ root.innerHTML = '<div class="estado">Sin datos todavía.</div>'; return; }
   try{
   asignarPlantas(candidatos);
-  document.getElementById('grafico-monedas').innerHTML = renderGraficoMonedas();
-
-  const nSig = candidatos.filter(c=>c.siguiendo).length;
-  const elSig = document.getElementById('n-siguiendo');
-  if(elSig.textContent !== '' && elSig.textContent !== String(nSig)){
-    elSig.classList.add('resalta');
-    setTimeout(()=>elSig.classList.remove('resalta'), 350);
-  }
-  elSig.textContent = nSig;
-  document.getElementById('n-total').textContent = candidatos.length;
 
   const seguro = (fn, nombre)=>{
     try{ return fn(); }
@@ -1016,6 +1165,19 @@ function render(){
     };
   });
 
+  root.querySelectorAll('.page-tab[data-pagina]').forEach(el=>{
+    el.onclick = ()=> irAPagina(el.dataset.pagina);
+  });
+
+  root.querySelectorAll('[data-toggle-detalle]').forEach(btn=>{
+    btn.onclick = ()=>{
+      const el = document.getElementById(btn.dataset.toggleDetalle);
+      if(!el) return;
+      el.classList.toggle('oculto');
+      btn.textContent = el.classList.contains('oculto') ? 'Ver detalle completo ▾' : 'Ocultar detalle ▴';
+    };
+  });
+
   root.querySelectorAll('[data-abre-modal], .pf-trader').forEach(card=>{
     card.onclick = ()=>{
       const c = candidatos.find(x=>x.address===card.dataset.addr);
@@ -1032,7 +1194,13 @@ function render(){
       render();
     };
   });
-  root.querySelectorAll('.filtro-pill[data-orden]').forEach(btn=>{
+  root.querySelectorAll('.subtab-traders[data-subvista-traders]').forEach(btn=>{
+    btn.onclick = ()=>{
+      subVistaTraders = btn.dataset.subvistaTraders;
+      render();
+    };
+  });
+  root.querySelectorAll('[data-orden]').forEach(btn=>{
     btn.onclick = ()=>{
       ordenAsc = !ordenAsc;
       render();
@@ -1179,6 +1347,16 @@ function render(){
     if(abiertas.length) cargarPnlVivoMisPosiciones(abiertas);
   }
 
+  const elSig = document.getElementById('n-siguiendo');
+  if(elSig){
+    const nSig = elSig.textContent;
+    if(ultimoNSiguiendo!=null && ultimoNSiguiendo!==nSig){
+      elSig.classList.add('resalta');
+      setTimeout(()=>elSig.classList.remove('resalta'), 350);
+    }
+    ultimoNSiguiendo = nSig;
+  }
+
   actualizarResumenPropio();
   actualizarBadgesTabs();
   }catch(e){
@@ -1221,7 +1399,7 @@ function actualizarBadgesTabs(){
   // no tiene nada que ver con esta pestaña, eso es cosa de "Seguimiento"
   const hayNuevo = hayAperturaNuevaDesdeUltimaVisita();
   const tabSeg = document.querySelector('.page-tab[data-pagina="posiciones"]');
-  if(tabSeg) tabSeg.innerHTML = 'Posiciones de seguimiento' + (hayNuevo?'<span class="alerta-tab" title="Hay algo nuevo"></span>':'');
+  if(tabSeg) tabSeg.innerHTML = 'Dashboard' + (hayNuevo?'<span class="alerta-tab" title="Hay algo nuevo"></span>':'');
   const tabMias = document.querySelector('.page-tab[data-pagina="mias"]');
   if(tabMias) tabMias.innerHTML = 'Mis posiciones';
   const tabSeguimiento = document.querySelector('.page-tab[data-pagina="seguimiento"]');
@@ -1259,13 +1437,13 @@ function abrirModalNotificaciones(){
 }
 document.getElementById('btn-notificaciones').onclick = abrirModalNotificaciones;
 
-document.querySelectorAll('.page-tab').forEach(btn=>{
-  btn.onclick = ()=>{
-    paginaActiva = btn.dataset.pagina;
-    document.querySelectorAll('.page-tab').forEach(b=>b.classList.remove('activo'));
-    btn.classList.add('activo');
-    document.querySelectorAll('.page-panel').forEach(p=> p.classList.toggle('oculto', p.dataset.pagina !== paginaActiva));
-  };
+function irAPagina(pagina){
+  paginaActiva = pagina;
+  document.querySelectorAll('.page-tabs .page-tab').forEach(b=> b.classList.toggle('activo', b.dataset.pagina===pagina));
+  document.querySelectorAll('.page-panel').forEach(p=> p.classList.toggle('oculto', p.dataset.pagina !== pagina));
+}
+document.querySelectorAll('.page-tabs .page-tab').forEach(btn=>{
+  btn.onclick = ()=> irAPagina(btn.dataset.pagina);
 });
 
 function agruparEpisodios(ops){
