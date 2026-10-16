@@ -226,7 +226,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             flecha = "↑" if prev["lado"] == "Long" else "↓"
             precio_cierre = precio_de(prev["coin"], "trading") or prev["precio"]
             invertido_cerrado = prev["tamaño"] * precio_cierre if precio_cierre is not None else None
-            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, detectado=? WHERE id=?", (prev["tamaño"], ahora, prev["id"]))
+            conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (prev["tamaño"], precio_cierre, ahora, prev["id"]))
             avisos.append((
                 f"⚪ <b>{prev['lado']} en {coin} {flecha} (cerrada)</b>\n"
                 f"{f'$ cerrado: ${invertido_cerrado:,.0f}' if invertido_cerrado is not None else 'Sin dato de precio para calcular lo cerrado'}\n\n"
@@ -345,7 +345,7 @@ def avisar_posiciones_propias(conn, addr, posicion_actual, holdings_spot, candid
         telegram.enviar(texto)
 
 
-VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
+VENTANA_CONSENSO_MS = 24 * 60 * 60 * 1000
 
 
 def detectar_consenso(conn):
@@ -387,7 +387,7 @@ def detectar_consenso(conn):
         )
         etiqueta = hyperliquid.etiqueta_moneda(coin)
         flecha = "↑" if lado == "Long" else "↓"
-        texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha} (últimas 72h)"
+        texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha}"
         telegram.enviar(texto)
         db.crear_notificacion(conn, texto)
     conn.commit()

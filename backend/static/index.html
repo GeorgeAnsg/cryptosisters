@@ -297,6 +297,14 @@ function fechaLocal(ts){
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   return `${String(d.getDate()).padStart(2,'0')}-${meses[d.getMonth()]} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
 }
+function fechaRelativaCorta(ts){
+  if(!ts) return '';
+  const minutos = Math.round((Date.now()-ts)/60000);
+  if(minutos < 60) return `hace ${Math.max(minutos,1)}min`;
+  const horas = Math.round(minutos/60);
+  if(horas < 24) return `hace ${horas}h`;
+  return `hace ${Math.round(horas/24)}d`;
+}
 function nombreMoneda(coin){
   return NOMBRES_MONEDA[coin] ? etiquetaMoneda(NOMBRES_MONEDA[coin]) : coin;
 }
@@ -645,7 +653,10 @@ function renderPaginaPosiciones(){
   // tiempo -- mas señal que uno solo, y mas interesante que "quien tiene
   // esto abierto desde hace meses". Dos grupos separados porque "3 estan
   // entrando" y "3 estan saliendo" son señales opuestas, no se mezclan.
-  const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
+  // la ventana manda puertas adentro (24h: mas corto que antes, para que de
+  // verdad signifique "actuaron casi a la vez"), pero no se le muestra al
+  // usuario el numero -- no aporta nada verlo, solo el resultado agrupado
+  const VENTANA_CONSENSO_MS = 24 * 3600 * 1000;
   const ahoraMs = Date.now();
   const agrupar = (items, extraerClave, extraerItem)=>{
     const grupos = {};
@@ -656,26 +667,34 @@ function renderPaginaPosiciones(){
     }
     return Object.entries(grupos).filter(([,is])=>is.length>=2).sort(([,a],[,b])=>b.length-a.length);
   };
-  const dolaresTxt = (d)=> d!=null ? `($${d.toLocaleString('en-US',{maximumFractionDigits:0})})` : '';
-  const filaConsenso = (etiqueta, coin, lado, items)=>{
+  const filaConsenso = (verbo, coin, lado, items)=>{
     const flecha = lado==='Long'?'↑':'↓';
-    const nombres = items.map(({c,dolares})=>
-      `<span style="display:inline-flex;align-items:center;gap:4px">${filaPlanta(c, 'trading')}<span style="font-size:.74rem;opacity:.85">${dolaresTxt(dolares)}</span></span>`
-    ).join('');
+    const chips = items.map(({c,dolares,precio,ts})=>{
+      const detalle = [
+        dolares!=null ? `$${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
+        precio!=null ? `@ $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
+        ts!=null ? fechaRelativaCorta(ts) : null,
+      ].filter(Boolean).join(' · ');
+      return `<div style="display:flex;flex-direction:column;gap:2px">
+        ${filaPlanta(c, 'trading')}
+        ${detalle?`<span style="font-size:.7rem;opacity:.75;padding-left:2px">${detalle}</span>`:''}
+      </div>`;
+    }).join('');
     return `<div class="consenso-fila">
-      <div><b>${items.length} traders ${etiqueta} ${lado} ${etiquetaMoneda(coin)} ${flecha}</b>
-      <span style="opacity:.7;font-size:.76rem"> (últimas 72h)</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px">${nombres}</div>
+      <div><span class="op-lado ${lado.toLowerCase()}">${lado}</span> ${etiquetaMoneda(coin)} <b>· ${items.length} traders ${verbo}</b> ${flecha}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:14px">${chips}</div>
     </div>`;
   };
   const entrando = agrupar(
     trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
-    it=>`${it.coin}|${it.lado}`, it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null}),
-  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('en', coin, lado, items); });
+    it=>`${it.coin}|${it.lado}`,
+    it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null, precio:it.precio, ts:it.ts}),
+  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('entrando', coin, lado, items); });
   const cerrando = agrupar(
     Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
-    a=>`${a.coin}|${a.lado}`, a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null}),
-  ).filter(([,items])=>items.every(({c})=>c)).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('cerrando', coin, lado, items); });
+    a=>`${a.coin}|${a.lado}`,
+    a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null, precio:a.precio, ts:a.detectado}),
+  ).filter(([,items])=>items.every(({c})=>c)).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('han cerrado', coin, lado, items); });
   const consensoHtml = [...entrando, ...cerrando].join('');
 
   return `
