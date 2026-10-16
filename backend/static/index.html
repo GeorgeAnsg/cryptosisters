@@ -656,7 +656,7 @@ function renderPaginaPosiciones(){
   // la ventana manda puertas adentro (24h: mas corto que antes, para que de
   // verdad signifique "actuaron casi a la vez"), pero no se le muestra al
   // usuario el numero -- no aporta nada verlo, solo el resultado agrupado
-  const VENTANA_CONSENSO_MS = 24 * 3600 * 1000;
+  const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
   const ahoraMs = Date.now();
   const agrupar = (items, extraerClave, extraerItem)=>{
     const grupos = {};
@@ -668,7 +668,6 @@ function renderPaginaPosiciones(){
     return Object.entries(grupos).filter(([,is])=>is.length>=2).sort(([,a],[,b])=>b.length-a.length);
   };
   const filaConsenso = (verbo, coin, lado, items)=>{
-    const flecha = lado==='Long'?'↑':'↓';
     const chips = items.map(({c,dolares,precio,ts})=>{
       const detalle = [
         dolares!=null ? `$${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
@@ -676,12 +675,12 @@ function renderPaginaPosiciones(){
         ts!=null ? fechaRelativaCorta(ts) : null,
       ].filter(Boolean).join(' · ');
       return `<div style="display:flex;flex-direction:column;gap:2px">
-        ${filaPlanta(c, 'trading')}
+        <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
         ${detalle?`<span style="font-size:.7rem;opacity:.75;padding-left:2px">${detalle}</span>`:''}
       </div>`;
     }).join('');
     return `<div class="consenso-fila">
-      <div><span class="op-lado ${lado.toLowerCase()}">${lado}</span> ${etiquetaMoneda(coin)} <b>· ${items.length} traders ${verbo}</b> ${flecha}</div>
+      <div>${etiquetaMoneda(coin)} <span class="op-lado ${lado.toLowerCase()}" style="margin-left:10px">${lado}</span> <b style="margin-left:4px">· ${items.length} traders ${verbo}</b></div>
       <div style="display:flex;flex-wrap:wrap;gap:14px">${chips}</div>
     </div>`;
   };

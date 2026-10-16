@@ -345,7 +345,7 @@ def avisar_posiciones_propias(conn, addr, posicion_actual, holdings_spot, candid
         telegram.enviar(texto)
 
 
-VENTANA_CONSENSO_MS = 24 * 60 * 60 * 1000
+VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
 
 
 def detectar_consenso(conn):
