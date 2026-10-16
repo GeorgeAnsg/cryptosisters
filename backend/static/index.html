@@ -192,7 +192,7 @@ tr.op-hijo.oculto{display:none}
 .mkt-fila:first-child{border-top:none}
 .mkt-coin{width:52px;flex:none;font-weight:700;font-size:.82rem}
 .mkt-barra{flex:1;height:10px;border-radius:99px;overflow:hidden;display:flex;background:var(--border)}
-.mkt-detalle{flex:none;font-size:.72rem;color:var(--fg-muted);text-align:right;min-width:170px}
+.mkt-detalle{flex:none;font-size:.72rem;color:var(--fg-muted);text-align:right;width:190px;white-space:normal}
 .mkt-leyenda{display:flex;align-items:center;gap:14px;font-size:.72rem;color:var(--fg-muted);margin-bottom:12px}
 .mkt-leyenda span{display:inline-flex;align-items:center;gap:5px}
 .mkt-leyenda i{width:8px;height:8px;border-radius:50%;display:inline-block}
@@ -493,6 +493,9 @@ function renderPaginaConsenso(){
   return d.consensoBoxExpandidoHtml;
 }
 
+// una posicion de $34 no representa ninguna conviccion real -- ensucia el
+// reparto igual que si fuera polvo que quedo de una venta casi total
+const MERCADO_MINIMO_USD = 1000;
 function calcularMercado(){
   // sobre TODOS los candidatos guardados (superaron el cribado de
   // descubrimiento), no solo a quien sigues -- percepcion de mercado, no
@@ -500,16 +503,19 @@ function calcularMercado(){
   const trading = {}, spot = {};
   for(const c of candidatos){
     for(const p of (c.posicion_actual||[])){
-      const coin = etiquetaMoneda(p.coin);
       const d = (p['tamaño']!=null && p.entryPx!=null) ? Math.abs(p['tamaño'])*p.entryPx : 0;
+      if(d < MERCADO_MINIMO_USD) continue;
+      const coin = etiquetaMoneda(p.coin);
       const fila = (trading[coin] ??= {nLong:0, nShort:0, dLong:0, dShort:0});
       if(p.lado === 'Short'){ fila.nShort++; fila.dShort += d; }
       else { fila.nLong++; fila.dLong += d; }
     }
     for(const h of (c.holdings_spot||[])){
+      const d = h.valorActual || 0;
+      if(d < MERCADO_MINIMO_USD) continue;
       const coin = etiquetaMoneda(h.coin);
       const fila = (spot[coin] ??= {n:0, d:0});
-      fila.n++; fila.d += h.valorActual || 0;
+      fila.n++; fila.d += d;
     }
   }
   return {trading, spot};
