@@ -672,15 +672,15 @@ function renderPaginaPosiciones(){
       const detalle = [
         dolares!=null ? `$${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
         precio!=null ? `@ $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
-        ts!=null ? fechaRelativaCorta(ts) : null,
       ].filter(Boolean).join(' · ');
-      return `<div style="display:flex;flex-direction:column;gap:2px">
+      return `<div style="display:flex;align-items:baseline;gap:5px;font-size:.78rem">
         <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
-        ${detalle?`<span style="font-size:.7rem;opacity:.75;padding-left:2px">${detalle}</span>`:''}
+        ${ts!=null?`<span style="opacity:.6">${fechaRelativaCorta(ts)}</span>`:''}
+        ${detalle?`<span style="opacity:.75">${detalle}</span>`:''}
       </div>`;
     }).join('');
     return `<div class="consenso-fila">
-      <div>${etiquetaMoneda(coin)} <span class="op-lado ${lado.toLowerCase()}" style="margin-left:10px">${lado}</span> <b style="margin-left:4px">· ${items.length} traders ${verbo}</b></div>
+      <div style="font-size:.82rem">${etiquetaMoneda(coin)} <span class="op-lado ${lado.toLowerCase()}" style="margin-left:10px">${lado}</span> <b style="margin-left:4px">· ${items.length} traders ${verbo}</b></div>
       <div style="display:flex;flex-wrap:wrap;gap:14px">${chips}</div>
     </div>`;
   };
@@ -688,7 +688,7 @@ function renderPaginaPosiciones(){
     trading.filter(it=>it.ts!=null && ahoraMs-it.ts<=VENTANA_CONSENSO_MS),
     it=>`${it.coin}|${it.lado}`,
     it=>({c:it.c, dolares: (it.tamaño!=null && it.precio!=null) ? it.tamaño*it.precio : null, precio:it.precio, ts:it.ts}),
-  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('entrando', coin, lado, items); });
+  ).map(([clave,items])=>{ const [coin,lado]=clave.split('|'); return filaConsenso('han entrado', coin, lado, items); });
   const cerrando = agrupar(
     Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
     a=>`${a.coin}|${a.lado}`,
