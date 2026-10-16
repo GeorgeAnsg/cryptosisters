@@ -656,7 +656,7 @@ function renderPaginaPosiciones(){
   // la ventana manda puertas adentro (24h: mas corto que antes, para que de
   // verdad signifique "actuaron casi a la vez"), pero no se le muestra al
   // usuario el numero -- no aporta nada verlo, solo el resultado agrupado
-  const VENTANA_CONSENSO_MS = 72 * 3600 * 1000;
+  const VENTANA_CONSENSO_MS = 30 * 3600 * 1000;
   const ahoraMs = Date.now();
   const agrupar = (items, extraerClave, extraerItem)=>{
     const grupos = {};
