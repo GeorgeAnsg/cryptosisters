@@ -550,7 +550,7 @@ function filaMercadoSpot(coin, f, maxN){
   const atenuado = f.n <= 1 ? 'opacity:.45' : '';
   return `<div class="mkt-fila" style="${atenuado}">
     <div class="mkt-coin">${coin}</div>
-    <div class="mkt-barra"><div style="width:${ancho}%;background:var(--accent)"></div></div>
+    <div class="mkt-barra"><div style="width:${ancho}%;background:var(--accent);border-radius:99px"></div></div>
     <div class="mkt-detalle">${f.n} traders · ${fmtK(f.d)}</div>
   </div>`;
 }
