@@ -662,15 +662,24 @@ function calcularSeguimiento(){
     if(verbo!=='han entrado' || precio==null) return '';
     return `<span class="pnl-consenso" data-coin="${coin}" data-lado="${lado}" data-precio="${precio}" data-dolares="${dolares??''}" style="opacity:.6;flex:none">···</span>`;
   };
+  // un "han cerrado" ya no tiene precio en vivo que comparar -- se usa el
+  // resultado YA REALIZADO del cierre (suma de closedPnl del bloque)
+  const pnlCierreHtml = (pnl)=>{
+    if(pnl==null) return '';
+    const clase = pnl>0?'pos':(pnl<0?'neg':'');
+    return `<span class="op-pnl ${clase}">${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:0})}</span>`;
+  };
+  const resultadoConsenso = (verbo, coin, lado, precio, dolares, pnl)=>
+    verbo==='han entrado' ? gananciaConsensoHtml(verbo, coin, lado, precio, dolares) : pnlCierreHtml(pnl);
   const filaConsenso = (verbo, coin, lado, items)=>{
-    const chips = items.map(({c,ts,precio})=>{
+    const chips = items.map(({c,ts,precio,dolares,pnl})=>{
       return `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;font-size:.74rem;background:rgba(255,255,255,.08);border-radius:10px;padding:5px 10px;flex:1 1 calc(33.333% - 6px)">
           <span style="display:flex;align-items:center;gap:4px;white-space:nowrap">
             <span class="avatar" style="width:16px;height:16px;font-size:.55rem;flex:none;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
             <span class="pf-trader" data-addr="${c.address}" data-faceta="trading">${plantaFor(c.address)}</span>
             ${ts!=null?`<span style="opacity:.6">· ${fechaRelativaCorta(ts)}</span>`:''}
           </span>
-          ${gananciaConsensoHtml(verbo, coin, lado, precio)}
+          ${resultadoConsenso(verbo, coin, lado, precio, dolares, pnl)}
       </div>`;
     }).join('');
     return `<div style="background:rgba(255,255,255,.06);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">
@@ -681,12 +690,12 @@ function calcularSeguimiento(){
   const filaConsensoExpandido = (verbo, coin, lado, items)=>{
     // orden de entrada: quien entro antes primero
     const ordenados = [...items].sort((a,b)=>(a.ts??0)-(b.ts??0));
-    const filas = ordenados.map(({c,dolares,precio,ts})=>{
+    const filas = ordenados.map(({c,dolares,precio,ts,pnl})=>{
       const detalle = [
         dolares!=null ? `Tamaño $${dolares.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
-        precio!=null ? `Entrada $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
+        precio!=null ? `${verbo==='han entrado'?'Entrada':'Salida'} $${precio.toLocaleString('en-US',{maximumFractionDigits:0})}` : null,
       ].filter(Boolean).join(' · ');
-      const ganancia = gananciaConsensoHtml(verbo, coin, lado, precio, dolares);
+      const ganancia = resultadoConsenso(verbo, coin, lado, precio, dolares, pnl);
       return `<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:.78rem;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px">
         <div style="display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap">
           <span class="avatar" style="width:18px;height:18px;font-size:.58rem;flex:none;background:${colorFor(c.address)}">${plantaFor(c.address)[0]}</span>
@@ -711,7 +720,12 @@ function calcularSeguimiento(){
   const gruposCerrando = agrupar(
     Object.values(alertas).filter(a=>a.tipo==='trading' && a.tamaño===0 && a.detectado!=null && ahoraMs-a.detectado<=VENTANA_CONSENSO_MS),
     a=>`${a.coin}|${a.lado}`,
-    a=>({c:candidatos.find(c=>c.address===a.addr), dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null, precio:a.precio, ts:a.detectado}),
+    a=>{
+      const c = candidatos.find(x=>x.address===a.addr);
+      const b = c ? bloqueDePosicion(c, a.lado, a.coin) : null;
+      const pnl = b ? b.filas.reduce((s,o)=>s+(o.closedPnl||0), 0) : null;
+      return {c, dolares: (a.tamaño_antes!=null && a.precio!=null) ? a.tamaño_antes*a.precio : null, precio:a.precio, ts:a.detectado, pnl};
+    },
   ).filter(([,items])=>items.every(({c})=>c));
 
   const pintarGrupos = (fn)=> [
@@ -1473,15 +1487,16 @@ function abrirModalNotificaciones(){
   const fondo = document.createElement('div');
   fondo.className = 'modal-fondo';
   const lista = notificaciones.length
-    ? notificaciones.map(n=>`<div style="padding:16px 0;border-bottom:1px solid var(--border);font-size:.86rem;line-height:1.5">
-        <div style="color:var(--fg-muted);font-size:.72rem;margin-bottom:6px">${fechaLocal(n.ts)}</div>
+    ? `<div style="display:flex;flex-direction:column;gap:8px">${notificaciones.map(n=>`
+      <div style="background:var(--panel);border-radius:12px;padding:12px 14px;font-size:.84rem;line-height:1.5">
+        <div style="color:var(--fg-muted);font-size:.72rem;font-weight:600;margin-bottom:4px">${fechaRelativaCorta(n.ts)}</div>
         ${n.texto.replace(/\n/g,'<br>')}
-      </div>`).join('')
+      </div>`).join('')}</div>`
     : '<div class="estado">Todavía no hay notificaciones.</div>';
   fondo.innerHTML = `
     <div class="modal" style="max-width:520px">
       <div class="modal-cabecera">
-        <div class="addr">Notificaciones</div>
+        <div class="seccion-titulo" style="margin:0;font-size:1.05rem">Notificaciones</div>
         <button class="modal-cerrar" aria-label="Cerrar">×</button>
       </div>
       <div class="modal-lista">${lista}</div>
