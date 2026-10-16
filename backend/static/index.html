@@ -192,6 +192,9 @@ tr.op-hijo.oculto{display:none}
 .mkt-fila:first-child{border-top:none}
 .mkt-coin{width:52px;flex:none;font-weight:700;font-size:.82rem}
 .mkt-barra{flex:1;height:10px;border-radius:99px;overflow:hidden;display:flex;background:var(--border)}
+.mkt-barra-trading{height:28px;border-radius:8px}
+.mkt-seg{display:flex;align-items:center;justify-content:center;overflow:hidden}
+.mkt-pill{background:#fff;color:var(--fg);font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
 .mkt-detalle{flex:none;font-size:.72rem;color:var(--fg-muted);text-align:right;width:190px;white-space:normal}
 .mkt-leyenda{display:flex;align-items:center;gap:14px;font-size:.72rem;color:var(--fg-muted);margin-bottom:12px}
 .mkt-leyenda span{display:inline-flex;align-items:center;gap:5px}
@@ -531,13 +534,13 @@ function filaMercadoTrading(coin, f){
   // una sola posicion es poco significativo -- se atenua para que destaquen
   // las monedas con mas traders de acuerdo (mas peso real en la señal)
   const atenuado = totalN <= 1 ? 'opacity:.45' : '';
+  const pill = (flecha, n, d) => `<span class="mkt-pill">${flecha} ${n} · ${fmtK(d)}</span>`;
   return `<div class="mkt-fila" style="${atenuado}">
     <div class="mkt-coin">${coin}</div>
-    <div class="mkt-barra">${pctShort>0?`<div style="width:${pctShort}%;background:var(--bad)"></div>`:''}${pctLong>0?`<div style="width:${pctLong}%;background:var(--ok)"></div>`:''}</div>
-    <div class="mkt-detalle">${[
-      f.nLong ? `${f.nLong} long (${fmtK(f.dLong)})` : null,
-      f.nShort ? `${f.nShort} short (${fmtK(f.dShort)})` : null,
-    ].filter(Boolean).join(' · ')}</div>
+    <div class="mkt-barra mkt-barra-trading">
+      ${pctShort>0?`<div class="mkt-seg" style="width:${pctShort}%;background:var(--bad)">${pill('↓', f.nShort, f.dShort)}</div>`:''}
+      ${pctLong>0?`<div class="mkt-seg" style="width:${pctLong}%;background:var(--ok)">${pill('↑', f.nLong, f.dLong)}</div>`:''}
+    </div>
   </div>`;
 }
 
