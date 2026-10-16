@@ -541,7 +541,7 @@ function resumenMisPosicionesHtml(){
         <span style="font-weight:700;font-size:.82rem">${etiquetaMoneda(m.coin)}</span>
         ${m.lado?`<span class="op-lado ${m.lado.toLowerCase()}" style="font-size:.6rem;padding:2px 7px">${m.lado}</span>`:''}
       </div>
-      <span class="op-pnl ${clase}" style="font-size:.82rem">${texto}</span>
+      <span id="pnl-vivo-dash-${id}" class="op-pnl ${clase}" style="font-size:.82rem">${texto}</span>
     </div>`;
   }).join('');
   return `<div class="tarjeta estatica tarjeta-llena" style="display:flex;flex-direction:column;gap:12px">
@@ -1048,13 +1048,25 @@ async function cargarPnlVivoMisPosiciones(abiertas){
       try{ const {precio} = await apiGet(`/precio/${coin}?tipo=${tipo}`); precios[clave] = precio; }
       catch(e){ precios[clave] = null; }
     }));
+    // la "mia" (tabla de la pestaña Mis posiciones) y el resumen del
+    // Dashboard muestran el mismo pnl en vivo en dos <span> distintos a la
+    // vez (ambas paginas estan siempre en el DOM, solo una visible) -- hay
+    // que actualizar los dos, nunca solo el de la pagina activa
+    const pintarCelda = (id, texto, clase)=>{
+      for(const prefijo of ['pnl-vivo-', 'pnl-vivo-dash-']){
+        const el = document.getElementById(prefijo+id);
+        if(!el) continue;
+        el.textContent = texto;
+        el.classList.toggle('pos', clase==='pos');
+        el.classList.toggle('neg', clase==='neg');
+      }
+    };
     const barras = [];
     for(const [id, m] of abiertas){
-      const celda = document.getElementById(`pnl-vivo-${id}`);
       const precio = precios[`${m.coin}|${m.tipo||'trading'}`];
       if(precio == null || m.precio_entrada == null || m.tamaño == null){
         ultimoPnlVivoPorId[id] = {texto:'— (sin dato en vivo)', clase:''};
-        if(celda) celda.textContent = ultimoPnlVivoPorId[id].texto;
+        pintarCelda(id, ultimoPnlVivoPorId[id].texto, '');
         continue;
       }
       const signo = m.lado === 'Short' ? -1 : 1;
@@ -1063,12 +1075,9 @@ async function cargarPnlVivoMisPosiciones(abiertas){
       const pct = invertido ? (pnl / invertido * 100) : null;
       barras.push({coin: etiquetaMoneda(m.coin), lado: m.lado, etiqueta: `${m.lado?m.lado+' ':''}${etiquetaMoneda(m.coin)}`, pnl, pct});
       const pctTexto = pct!=null ? ` (${pct>0?'+':''}${pct.toFixed(1)}%)` : '';
-      ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase: pnl>0?'pos':(pnl<0?'neg':'')};
-      if(celda){ // puede haber cambiado de pagina mientras se pedian los precios
-        celda.textContent = ultimoPnlVivoPorId[id].texto;
-        celda.classList.toggle('pos', pnl > 0);
-        celda.classList.toggle('neg', pnl < 0);
-      }
+      const clase = pnl>0?'pos':(pnl<0?'neg':'');
+      ultimoPnlVivoPorId[id] = {texto:`${pnl>0?'+':''}$${pnl.toLocaleString('es-ES',{maximumFractionDigits:2})}${pctTexto}`, clase};
+      pintarCelda(id, ultimoPnlVivoPorId[id].texto, clase);
     }
     ultimoGraficoMisPosicionesHtml = construirGraficoPosicionesAbiertas(barras);
     const grafico = document.getElementById('grafico-mis-posiciones');
