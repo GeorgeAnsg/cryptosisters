@@ -604,22 +604,26 @@ function renderPaginaSeguimiento(){
   // trading / spot: la rejilla de traders a seguir/descubrir -- cada faceta
   // (trading/spot) cuenta su propio "siguiendo", no el global
   filtroActividad = subVistaTraders;
-  const nSigFaceta = candidatos.filter(c=> filtroActividad==='spot' ? c.sigue_spot : (c.categoria==='especulativo' ? c.siguiendo : c.sigue_trading)).length;
+
+  let lista = candidatos;
+  if(filtroActividad==='trading') lista = lista.filter(c=>c.categoria==='especulativo' || c.puntuacion!=null);
+  if(filtroActividad==='spot') lista = lista.filter(c=>c.puntuacion_spot!=null);
+
+  // el contador cuenta sobre la MISMA lista filtrada que se ve en pantalla --
+  // contar sobre candidatos.length (el total sin filtrar) daba cosas como
+  // "8/22" cuando en la rejilla solo habia 9 tarjetas visibles
+  const nSigFaceta = lista.filter(c=> filtroActividad==='spot' ? c.sigue_spot : c.sigue_trading).length;
   const tituloListado = filtroActividad==='spot' ? 'Listado de billeteras spot' : 'Listado de traders';
   const controlesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 2px 14px">
     <div style="display:flex;align-items:center;gap:7px">
       <div class="seccion-titulo" style="margin:0">${tituloListado}</div>
-      <span style="background:var(--border);color:var(--fg-muted);font-weight:700;font-size:.72rem;padding:3px 9px;border-radius:999px">${nSigFaceta}/${candidatos.length}</span>
+      <span style="background:var(--border);color:var(--fg-muted);font-weight:700;font-size:.72rem;padding:3px 9px;border-radius:999px">${nSigFaceta}/${lista.length}</span>
     </div>
     <div style="display:flex;gap:8px">
       <button class="btn-icono-redondo" data-orden="1" title="Cambiar orden (${ordenAsc?'ascendente':'descendente'})">${ordenAsc?'↑':'↓'}</button>
       <button class="btn-icono-redondo" data-forzar-descubrimiento="1" title="Recalcula ya a todo el mundo no seguido, en vez de esperar al ciclo semanal">↻</button>
     </div>
   </div>`;
-
-  let lista = candidatos;
-  if(filtroActividad==='trading') lista = lista.filter(c=>c.categoria==='especulativo' || c.puntuacion!=null);
-  if(filtroActividad==='spot') lista = lista.filter(c=>c.puntuacion_spot!=null);
 
   // para "ambos" se ordena tambien por la puntuacion de trading -- es la
   // misma que se muestra en el avatar de la tarjeta en esa vista
@@ -2072,6 +2076,26 @@ async function cargarTodo(){
   alertas = {}; listaAlertas.forEach(a=>{ alertas[a.id] = a; });
   misPosiciones = {}; listaMisPosiciones.forEach(m=>{ misPosiciones[m.id] = m; });
   notificaciones = listaNotificaciones;
+  await desseguirFiltrados();
+}
+
+// un candidato que se sigue puede caer en "vetado" (o perder la puntuacion)
+// despues de haberlo seguido -- entonces desaparece del listado filtrado
+// (ver renderPaginaSeguimiento) pero se queda "siguiendo" para siempre, sin
+// forma de desmarcarlo desde la UI; se desengancha solo en cuanto se detecta
+async function desseguirFiltrados(){
+  const aLimpiar = candidatos.filter(c=>
+    (c.sigue_trading && !(c.categoria==='especulativo' || c.puntuacion!=null)) ||
+    (c.sigue_spot && c.puntuacion_spot==null));
+  if(!aLimpiar.length) return;
+  await Promise.all(aLimpiar.map(c=>{
+    const cuerpo = {};
+    if(c.sigue_trading && !(c.categoria==='especulativo' || c.puntuacion!=null)) cuerpo.sigue_trading = false;
+    if(c.sigue_spot && c.puntuacion_spot==null) cuerpo.sigue_spot = false;
+    return apiEnviar('PATCH', `/candidatos/${c.address}`, cuerpo).catch(e=>console.error('fallo desiguiendo', c.address, e));
+  }));
+  const listaCandidatos = await apiGet('/candidatos');
+  candidatos = listaCandidatos;
 }
 
 async function iniciar(){
