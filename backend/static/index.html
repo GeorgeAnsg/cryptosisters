@@ -544,9 +544,9 @@ function filaMercadoTrading(coin, f){
   </div>`;
 }
 
-function filaMercadoSpot(coin, f, max){
+function filaMercadoSpot(coin, f, maxN){
   const fmtK = v => `$${v.toLocaleString('es-ES',{maximumFractionDigits:0})}`;
-  const ancho = max ? Math.max(6, f.d/max*100) : 0;
+  const ancho = maxN ? Math.max(6, f.n/maxN*100) : 0;
   const atenuado = f.n <= 1 ? 'opacity:.45' : '';
   return `<div class="mkt-fila" style="${atenuado}">
     <div class="mkt-coin">${coin}</div>
@@ -571,7 +571,7 @@ function renderPaginaMercado(){
   const {trading, spot} = calcularMercado();
   const coinsTrading = ordenarMercado(Object.entries(trading), f=>f.dLong+f.dShort);
   const coinsSpot = ordenarMercado(Object.entries(spot), f=>f.d);
-  const maxSpot = coinsSpot.length ? coinsSpot[0][1].d : 0;
+  const maxSpotN = coinsSpot.length ? Math.max(...coinsSpot.map(([,f])=>f.n)) : 0;
   return `
     <div class="tarjeta estatica" style="margin-bottom:18px">
       <div class="seccion-titulo">Trading · largos vs cortos por moneda</div>
@@ -580,7 +580,7 @@ function renderPaginaMercado(){
     </div>
     <div class="tarjeta estatica">
       <div class="seccion-titulo">Spot · más sostenido</div>
-      ${coinsSpot.length ? coinsSpot.map(([coin,f])=>filaMercadoSpot(coin,f,maxSpot)).join('') : '<div class="estado">Nadie tiene holdings spot ahora mismo.</div>'}
+      ${coinsSpot.length ? coinsSpot.map(([coin,f])=>filaMercadoSpot(coin,f,maxSpotN)).join('') : '<div class="estado">Nadie tiene holdings spot ahora mismo.</div>'}
     </div>`;
 }
 
