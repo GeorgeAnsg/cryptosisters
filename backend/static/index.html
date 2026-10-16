@@ -188,6 +188,14 @@ tr.op-hijo.oculto{display:none}
 .gb-valor.pos{color:var(--ok)}
 .gb-valor.neg{color:var(--bad)}
 .stat-caja{background:var(--panel);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow)}
+.mkt-fila{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--border)}
+.mkt-fila:first-child{border-top:none}
+.mkt-coin{width:52px;flex:none;font-weight:700;font-size:.82rem}
+.mkt-barra{flex:1;height:10px;border-radius:99px;overflow:hidden;display:flex;background:var(--border)}
+.mkt-detalle{flex:none;font-size:.72rem;color:var(--fg-muted);text-align:right;min-width:170px}
+.mkt-leyenda{display:flex;align-items:center;gap:14px;font-size:.72rem;color:var(--fg-muted);margin-bottom:12px}
+.mkt-leyenda span{display:inline-flex;align-items:center;gap:5px}
+.mkt-leyenda i{width:8px;height:8px;border-radius:50%;display:inline-block}
 .stat-caja .l{font-size:.72rem;color:var(--fg-muted)}
 .stat-caja .v{font-size:1.1rem;font-weight:700}
 .page-tab{position:relative}
@@ -203,6 +211,7 @@ tr.op-hijo.oculto{display:none}
       <button class="page-tab" data-pagina="mias">Mis posiciones</button>
       <button class="page-tab" data-pagina="seguimiento">Traders</button>
       <button class="page-tab" data-pagina="consenso">Consenso</button>
+      <button class="page-tab" data-pagina="mercado">Mercado</button>
       <button class="page-tab" data-pagina="stats">Estadísticas</button>
     </div>
     <div class="topbar-right">
@@ -482,6 +491,88 @@ function renderPaginaConsenso(){
   const d = calcularSeguimiento();
   if(d.vacio) return `<div class="estado">${d.mensaje}</div>`;
   return d.consensoBoxExpandidoHtml;
+}
+
+function calcularMercado(){
+  // sobre TODOS los candidatos guardados (superaron el cribado de
+  // descubrimiento), no solo a quien sigues -- percepcion de mercado, no
+  // de tu cartera
+  const trading = {}, spot = {};
+  for(const c of candidatos){
+    for(const p of (c.posicion_actual||[])){
+      const coin = etiquetaMoneda(p.coin);
+      const d = (p['tamaño']!=null && p.entryPx!=null) ? Math.abs(p['tamaño'])*p.entryPx : 0;
+      const fila = (trading[coin] ??= {nLong:0, nShort:0, dLong:0, dShort:0});
+      if(p.lado === 'Short'){ fila.nShort++; fila.dShort += d; }
+      else { fila.nLong++; fila.dLong += d; }
+    }
+    for(const h of (c.holdings_spot||[])){
+      const coin = etiquetaMoneda(h.coin);
+      const fila = (spot[coin] ??= {n:0, d:0});
+      fila.n++; fila.d += h.valorActual || 0;
+    }
+  }
+  return {trading, spot};
+}
+
+function filaMercadoTrading(coin, f){
+  // el reparto de la barra va por NUMERO de traders, no por $ -- a alguien
+  // con mas tamaño no le toca pesar mas que a cualquier otro en el reparto
+  const totalN = f.nLong + f.nShort;
+  const pctLong = totalN ? f.nLong/totalN*100 : 50;
+  const pctShort = 100 - pctLong;
+  const fmtK = v => `$${v.toLocaleString('es-ES',{maximumFractionDigits:0})}`;
+  // una sola posicion es poco significativo -- se atenua para que destaquen
+  // las monedas con mas traders de acuerdo (mas peso real en la señal)
+  const atenuado = totalN <= 1 ? 'opacity:.45' : '';
+  return `<div class="mkt-fila" style="${atenuado}">
+    <div class="mkt-coin">${coin}</div>
+    <div class="mkt-barra">${pctShort>0?`<div style="width:${pctShort}%;background:var(--bad)"></div>`:''}${pctLong>0?`<div style="width:${pctLong}%;background:var(--ok)"></div>`:''}</div>
+    <div class="mkt-detalle">${[
+      f.nLong ? `${f.nLong} long (${fmtK(f.dLong)})` : null,
+      f.nShort ? `${f.nShort} short (${fmtK(f.dShort)})` : null,
+    ].filter(Boolean).join(' · ')}</div>
+  </div>`;
+}
+
+function filaMercadoSpot(coin, f, max){
+  const fmtK = v => `$${v.toLocaleString('es-ES',{maximumFractionDigits:0})}`;
+  const ancho = max ? Math.max(6, f.d/max*100) : 0;
+  const atenuado = f.n <= 1 ? 'opacity:.45' : '';
+  return `<div class="mkt-fila" style="${atenuado}">
+    <div class="mkt-coin">${coin}</div>
+    <div class="mkt-barra"><div style="width:${ancho}%;background:var(--accent)"></div></div>
+    <div class="mkt-detalle">${f.n} traders · ${fmtK(f.d)}</div>
+  </div>`;
+}
+
+// monedas "de referencia" siempre arriba del todo, en este orden, antes de
+// ordenar el resto por $ expuesto -- para tener de un vistazo las que
+// realmente importan sin tener que buscarlas entre monedas minoritarias
+const PRIORIDAD_MERCADO = ['BTC','HYPE','ETH','BNB'];
+function ordenarMercado(entries, valorDe){
+  return [...entries].sort(([coinA,a],[coinB,b])=>{
+    const pa = PRIORIDAD_MERCADO.indexOf(coinA), pb = PRIORIDAD_MERCADO.indexOf(coinB);
+    if(pa!==-1 || pb!==-1) return (pa===-1?999:pa) - (pb===-1?999:pb);
+    return valorDe(b) - valorDe(a);
+  });
+}
+
+function renderPaginaMercado(){
+  const {trading, spot} = calcularMercado();
+  const coinsTrading = ordenarMercado(Object.entries(trading), f=>f.dLong+f.dShort);
+  const coinsSpot = ordenarMercado(Object.entries(spot), f=>f.d);
+  const maxSpot = coinsSpot.length ? coinsSpot[0][1].d : 0;
+  return `
+    <div class="tarjeta estatica" style="margin-bottom:18px">
+      <div class="seccion-titulo">Trading · largos vs cortos por moneda</div>
+      <div class="mkt-leyenda"><span><i style="background:var(--ok)"></i>Long</span><span><i style="background:var(--bad)"></i>Short</span></div>
+      ${coinsTrading.length ? coinsTrading.map(([coin,f])=>filaMercadoTrading(coin,f)).join('') : '<div class="estado">Nadie tiene trading abierto ahora mismo.</div>'}
+    </div>
+    <div class="tarjeta estatica">
+      <div class="seccion-titulo">Spot · más sostenido</div>
+      ${coinsSpot.length ? coinsSpot.map(([coin,f])=>filaMercadoSpot(coin,f,maxSpot)).join('') : '<div class="estado">Nadie tiene holdings spot ahora mismo.</div>'}
+    </div>`;
 }
 
 function renderPaginaSeguimiento(){
@@ -1213,6 +1304,7 @@ function render(){
   root.innerHTML = `
     <div class="page-panel ${paginaActiva==='seguimiento'?'':'oculto'}" data-pagina="seguimiento">${seguro(renderPaginaSeguimiento,'seguimiento')}</div>
     <div class="page-panel ${paginaActiva==='consenso'?'':'oculto'}" data-pagina="consenso">${seguro(renderPaginaConsenso,'consenso')}</div>
+    <div class="page-panel ${paginaActiva==='mercado'?'':'oculto'}" data-pagina="mercado">${seguro(renderPaginaMercado,'mercado')}</div>
     <div class="page-panel ${paginaActiva==='posiciones'?'':'oculto'}" data-pagina="posiciones">${seguro(renderPaginaPosiciones,'posiciones de seguimiento')}</div>
     <div class="page-panel ${paginaActiva==='mias'?'':'oculto'}" data-pagina="mias">${seguro(renderPaginaMias,'posiciones abiertas')}</div>
     <div class="page-panel ${paginaActiva==='stats'?'':'oculto'}" data-pagina="stats">${seguro(renderPaginaStats,'estadísticas')}</div>`;
