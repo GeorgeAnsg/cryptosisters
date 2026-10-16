@@ -195,6 +195,8 @@ tr.op-hijo.oculto{display:none}
 .mkt-barra-trading{height:28px;border-radius:8px}
 .mkt-seg{display:flex;align-items:center;justify-content:center;overflow:hidden}
 .mkt-pill{background:#fff;color:var(--fg);font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.mkt-barra-spot{position:relative;overflow:visible}
+.mkt-pill-spot{position:absolute;top:50%;transform:translate(-50%,-50%);width:76px;text-align:center;background:#fff;color:var(--fg);font-size:.66rem;font-weight:700;padding:3px 0;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 1px 3px rgba(0,0,0,.15)}
 .mkt-detalle{flex:none;font-size:.72rem;color:var(--fg-muted);text-align:right;width:190px;white-space:normal}
 .mkt-leyenda{display:flex;align-items:center;gap:14px;font-size:.72rem;color:var(--fg-muted);margin-bottom:12px}
 .mkt-leyenda span{display:inline-flex;align-items:center;gap:5px}
@@ -550,8 +552,10 @@ function filaMercadoSpot(coin, f, maxN){
   const atenuado = f.n <= 1 ? 'opacity:.45' : '';
   return `<div class="mkt-fila" style="${atenuado}">
     <div class="mkt-coin">${coin}</div>
-    <div class="mkt-barra"><div style="width:${ancho}%;background:var(--accent);border-radius:99px"></div></div>
-    <div class="mkt-detalle">${f.n} traders · ${fmtK(f.d)}</div>
+    <div class="mkt-barra mkt-barra-trading mkt-barra-spot">
+      <div style="width:${ancho}%;height:100%;background:var(--accent);border-radius:8px"></div>
+      <span class="mkt-pill-spot" style="left:${Math.min(Math.max(ancho/2, 12), 88)}%">${f.n} · ${fmtK(f.d)}</span>
+    </div>
   </div>`;
 }
 
