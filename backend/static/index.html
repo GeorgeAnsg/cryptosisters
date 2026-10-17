@@ -502,7 +502,7 @@ const CRIBADO_CAMPOS = [
     {etiqueta:'Techo de cuenta', valor:'(sin techo)', tipo:'text', explicacion:'Antes había un máximo de $5M ("ballena no replicable"); se quitó porque descartaba 785 cuentas buenas de golpe sin mirar nada más.'},
     {etiqueta:'ROI mínimo del mes', valor:'5%', tipo:'text', explicacion:'Preselección rápida con el ROI del último mes que ya trae el leaderboard, sin pedir nada más a Hyperliquid.'},
     {etiqueta:'Consistencia exigida', valor:'ROI semana > 0% Y ROI mes ≥ 5% Y ROI histórico > 0%', tipo:'text', explicacion:'Un solo mes bueno es ruido (puede ser suerte en una moneda volátil) -- se exigen las tres ventanas en positivo para favorecer consistencia sobre un pico aislado.'},
-    {etiqueta:'Candidatos evaluados por ciclo', valor:'70', tipo:'text', explicacion:'De los que pasan la preselección, cuántos se backtestean a fondo (año completo de operaciones) cada ejecución semanal -- el resto se queda fuera aunque cumpla los mínimos, por coste de llamadas a la API.'},
+    {etiqueta:'Candidatos evaluados por ciclo', valor:'100', tipo:'text', explicacion:'De los que pasan la preselección, cuántos se backtestean a fondo (año completo de operaciones) cada ejecución semanal -- el resto se queda fuera aunque cumpla los mínimos, por coste de llamadas a la API.'},
   ]},
   {grupo:'Backtest (para que una racha cuente como puntuación real)', campos:[
     {etiqueta:'Cierres mínimos para puntuar', valor:'10', tipo:'text', explicacion:'Menos que esto es una muestra demasiado pequeña -- una buena o mala racha domina el resultado.'},

@@ -27,7 +27,7 @@ CUENTA_MINIMA = 10_000  # por debajo de esto no hay suficiente "piel en el juego
 # cuanto copiar, no de si el trader es bueno -- descartaba 785 cuentas de golpe
 # sin mirar nada mas (ver conversacion 17-oct-2026)
 ROI_MES_MINIMO = 0.05  # preseleccion rapida con el ROI del mes que ya da el leaderboard
-MAX_CANDIDATOS_A_EVALUAR = 70  # cuantos candidatos se backtestean a fondo por ejecucion (cada uno son varias llamadas a la API)
+MAX_CANDIDATOS_A_EVALUAR = 100  # cuantos candidatos se backtestean a fondo por ejecucion (cada uno son varias llamadas a la API)
 PUNTUACION_MINIMA = 70  # umbral para considerarlo un descubrimiento real (trading o spot)
 PUNTUACION_MINIMA_MANTENER = 50  # umbral para dejar de seguir -- mas bajo que el de descubrir, para no quitar a alguien por una mala racha puntual (histeresis)
 
