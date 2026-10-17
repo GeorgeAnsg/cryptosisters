@@ -250,6 +250,7 @@ let misPosiciones = {};
 let notificaciones = [];
 let expandidos = new Set(); // que flechas estan desplegadas -- sobrevive al sondeo periodico (cargarTodo+render cada 30s)
 let ultimoNSiguiendo = null; // para el destello de "n-siguiendo" al cambiar -- el elemento se recrea en cada render()
+let estadoDescubrimiento = {corriendo:false}; // progreso del ciclo de descubrimiento en curso (si lo hay), ver pollEstadoDescubrimiento()
 
 // backend propio (ver carpeta backend/) -- mismo origen que esta pagina,
 // ruta relativa. El backend sustituye esto por la API_KEY real al servir
@@ -534,6 +535,7 @@ function renderPaginaCribado(){
       </div>
     </div>`).join('');
   return `
+    ${renderEstadoDescubrimiento()}
     <div class="tarjeta estatica" style="margin-bottom:18px;background:var(--panel-dark);border-color:var(--panel-dark);color:#fff">
       <div style="font-size:.84rem;color:#9ca0ab;line-height:1.5">
         Solo consulta -- estos son los valores REALES que usa hoy el backend para descubrir y mantener candidatos
@@ -542,6 +544,31 @@ function renderPaginaCribado(){
       </div>
     </div>
     ${grupos}`;
+}
+
+const FASE_DESCUBRIMIENTO_TEXTO = {
+  desestimando: 'Revisando a quién se deja de seguir…',
+  refrescando_no_seguidos: 'Actualizando a los no seguidos…',
+  descargando_leaderboard: 'Descargando el leaderboard de Hyperliquid…',
+  evaluando: 'Evaluando candidatos…',
+};
+function renderEstadoDescubrimiento(){
+  const e = estadoDescubrimiento;
+  if(!e.corriendo) return '';
+  const pct = e.total ? Math.round(e.evaluados / e.total * 100) : 0;
+  const segundos = e.inicio_ts ? Math.round(Date.now()/1000 - e.inicio_ts) : 0;
+  const mins = Math.floor(segundos / 60), secs = segundos % 60;
+  return `<div class="tarjeta estatica" style="margin-bottom:18px;background:var(--panel-dark);border-color:var(--panel-dark);color:#fff">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-weight:700;font-size:.88rem">↻ Ciclo de descubrimiento en marcha</div>
+      <span style="font-size:.72rem;color:#9ca0ab">${mins}m ${secs}s</span>
+    </div>
+    <div style="font-size:.8rem;color:#9ca0ab;margin-bottom:10px">${FASE_DESCUBRIMIENTO_TEXTO[e.fase] || e.fase || ''}${e.total ? ` -- ${e.evaluados}/${e.total} (${e.descubiertos} descubiertos)` : ''}</div>
+    ${e.total ? `<div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width .3s"></div>
+    </div>` : ''}
+    ${e.actual ? `<div style="font-size:.7rem;color:#9ca0ab;margin-top:8px;font-family:ui-monospace,monospace">evaluando ahora: ${e.actual}</div>` : ''}
+  </div>`;
 }
 
 function renderPaginaConsenso(){
@@ -1483,6 +1510,7 @@ function render(){
       try{
         await apiEnviar('POST', '/admin/forzar_descubrimiento', {});
         btn.textContent = 'Lanzado, tardará unos minutos';
+        pollEstadoDescubrimiento();
       }catch(e){
         console.error('fallo al forzar el descubrimiento', e);
         btn.textContent = 'Error, mira la consola';
@@ -2154,6 +2182,23 @@ async function desseguirFiltrados(){
   candidatos = listaCandidatos;
 }
 
+let pollEstadoDescubrimientoEnMarcha = false;
+async function pollEstadoDescubrimiento(){
+  if(pollEstadoDescubrimientoEnMarcha) return;
+  pollEstadoDescubrimientoEnMarcha = true;
+  try{
+    while(true){
+      try{ estadoDescubrimiento = await apiGet('/admin/estado_descubrimiento'); }
+      catch(e){ console.error('fallo consultando el estado del descubrimiento', e); break; }
+      render();
+      if(!estadoDescubrimiento.corriendo) break;
+      await new Promise(res => setTimeout(res, 3000));
+    }
+  }finally{
+    pollEstadoDescubrimientoEnMarcha = false;
+  }
+}
+
 async function iniciar(){
   try{
     // no cambia casi nunca -- se pide una vez al iniciar, no en cada sondeo
@@ -2165,6 +2210,10 @@ async function iniciar(){
     document.getElementById('root').innerHTML = `<div class="estado">No se pudo conectar al backend: ${e.message}</div>`;
     return;
   }
+  // por si ya habia un ciclo de descubrimiento corriendo al cargar la
+  // pagina (lanzado antes, o desde otra pestaña) -- si no, esta primera
+  // consulta devuelve corriendo:false y no vuelve a llamarse
+  pollEstadoDescubrimiento();
   // sin WebSocket/onSnapshot aqui -- el backend se refresca solo cada 5 min
   // (ver backend/refresher.py), asi que a esta pagina le basta con volver a
   // pedir los datos de vez en cuando en vez de mantener una conexion viva.

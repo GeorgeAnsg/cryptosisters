@@ -32,17 +32,32 @@ MESES_EN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct'
 STABLES = {"USDC", "USDT0", "USDH", "USDE"}
 
 
+MAX_ESPERA_RATE_LIMIT = 30  # segundos -- techo del backoff, pero el 429 se reintenta sin limite de intentos
+
+
 def fetch_json(payload, intentos=3):
+    """intentos limita los fallos 'normales' (red, timeout) -- un 429 (rate
+    limit) es distinto: no es un error real, es que hay que esperar, asi que
+    se reintenta SIN limite de intentos (con backoff creciente) en vez de
+    tirar al candidato entero. Preferimos tardar mucho a perder informacion."""
     body = json.dumps(payload).encode()
     req = urllib.request.Request(INFO_URL, data=body, headers={"Content-Type": "application/json"})
-    for i in range(intentos):
+    i = 0
+    intento_rate_limit = 0
+    while True:
         try:
             with urllib.request.urlopen(req, timeout=20) as r:
                 return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            if e.code != 429:
+                raise
+            intento_rate_limit += 1
+            time.sleep(min(MAX_ESPERA_RATE_LIMIT, 2 * intento_rate_limit))
         except (urllib.error.URLError, TimeoutError):
             if i == intentos - 1:
                 raise
             time.sleep(1.5 * (i + 1))
+            i += 1
 
 
 def obtener_fills(address, desde_ms):

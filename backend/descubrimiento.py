@@ -22,6 +22,11 @@ import telegram
 LEADERBOARD_URL = "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard"
 INTERVALO_SEGUNDOS = 7 * 24 * 60 * 60
 
+# progreso del ciclo en curso, consultable desde /admin/estado_descubrimiento
+# -- sin esto, un ciclo largo (reintentando 429 sin limite) es indistinguible
+# de uno colgado: no hay forma de saber si sigue vivo ni cuanto le queda
+ESTADO = {"corriendo": False, "fase": None, "total": 0, "evaluados": 0, "descubiertos": 0, "actual": None, "inicio_ts": None}
+
 CUENTA_MINIMA = 10_000  # por debajo de esto no hay suficiente "piel en el juego"
 # sin techo de cuenta: el riesgo de "ballena no replicable" es un problema de
 # cuanto copiar, no de si el trader es bueno -- descartaba 785 cuentas de golpe
@@ -183,82 +188,95 @@ def descubrir_candidatos():
        a los que pasan ese primer corte les hace el MISMO backtest riguroso
        (episodios, trading separado de spot, año completo) que a cualquier
        candidato ya existente -- nada entra sin pasar la misma verificacion."""
-    conn = db.conectar()
-    recien_desestimados = revisar_desestimados(conn)
-
-    spot_nombres = hyperliquid.cargar_spot_meta()
-    idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
-    precios = hyperliquid.fetch_json({"type": "allMids"})
-
-    refrescar_no_seguidos(conn, spot_nombres, idx_por_nombre, precios)
-    eliminados = revisar_requisitos_permanencia(conn, recien_desestimados)
-
+    ESTADO.update(corriendo=True, fase="desestimando", total=0, evaluados=0, descubiertos=0, actual=None, inicio_ts=time.time())
     try:
-        direcciones_conocidas = {r["address"].lower() for r in conn.execute("SELECT address FROM candidatos")}
-        filas = _descargar_leaderboard()
-    except Exception:
-        print("fallo descargando el leaderboard:")
-        traceback.print_exc()
-        _enviar_resumen(conn, recien_desestimados, eliminados, [])
-        conn.close()
-        return []
+        conn = db.conectar()
+        recien_desestimados = revisar_desestimados(conn)
 
-    preseleccion = _preseleccion(filas, direcciones_conocidas)
-    if not preseleccion:
-        _enviar_resumen(conn, recien_desestimados, eliminados, [])
-        conn.close()
-        return []
+        spot_nombres = hyperliquid.cargar_spot_meta()
+        idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
+        precios = hyperliquid.fetch_json({"type": "allMids"})
 
-    descubiertos = []
-    for addr, cuenta, _roi_mes in preseleccion:
+        ESTADO["fase"] = "refrescando_no_seguidos"
+        refrescar_no_seguidos(conn, spot_nombres, idx_por_nombre, precios)
+        eliminados = revisar_requisitos_permanencia(conn, recien_desestimados)
+
+        ESTADO["fase"] = "descargando_leaderboard"
         try:
-            datos = hyperliquid.datos_de_trader(addr, spot_nombres, idx_por_nombre, precios)
+            direcciones_conocidas = {r["address"].lower() for r in conn.execute("SELECT address FROM candidatos")}
+            filas = _descargar_leaderboard()
         except Exception:
-            print(f"fallo evaluando {addr}:")
+            print("fallo descargando el leaderboard:")
             traceback.print_exc()
-            continue
-        time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
+            _enviar_resumen(conn, recien_desestimados, eliminados, [])
+            conn.close()
+            return []
 
-        ops = datos["operaciones_backtest"]
-        # si una faceta (trading o spot) tiene un retorno catastrofico, esa
-        # faceta concreta se anula (no cuenta) -- pero no descalifica al
-        # candidato entero: si la OTRA faceta pasa el minimo, entra igual,
-        # solo que por esa parte buena (ver hyperliquid.veto_catastrofico)
-        bt = hyperliquid.backtest_trader(ops, cuenta, lados=("Long", "Short"))
-        retorno_trading = bt["retorno_pct"] if bt else None
-        puntuacion = hyperliquid.puntuacion_de(bt["retorno_pct"], bt["profit_factor"], -bt["drawdown"] * 100) if bt and retorno_trading is not None and not hyperliquid.veto_catastrofico(retorno_trading) else None
-        bt_spot = hyperliquid.backtest_trader(ops, cuenta, lados=("Spot",))
-        retorno_spot = bt_spot["retorno_pct"] if bt_spot else None
-        puntuacion_spot = hyperliquid.puntuacion_de(bt_spot["retorno_pct"], bt_spot["profit_factor"], -bt_spot["drawdown"] * 100) if bt_spot and retorno_spot is not None and not hyperliquid.veto_catastrofico(retorno_spot) else None
+        preseleccion = _preseleccion(filas, direcciones_conocidas)
+        ESTADO["fase"] = "evaluando"
+        ESTADO["total"] = len(preseleccion)
+        if not preseleccion:
+            _enviar_resumen(conn, recien_desestimados, eliminados, [])
+            conn.close()
+            return []
 
-        if (puntuacion or 0) < PUNTUACION_MINIMA and (puntuacion_spot or 0) < PUNTUACION_MINIMA:
-            continue
+        descubiertos = []
+        for addr, cuenta, _roi_mes in preseleccion:
+            ESTADO["actual"] = addr
+            try:
+                datos = hyperliquid.datos_de_trader(addr, spot_nombres, idx_por_nombre, precios)
+            except Exception:
+                print(f"fallo evaluando {addr}:")
+                traceback.print_exc()
+                ESTADO["evaluados"] += 1
+                continue
+            time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
 
-        ahora = int(time.time() * 1000)
-        conn.execute(
-            """INSERT INTO candidatos (address, categoria, antiguedad, estilo, riesgo, cuenta, siguiendo,
-               retorno_pct, profit_factor, puntuacion, win_rate, drawdown, puntuacion_spot, win_rate_spot,
-               retorno_pct_spot, drawdown_spot, profit_factor_spot, posicion_actual, holdings_spot, operaciones_recientes, descubierto_ts)
-               VALUES (?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (
-                addr, "descubierto", _antiguedad_dias(ops), "activo", "moderado", cuenta,
-                bt["retorno_pct"] if bt else None, bt["profit_factor"] if bt else None,
-                puntuacion, bt["win_rate"] if bt else None, bt["drawdown"] if bt else None,
-                puntuacion_spot, bt_spot["win_rate"] if bt_spot else None, retorno_spot,
-                bt_spot["drawdown"] if bt_spot else None, bt_spot["profit_factor"] if bt_spot else None,
-                json.dumps(datos["posicion_actual"], ensure_ascii=False),
-                json.dumps(datos["holdings_spot"], ensure_ascii=False),
-                json.dumps(datos["operaciones_recientes"], ensure_ascii=False),
-                ahora,
-            ),
-        )
-        conn.commit()
-        descubiertos.append((addr, puntuacion, puntuacion_spot))
-        time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
+            ops = datos["operaciones_backtest"]
+            # si una faceta (trading o spot) tiene un retorno catastrofico, esa
+            # faceta concreta se anula (no cuenta) -- pero no descalifica al
+            # candidato entero: si la OTRA faceta pasa el minimo, entra igual,
+            # solo que por esa parte buena (ver hyperliquid.veto_catastrofico)
+            bt = hyperliquid.backtest_trader(ops, cuenta, lados=("Long", "Short"))
+            retorno_trading = bt["retorno_pct"] if bt else None
+            puntuacion = hyperliquid.puntuacion_de(bt["retorno_pct"], bt["profit_factor"], -bt["drawdown"] * 100) if bt and retorno_trading is not None and not hyperliquid.veto_catastrofico(retorno_trading) else None
+            bt_spot = hyperliquid.backtest_trader(ops, cuenta, lados=("Spot",))
+            retorno_spot = bt_spot["retorno_pct"] if bt_spot else None
+            puntuacion_spot = hyperliquid.puntuacion_de(bt_spot["retorno_pct"], bt_spot["profit_factor"], -bt_spot["drawdown"] * 100) if bt_spot and retorno_spot is not None and not hyperliquid.veto_catastrofico(retorno_spot) else None
 
-    _enviar_resumen(conn, recien_desestimados, eliminados, descubiertos)
-    conn.close()
-    return descubiertos
+            if (puntuacion or 0) < PUNTUACION_MINIMA and (puntuacion_spot or 0) < PUNTUACION_MINIMA:
+                ESTADO["evaluados"] += 1
+                continue
+
+            ahora = int(time.time() * 1000)
+            conn.execute(
+                """INSERT INTO candidatos (address, categoria, antiguedad, estilo, riesgo, cuenta, siguiendo,
+                   retorno_pct, profit_factor, puntuacion, win_rate, drawdown, puntuacion_spot, win_rate_spot,
+                   retorno_pct_spot, drawdown_spot, profit_factor_spot, posicion_actual, holdings_spot, operaciones_recientes, descubierto_ts)
+                   VALUES (?,?,?,?,?,?,0,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    addr, "descubierto", _antiguedad_dias(ops), "activo", "moderado", cuenta,
+                    bt["retorno_pct"] if bt else None, bt["profit_factor"] if bt else None,
+                    puntuacion, bt["win_rate"] if bt else None, bt["drawdown"] if bt else None,
+                    puntuacion_spot, bt_spot["win_rate"] if bt_spot else None, retorno_spot,
+                    bt_spot["drawdown"] if bt_spot else None, bt_spot["profit_factor"] if bt_spot else None,
+                    json.dumps(datos["posicion_actual"], ensure_ascii=False),
+                    json.dumps(datos["holdings_spot"], ensure_ascii=False),
+                    json.dumps(datos["operaciones_recientes"], ensure_ascii=False),
+                    ahora,
+                ),
+            )
+            conn.commit()
+            descubiertos.append((addr, puntuacion, puntuacion_spot))
+            ESTADO["evaluados"] += 1
+            ESTADO["descubiertos"] = len(descubiertos)
+            time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
+
+        _enviar_resumen(conn, recien_desestimados, eliminados, descubiertos)
+        conn.close()
+        return descubiertos
+    finally:
+        ESTADO.update(corriendo=False, fase=None, actual=None)
 
 
 def _enviar_resumen(conn, desestimados, eliminados, descubiertos):

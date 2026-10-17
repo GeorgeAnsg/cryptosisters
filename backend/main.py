@@ -271,6 +271,15 @@ def forzar_descubrimiento(x_api_key: str | None = Header(default=None)):
     return {"ok": True, "mensaje": "lanzado en segundo plano, tardará unos minutos"}
 
 
+@app.get("/admin/estado_descubrimiento")
+def estado_descubrimiento(x_api_key: str | None = Header(default=None)):
+    """Progreso del ciclo de descubrimiento en curso (si lo hay) -- sin esto
+    un ciclo largo (reintentando 429 sin limite) es indistinguible de uno
+    colgado desde fuera."""
+    comprobar_clave(x_api_key)
+    return descubrimiento.ESTADO
+
+
 @app.get("/spot_meta")
 def spot_meta(x_api_key: str | None = Header(default=None)):
     """Mapa {'@indice': 'NOMBRE'} de TODAS las monedas spot de Hyperliquid --
