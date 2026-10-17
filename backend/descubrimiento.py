@@ -140,13 +140,17 @@ def refrescar_no_seguidos(conn, spot_nombres, idx_por_nombre, precios):
     no tiene sentido evaluarlos ni dejar que acaben borrados por no pasar un
     umbral que no les corresponde."""
     direcciones = [r["address"] for r in conn.execute("SELECT address FROM candidatos WHERE siguiendo=0 AND categoria!='especulativo'")]
+    ESTADO["total"] = len(direcciones)
+    ESTADO["evaluados"] = 0
     for addr in direcciones:
+        ESTADO["actual"] = addr
         try:
             refresher.actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios)
             conn.commit()
         except Exception:
             print(f"fallo refrescando (no seguido) {addr}:")
             traceback.print_exc()
+        ESTADO["evaluados"] += 1
         time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
 
 
@@ -222,6 +226,7 @@ def descubrir_candidatos():
         preseleccion = _preseleccion(filas, direcciones_conocidas)
         ESTADO["fase"] = "evaluando"
         ESTADO["total"] = len(preseleccion)
+        ESTADO["evaluados"] = 0
         if not preseleccion:
             _enviar_resumen(conn, recien_desestimados, eliminados, [])
             conn.close()

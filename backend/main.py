@@ -290,6 +290,22 @@ def spot_meta(x_api_key: str | None = Header(default=None)):
     return hyperliquid.cargar_spot_meta()
 
 
+_CACHE_CATEGORIAS = {"ts": 0, "datos": None}
+
+
+@app.get("/categorias_mercado")
+def categorias_mercado(x_api_key: str | None = Header(default=None)):
+    """Mapa {ticker: 'Cripto'|'Acción'|'Materia prima'|'Divisa'|'Índice'} para
+    distinguir, en los perps de terceros (HIP-3, prefijo 'dex:TICKER'), qué es
+    cripto de verdad y qué es una accion/materia prima tokenizada -- cacheado
+    1h en memoria porque el catalogo no cambia de un refresco de pagina a otro."""
+    comprobar_clave(x_api_key)
+    if time.time() - _CACHE_CATEGORIAS["ts"] > 3600:
+        _CACHE_CATEGORIAS["datos"] = hyperliquid.cargar_categorias_mercado()
+        _CACHE_CATEGORIAS["ts"] = time.time()
+    return _CACHE_CATEGORIAS["datos"]
+
+
 @app.get("/salud")
 def salud():
     return {"ok": True}

@@ -113,6 +113,54 @@ def cargar_spot_meta():
     return nombres
 
 
+# Hyperliquid, via HIP-3, deja a terceros ("builders") listar sus propios
+# mercados perpetuos con prefijo "dex:TICKER" (p.ej. "xyz:CRWV") -- la
+# mayoria son replicas de acciones, pero no hay forma de saberlo por la API
+# sola: algunos builders (p.ej. hyna) listan cripto bajo su propio prefijo.
+# Por eso el criterio es: si el ticker (sin prefijo) ya existe en el
+# universo cripto nativo de Hyperliquid (perp o spot), es cripto aunque
+# venga con prefijo de builder; si no, se clasifica por palabra clave
+# (materia prima / divisa / indice) y lo que sobra son acciones, que es la
+# inmensa mayoria de lo que listan estos builders.
+CATEGORIA_MATERIAS_PRIMAS = {
+    "GOLD", "SILVER", "PLATINUM", "PALLADIUM", "COPPER", "ALUMINIUM", "URANIUM", "URNM",
+    "OIL", "USOIL", "WTI", "BRENTOIL", "CL", "HO", "NATGAS", "GAS",
+    "CORN", "WHEAT", "SOY", "GLDMINE", "GOLDJM", "SILVERJM",
+}
+CATEGORIA_DIVISAS = {"EUR", "GBP", "JPY", "KRW", "DXY"}
+CATEGORIA_INDICES = {
+    "SP500", "US500", "USA500", "XYZ100", "USTECH", "SMALL2000", "NIFTY", "IBOV", "KR200",
+    "JP225", "VIX", "VOL", "MAG7", "SEMIS", "SEMI", "NUCLEAR", "DEFENSE", "BIOTECH", "INFOTECH",
+    "ROBOT", "ENERGY", "USENERGY", "TLT", "USBOND", "10Y", "2Y", "30Y", "OTHERS", "TOTAL2", "BTCD",
+}
+
+
+def cargar_categorias_mercado():
+    """{ticker_tal_como_aparece_en_fills: 'Cripto'|'Acción'|'Materia prima'|
+    'Divisa'|'Índice'} para TODO lo que se puede operar en Hyperliquid hoy --
+    perp nativo, spot, y todos los perps de terceros via HIP-3."""
+    universo_cripto = {u["name"] for u in fetch_json({"type": "meta"})["universe"]}
+    universo_cripto |= set(cargar_spot_meta().values())
+    categorias = {t: "Cripto" for t in universo_cripto}
+
+    for dex in fetch_json({"type": "perpDexs"}):
+        if not dex:
+            continue
+        for ticker_completo, _cap in dex["assetToStreamingOiCap"]:
+            _prefijo, _, base = ticker_completo.partition(":")
+            if base in universo_cripto:
+                categorias[ticker_completo] = "Cripto"
+            elif base in CATEGORIA_MATERIAS_PRIMAS:
+                categorias[ticker_completo] = "Materia prima"
+            elif base in CATEGORIA_DIVISAS:
+                categorias[ticker_completo] = "Divisa"
+            elif base in CATEGORIA_INDICES:
+                categorias[ticker_completo] = "Índice"
+            else:
+                categorias[ticker_completo] = "Acción"
+    return categorias
+
+
 def cargar_idx_por_nombre():
     """Nombre de moneda spot -> indice de su par, para precios.get(f"@{idx}").
     Algunas monedas (p.ej. UBTC) cotizan en mas de un par (UBTC/USDC Y

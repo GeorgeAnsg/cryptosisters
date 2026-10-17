@@ -161,6 +161,14 @@ tr.op-hijo.oculto{display:none}
 .subtab-traders.activo{background:var(--panel-dark);color:var(--fg-on-dark)}
 .btn-icono-redondo{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:var(--panel);color:var(--fg-muted);font-size:.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
 .btn-icono-redondo:hover{background:#000;color:#fff;border-color:#000}
+@keyframes girar{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.icono-girando{display:inline-block;animation:girar 1.1s linear infinite}
+@keyframes barra-indeterminada{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+.barra-indeterminada{width:40%;animation:barra-indeterminada 1.2s ease-in-out infinite}
+.control-redondo{font:inherit;font-size:.78rem;padding:8px 28px 8px 14px;border-radius:999px;border:1px solid var(--border);background:var(--panel);color:var(--fg);outline:none}
+.control-redondo:focus{outline:none;box-shadow:none;border-color:var(--fg-muted)}
+input.control-redondo{padding:8px 14px}
+select.control-redondo{appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7078' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
 .dashboard-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:stretch}
 .dashboard-grid .tarjeta-llena{height:100%}
 .dashboard-grid .span-8{grid-column:span 8}
@@ -331,6 +339,7 @@ function plantaFor(addr){
 // en vivo que ya sabe el backend) -- este fallback fijo es solo por si esa
 // llamada falla y hay que seguir mostrando algo antes de que cargue
 let NOMBRES_MONEDA = {'@107':'HYPE','@142':'UBTC','@151':'UETH','@156':'USOL'};
+let CATEGORIAS_MERCADO = {}; // {ticker: 'Cripto'|'Acción'|'Materia prima'|'Divisa'|'Índice'}, ver /categorias_mercado
 function nombreMonedaBase(coin){
   return NOMBRES_MONEDA[coin] || coin;
 }
@@ -361,6 +370,30 @@ function nombreMoneda(coin){
 const ALIAS_MONEDA = {UBTC:'BTC', UETH:'ETH', USOL:'SOL'};
 function etiquetaMoneda(nombre){
   return ALIAS_MONEDA[nombre] || nombre;
+}
+
+// colorea cada moneda operada segun su categoria real (CATEGORIAS_MERCADO,
+// cargada de /categorias_mercado) -- asi se ve de un vistazo si alguien
+// "cripto" en realidad opera acciones/materias primas tokenizadas (HIP-3)
+const COLOR_CATEGORIA = {'Cripto':'var(--accent-weak)', 'Acción':'#fde7c7', 'Materia prima':'#e3d5f8', 'Divisa':'#d6ecff', 'Índice':'#ffe0e0'};
+function ladosDe(filtroActividad){
+  return filtroActividad==='spot' ? ['Spot'] : (filtroActividad==='trading' ? ['Long','Short'] : null);
+}
+function monedasConCategoria(c, filtroActividad){
+  const lados = ladosDe(filtroActividad);
+  const ops = (c.operaciones_recientes||[]).filter(o => !lados || lados.includes(o.lado));
+  const conteo = {};
+  ops.forEach(o => conteo[o.coin] = (conteo[o.coin]||0)+1);
+  return Object.keys(conteo).sort((a,b)=>conteo[b]-conteo[a]).map(coin => ({coin, categoria: CATEGORIAS_MERCADO[coin] || 'Cripto'}));
+}
+function badgesMonedas(c, filtroActividad){
+  const monedas = monedasConCategoria(c, filtroActividad);
+  if(!monedas.length) return c.monedas||'';
+  return monedas.slice(0,6).map(({coin, categoria}) => {
+    const nombre = nombreMoneda(coin.includes(':') ? coin.split(':')[1] : coin);
+    const color = COLOR_CATEGORIA[categoria] || 'var(--border)';
+    return `<span style="display:inline-block;background:${color};border-radius:999px;padding:2px 8px;margin:0 4px 4px 0;font-size:.68rem;font-weight:600" title="${categoria}">${nombre}</span>`;
+  }).join('');
 }
 
 function tarjeta(c, filtroActividad){
@@ -394,7 +427,7 @@ function tarjeta(c, filtroActividad){
           </div>
         </div>
         <div class="etiqueta-especulativo">${c.etiqueta||''}</div>
-        <div class="monedas">${c.monedas||''}</div>
+        <div class="monedas">${badgesMonedas(c, filtroActividad)}</div>
       </div>`;
   }
 
@@ -422,13 +455,16 @@ function tarjeta(c, filtroActividad){
         <div class="stat"><div class="l">Retorno backtest</div><div class="v" style="color:${retornoMostrado>0?'var(--ok)':retornoMostrado<0?'var(--bad)':'inherit'}">${retornoMostrado!=null?retornoMostrado.toFixed(1)+'%':'—'}</div></div>
         <div class="stat"><div class="l">Profit factor</div><div class="v">${c.profit_factor!=null?c.profit_factor.toFixed(2):(c.profit_factor===null&&c.retorno_pct!=null?'∞':'—')}</div></div>
       </div>
-      <div class="monedas">${c.monedas||''}</div>
+      <div class="monedas">${badgesMonedas(c, filtroActividad)}</div>
     </div>`;
 }
 
 let paginaActiva = 'posiciones';
 let filtroActividad = 'trading';
 let ordenAsc = false;
+let ordenCampo = 'puntuacion'; // 'puntuacion' | 'retorno' | 'actividad'
+let filtroRetornoMin = null; // retorno_pct mínimo, o null = sin filtro
+let filtroCategoria = null; // 'Cripto'|'Acción'|'Materia prima'|'Divisa'|'Índice'|null = todas
 let subPestañaPosiciones = 'trading';
 let subVistaTraders = 'trading'; // trading | spot | consenso | posiciones -- submenu de la pestaña Traders
 
@@ -560,13 +596,15 @@ function renderEstadoDescubrimiento(){
   const mins = Math.floor(segundos / 60), secs = segundos % 60;
   return `<div class="tarjeta estatica" style="margin-bottom:18px;background:var(--panel-dark);border-color:var(--panel-dark);color:#fff">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-weight:700;font-size:.88rem">↻ Ciclo de descubrimiento en marcha</div>
+      <div style="font-weight:700;font-size:.88rem"><span class="icono-girando">↻</span> Ciclo de descubrimiento en marcha</div>
       <span style="font-size:.72rem;color:#9ca0ab">${mins}m ${secs}s</span>
     </div>
     <div style="font-size:.8rem;color:#9ca0ab;margin-bottom:10px">${FASE_DESCUBRIMIENTO_TEXTO[e.fase] || e.fase || ''}${e.total ? ` -- ${e.evaluados}/${e.total} (${e.descubiertos} descubiertos)` : ''}</div>
-    ${e.total ? `<div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width .3s"></div>
-    </div>` : ''}
+    <div style="height:8px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden">
+      ${e.total
+        ? `<div style="height:100%;width:${pct}%;background:var(--accent);border-radius:99px;transition:width .3s"></div>`
+        : `<div class="barra-indeterminada" style="height:100%;background:var(--accent);border-radius:99px"></div>`}
+    </div>
     ${e.actual ? `<div style="font-size:.7rem;color:#9ca0ab;margin-top:8px;font-family:ui-monospace,monospace">evaluando ahora: ${e.actual}</div>` : ''}
   </div>`;
 }
@@ -697,12 +735,28 @@ function renderPaginaSeguimiento(){
   // "8/22" cuando en la rejilla solo habia 9 tarjetas visibles
   const nSigFaceta = lista.filter(c=> filtroActividad==='spot' ? c.sigue_spot : c.sigue_trading).length;
   const tituloListado = filtroActividad==='spot' ? 'Listado de billeteras spot' : 'Listado de traders';
-  const controlesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 2px 14px">
+
+  const retornoDe = c => filtroActividad==='spot' ? c.retorno_pct_spot : c.retorno_pct;
+  if(filtroRetornoMin != null) lista = lista.filter(c => (retornoDe(c) ?? -Infinity) >= filtroRetornoMin);
+  if(filtroCategoria != null) lista = lista.filter(c => monedasConCategoria(c, filtroActividad).some(m => m.categoria === filtroCategoria));
+
+  const CATEGORIAS_DISPONIBLES = ['Cripto','Acción','Materia prima','Divisa','Índice'];
+  const controlesHtml = `<div style="display:flex;align-items:center;justify-content:space-between;margin:14px 2px 14px;gap:10px;flex-wrap:wrap">
     <div style="display:flex;align-items:center;gap:7px">
       <div class="seccion-titulo" style="margin:0">${tituloListado}</div>
       <span style="background:var(--border);color:var(--fg-muted);font-weight:700;font-size:.72rem;padding:3px 9px;border-radius:999px">${nSigFaceta}/${lista.length}</span>
     </div>
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="number" class="control-redondo" data-filtro-retorno="1" placeholder="Retorno mín. %" value="${filtroRetornoMin ?? ''}" style="width:120px">
+      <select data-filtro-categoria="1" class="control-redondo">
+        <option value="" ${filtroCategoria==null?'selected':''}>Todas las categorías</option>
+        ${CATEGORIAS_DISPONIBLES.map(cat=>`<option value="${cat}" ${filtroCategoria===cat?'selected':''}>${cat}</option>`).join('')}
+      </select>
+      <select data-orden-campo="1" class="control-redondo">
+        <option value="puntuacion" ${ordenCampo==='puntuacion'?'selected':''}>Puntuación</option>
+        <option value="retorno" ${ordenCampo==='retorno'?'selected':''}>Retorno</option>
+        <option value="actividad" ${ordenCampo==='actividad'?'selected':''}>Actividad reciente</option>
+      </select>
       <button class="btn-icono-redondo" data-orden="1" title="Cambiar orden (${ordenAsc?'ascendente':'descendente'})">${ordenAsc?'↑':'↓'}</button>
       <button class="btn-icono-redondo" data-forzar-descubrimiento="1" title="Recalcula ya a todo el mundo no seguido, en vez de esperar al ciclo semanal">↻</button>
     </div>
@@ -711,14 +765,17 @@ function renderPaginaSeguimiento(){
   // para "ambos" se ordena tambien por la puntuacion de trading -- es la
   // misma que se muestra en el avatar de la tarjeta en esa vista
   const puntuacionDe = c => filtroActividad==='spot' ? c.puntuacion_spot : c.puntuacion;
+  const ladosActividad = filtroActividad==='spot' ? ['Spot'] : ['Long','Short'];
+  const actividadDe = c => Math.max(0, ...(c.operaciones_recientes||[]).filter(o=>ladosActividad.includes(o.lado)).map(o=>o.ts||0));
+  const valorOrdenDe = c => ordenCampo==='retorno' ? retornoDe(c) : (ordenCampo==='actividad' ? actividadDe(c) : puntuacionDe(c));
   const dir = ordenAsc ? 1 : -1;
   const todos = [...lista].sort((a,b)=>{
     if((a.categoria==='especulativo') !== (b.categoria==='especulativo')) return a.categoria==='especulativo' ? 1 : -1;
-    return dir * ((puntuacionDe(a)??-1) - (puntuacionDe(b)??-1));
+    return dir * ((valorOrdenDe(a)??-1) - (valorOrdenDe(b)??-1));
   });
   const grid = todos.length ? `<div class="grid">${todos.map(c=>tarjeta(c, filtroActividad)).join('')}</div>`
     : '<div class="estado">Nadie tiene puntuación en esta categoría todavía.</div>';
-  return submenu + controlesHtml + grid;
+  return submenu + controlesHtml + renderEstadoDescubrimiento() + grid;
 }
 
 function resumenMisPosicionesHtml(){
@@ -1501,6 +1558,25 @@ function render(){
       render();
     };
   });
+  root.querySelectorAll('[data-orden-campo]').forEach(sel=>{
+    sel.onchange = ()=>{
+      ordenCampo = sel.value;
+      render();
+    };
+  });
+  root.querySelectorAll('[data-filtro-categoria]').forEach(sel=>{
+    sel.onchange = ()=>{
+      filtroCategoria = sel.value || null;
+      render();
+    };
+  });
+  root.querySelectorAll('[data-filtro-retorno]').forEach(input=>{
+    input.onchange = ()=>{
+      const v = input.value.trim();
+      filtroRetornoMin = v === '' ? null : Number(v);
+      render();
+    };
+  });
 
   root.querySelectorAll('[data-forzar-descubrimiento]').forEach(btn=>{
     btn.onclick = async ()=>{
@@ -2203,6 +2279,7 @@ async function iniciar(){
   try{
     // no cambia casi nunca -- se pide una vez al iniciar, no en cada sondeo
     apiGet('/spot_meta').then(m=>{ NOMBRES_MONEDA = m; render(); }).catch(e=>console.error('fallo cargando spot_meta', e));
+    apiGet('/categorias_mercado').then(m=>{ CATEGORIAS_MERCADO = m; render(); }).catch(e=>console.error('fallo cargando categorias_mercado', e));
     await cargarTodo();
     render();
   }catch(e){
