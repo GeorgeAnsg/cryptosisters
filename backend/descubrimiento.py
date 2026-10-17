@@ -233,14 +233,28 @@ def descubrir_candidatos():
             return []
 
         descubiertos = []
-        for addr, cuenta, _roi_mes in preseleccion:
+        # un fallo que NO es 429 (eso ya reintenta solo sin limite en
+        # fetch_json) es casi siempre una caida de red puntual, no que el
+        # candidato sea malo -- en vez de descartarlo para siempre a la
+        # primera, se reencola al final de la cola para reintentarlo mas
+        # tarde (dando tiempo a que la red se recupere), hasta un tope
+        MAX_INTENTOS_POR_FALLO_RED = 3
+        intentos_de = {}
+        pendientes = list(preseleccion)
+        while pendientes:
+            addr, cuenta, _roi_mes = pendientes.pop(0)
             ESTADO["actual"] = addr
             try:
                 datos = hyperliquid.datos_de_trader(addr, spot_nombres, idx_por_nombre, precios)
             except Exception:
                 print(f"fallo evaluando {addr}:")
                 traceback.print_exc()
-                ESTADO["evaluados"] += 1
+                intentos_de[addr] = intentos_de.get(addr, 0) + 1
+                if intentos_de[addr] < MAX_INTENTOS_POR_FALLO_RED:
+                    pendientes.append((addr, cuenta, _roi_mes))
+                else:
+                    print(f"{addr}: descartado tras {MAX_INTENTOS_POR_FALLO_RED} fallos de red")
+                    ESTADO["evaluados"] += 1
                 continue
             time.sleep(hyperliquid.SLEEP_ENTRE_LLAMADAS)
 
