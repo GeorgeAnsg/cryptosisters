@@ -23,9 +23,11 @@ LEADERBOARD_URL = "https://stats-data.hyperliquid.xyz/Mainnet/leaderboard"
 INTERVALO_SEGUNDOS = 7 * 24 * 60 * 60
 
 CUENTA_MINIMA = 10_000  # por debajo de esto no hay suficiente "piel en el juego"
-CUENTA_MAXIMA = 5_000_000  # por encima, es una ballena institucional, no alguien a quien "copiar" tiene sentido
+# sin techo de cuenta: el riesgo de "ballena no replicable" es un problema de
+# cuanto copiar, no de si el trader es bueno -- descartaba 785 cuentas de golpe
+# sin mirar nada mas (ver conversacion 17-oct-2026)
 ROI_MES_MINIMO = 0.05  # preseleccion rapida con el ROI del mes que ya da el leaderboard
-MAX_CANDIDATOS_A_EVALUAR = 25  # cuantos candidatos se backtestean a fondo por ejecucion (cada uno son varias llamadas a la API)
+MAX_CANDIDATOS_A_EVALUAR = 70  # cuantos candidatos se backtestean a fondo por ejecucion (cada uno son varias llamadas a la API)
 PUNTUACION_MINIMA = 70  # umbral para considerarlo un descubrimiento real (trading o spot)
 PUNTUACION_MINIMA_MANTENER = 50  # umbral para dejar de seguir -- mas bajo que el de descubrir, para no quitar a alguien por una mala racha puntual (histeresis)
 
@@ -38,8 +40,12 @@ def _descargar_leaderboard():
 
 def _preseleccion(filas, direcciones_conocidas):
     """Filtro barato (sin pedir nada mas a Hyperliquid) usando solo lo que
-    ya trae el leaderboard: tamaño de cuenta razonable y buen ROI este mes.
-    Reduce 40k+ filas a un puñado antes de gastar llamadas en backtests de verdad."""
+    ya trae el leaderboard: tamaño de cuenta razonable y buen ROI este mes,
+    exigiendo ademas que la semana y el historial completo tambien esten en
+    positivo -- un solo mes bueno es ruido (puede ser una racha de suerte en
+    una moneda volatil); pedir las tres ventanas en positivo favorece
+    consistencia sobre un pico aislado. Reduce 40k+ filas a un puñado antes
+    de gastar llamadas en backtests de verdad."""
     candidatos = []
     for f in filas:
         addr = f["ethAddress"].lower()
@@ -49,17 +55,19 @@ def _preseleccion(filas, direcciones_conocidas):
             cuenta = float(f["accountValue"])
         except (TypeError, ValueError):
             continue
-        if not (CUENTA_MINIMA <= cuenta <= CUENTA_MAXIMA):
+        if cuenta < CUENTA_MINIMA:
             continue
         ventanas = dict(f["windowPerformances"])
-        mes = ventanas.get("month")
-        if not mes:
+        semana, mes, total = ventanas.get("week"), ventanas.get("month"), ventanas.get("allTime")
+        if not (semana and mes and total):
             continue
         try:
-            roi_mes, pnl_mes = float(mes["roi"]), float(mes["pnl"])
+            roi_semana, roi_mes, pnl_mes, roi_total = (
+                float(semana["roi"]), float(mes["roi"]), float(mes["pnl"]), float(total["roi"]),
+            )
         except (TypeError, ValueError):
             continue
-        if roi_mes < ROI_MES_MINIMO or pnl_mes <= 0:
+        if roi_mes < ROI_MES_MINIMO or pnl_mes <= 0 or roi_semana <= 0 or roi_total <= 0:
             continue
         candidatos.append((addr, cuenta, roi_mes))
     candidatos.sort(key=lambda c: -c[2])

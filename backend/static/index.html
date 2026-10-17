@@ -487,9 +487,61 @@ function filaPlanta(c, faceta){
 }
 
 function renderSubmenuTraders(){
-  const items = [['trading','Trading'],['spot','Spot'],['posiciones','Posiciones']];
+  const items = [['trading','Trading'],['spot','Spot'],['posiciones','Posiciones'],['cribado','Cribado']];
   return `<div class="subtabs-traders">${items.map(([v,l])=>
       `<button class="subtab-traders ${subVistaTraders===v?'activo':''}" data-subvista-traders="${v}">${l}</button>`).join('')}</div>`;
+}
+
+// valores REALES de las constantes que usa el backend para descubrir y
+// mantener candidatos (descubrimiento.py / hyperliquid.py) -- esta pestaña
+// es solo de consulta, los inputs estan deshabilitados: tocarlos aqui no
+// cambia nada todavia, falta exponerlos por API para que sea editable de verdad
+const CRIBADO_CAMPOS = [
+  {grupo:'Preselección del leaderboard (antes de gastar backtests)', campos:[
+    {etiqueta:'Cuenta mínima', valor:'$10.000', tipo:'text', explicacion:'Por debajo de esto no hay suficiente "piel en el juego" -- se descarta directamente.'},
+    {etiqueta:'Techo de cuenta', valor:'(sin techo)', tipo:'text', explicacion:'Antes había un máximo de $5M ("ballena no replicable"); se quitó porque descartaba 785 cuentas buenas de golpe sin mirar nada más.'},
+    {etiqueta:'ROI mínimo del mes', valor:'5%', tipo:'text', explicacion:'Preselección rápida con el ROI del último mes que ya trae el leaderboard, sin pedir nada más a Hyperliquid.'},
+    {etiqueta:'Consistencia exigida', valor:'ROI semana > 0% Y ROI mes ≥ 5% Y ROI histórico > 0%', tipo:'text', explicacion:'Un solo mes bueno es ruido (puede ser suerte en una moneda volátil) -- se exigen las tres ventanas en positivo para favorecer consistencia sobre un pico aislado.'},
+    {etiqueta:'Candidatos evaluados por ciclo', valor:'70', tipo:'text', explicacion:'De los que pasan la preselección, cuántos se backtestean a fondo (año completo de operaciones) cada ejecución semanal -- el resto se queda fuera aunque cumpla los mínimos, por coste de llamadas a la API.'},
+  ]},
+  {grupo:'Backtest (para que una racha cuente como puntuación real)', campos:[
+    {etiqueta:'Cierres mínimos para puntuar', valor:'10', tipo:'text', explicacion:'Menos que esto es una muestra demasiado pequeña -- una buena o mala racha domina el resultado.'},
+    {etiqueta:'Días de historial mínimos', valor:'30', tipo:'text', explicacion:'Hace falta verlo operar en más de una sola racha o sesión, no solo "tuvo una buena tarde".'},
+    {etiqueta:'Días máximos de inactividad', valor:'21', tipo:'text', explicacion:'Si su último cierre es más viejo que esto, ya no está operando ahora -- un historial genial de hace meses no sirve para copiarlo hoy.'},
+    {etiqueta:'Umbral de veto catastrófico', valor:'-15%', tipo:'text', explicacion:'Retorno por debajo de esto descalifica esa faceta (trading o spot) del todo, aunque la otra vaya genial.'},
+    {etiqueta:'Notional mínimo en spot', valor:'$10', tipo:'text', explicacion:'Ventas de shitcoins en céntimos (polvo/airdrops) no cuentan como operación real -- inflarían el win rate sin representar capital de verdad.'},
+  ]},
+  {grupo:'Puntuación final (0-100, umbral de entrada 70)', campos:[
+    {etiqueta:'Peso del retorno', valor:'40%', tipo:'text', explicacion:'p_retorno = 50 + retorno_pct, recortado a [0,100].'},
+    {etiqueta:'Peso del profit factor', valor:'30%', tipo:'text', explicacion:'p_pf = profit_factor × 10, recortado a [0,100] (ganancia bruta entre pérdida bruta).'},
+    {etiqueta:'Peso del drawdown', valor:'30%', tipo:'text', explicacion:'p_dd = 100 + drawdown_pct × 2, recortado a [0,100] -- penaliza caídas grandes desde el pico.'},
+    {etiqueta:'Puntuación mínima para descubrir', valor:'70', tipo:'text', explicacion:'Umbral para considerarlo un descubrimiento real (en trading o en spot).'},
+    {etiqueta:'Puntuación mínima para mantener', valor:'50', tipo:'text', explicacion:'Más baja que la de descubrir, para no dejar de seguir a alguien por una mala racha puntual (histéresis).'},
+  ]},
+];
+
+function renderPaginaCribado(){
+  const grupos = CRIBADO_CAMPOS.map(g => `
+    <div class="tarjeta estatica" style="margin-bottom:18px">
+      <div class="seccion-titulo" style="margin-bottom:12px">${g.grupo}</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        ${g.campos.map(c => `
+          <div>
+            <label style="display:block;font-size:.78rem;font-weight:600;color:var(--fg-muted);margin-bottom:5px">${c.etiqueta}</label>
+            <input type="${c.tipo}" value="${c.valor}" disabled style="width:100%;font:inherit;font-weight:600;padding:8px 12px;border-radius:9px;border:1px solid var(--border);background:var(--bg);color:var(--fg);opacity:.85">
+            <div style="font-size:.74rem;color:var(--fg-muted);margin-top:5px;line-height:1.4">${c.explicacion}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+  return `
+    <div class="tarjeta estatica" style="margin-bottom:18px;background:var(--panel-dark);border-color:var(--panel-dark);color:#fff">
+      <div style="font-size:.84rem;color:#9ca0ab;line-height:1.5">
+        Solo consulta -- estos son los valores REALES que usa hoy el backend para descubrir y mantener candidatos
+        (<code style="opacity:.8">backend/descubrimiento.py</code> / <code style="opacity:.8">backend/hyperliquid.py</code>).
+        Los campos están deshabilitados: cambiarlos aquí todavía no hace nada, falta exponerlos por API para que sea editable de verdad.
+      </div>
+    </div>
+    ${grupos}`;
 }
 
 function renderPaginaConsenso(){
@@ -599,6 +651,10 @@ function renderPaginaSeguimiento(){
       <div class="seccion-titulo">Spot (${d.spot.length})</div>
       <div class="sub-panel" data-sub="spot">${d.tablaSpotCompletaHtml}</div>`;
     return `<div style="margin-bottom:14px">${submenu}</div>` + cuerpo;
+  }
+
+  if(subVistaTraders==='cribado'){
+    return `<div style="margin-bottom:14px">${submenu}</div>` + renderPaginaCribado();
   }
 
   // trading / spot: la rejilla de traders a seguir/descubrir -- cada faceta
