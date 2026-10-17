@@ -319,16 +319,20 @@ const PLANTAS = ['Roble','Sauce','Bambú','Olivo','Ciprés','Abedul','Acacia','L
   'Eucalipto','Hiedra','Loto','Girasol','Orquídea','Bonsái','Palmera','Secuoya','Baobab','Mimosa',
   'Nogal','Fresno','Tilo','Azalea','Camelia','Begonia','Hortensia','Tulipán','Narciso','Peonía'];
 const plantaPorAddr = {};
+// con miles de candidatos y solo 40 nombres, repetir es inevitable (pichon-
+// hole) -- en vez de intentar esquivarlo (y acabar repitiendo igual cuando
+// se agotan los 40), se numera cada repeticion: "Acacia", "Acacia 2", ... asi
+// nunca hay dos iguales, sigue siendo legible, y es determinista (mismo
+// trader = mismo nombre siempre, mientras la lista se recorra en el mismo
+// orden por direccion)
 function asignarPlantas(lista){
-  const usadas = new Set(Object.values(plantaPorAddr));
+  const contador = {};
   const ordenado = [...lista].sort((a,b)=> a.address.localeCompare(b.address));
   for(const c of ordenado){
     if(plantaPorAddr[c.address]) continue;
-    let i = hashAddr(c.address) % PLANTAS.length;
-    let intentos = 0;
-    while(usadas.has(PLANTAS[i]) && intentos < PLANTAS.length){ i = (i+1) % PLANTAS.length; intentos++; }
-    plantaPorAddr[c.address] = PLANTAS[i];
-    usadas.add(PLANTAS[i]);
+    const base = PLANTAS[hashAddr(c.address) % PLANTAS.length];
+    const n = (contador[base] = (contador[base]||0) + 1);
+    plantaPorAddr[c.address] = n === 1 ? base : `${base} ${n}`;
   }
 }
 function plantaFor(addr){
