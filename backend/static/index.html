@@ -622,6 +622,10 @@ function renderPaginaConsenso(){
 // una posicion de $34 no representa ninguna conviccion real -- ensucia el
 // reparto igual que si fuera polvo que quedo de una venta casi total
 const MERCADO_MINIMO_USD = 1000;
+// una moneda con 1-2 traders no es señal de mercado, es una apuesta
+// individual de alguien metiendo mucho dinero en algo raro -- se necesitan
+// varios de acuerdo para que signifique algo
+const MERCADO_MINIMO_TRADERS = 5;
 function calcularMercado(){
   // sobre TODOS los candidatos guardados (superaron el cribado de
   // descubrimiento), no solo a quien sigues -- percepcion de mercado, no
@@ -694,8 +698,8 @@ function ordenarMercado(entries, valorDe){
 
 function renderPaginaMercado(){
   const {trading, spot} = calcularMercado();
-  const coinsTrading = ordenarMercado(Object.entries(trading), f=>f.dLong+f.dShort);
-  const coinsSpot = ordenarMercado(Object.entries(spot), f=>f.d);
+  const coinsTrading = ordenarMercado(Object.entries(trading).filter(([,f])=> f.nLong+f.nShort >= MERCADO_MINIMO_TRADERS), f=>f.dLong+f.dShort);
+  const coinsSpot = ordenarMercado(Object.entries(spot).filter(([,f])=> f.n >= MERCADO_MINIMO_TRADERS), f=>f.d);
   const maxSpotN = coinsSpot.length ? Math.max(...coinsSpot.map(([,f])=>f.n)) : 0;
   return `
     <div class="tarjeta estatica" style="margin-bottom:18px">
