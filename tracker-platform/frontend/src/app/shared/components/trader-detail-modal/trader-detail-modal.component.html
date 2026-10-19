@@ -1,4 +1,4 @@
-<p-dialog [(visible)]="visible" [modal]="true" [dismissableMask]="true" [style]="{ width: '900px' }" styleClass="mx-4 trader-modal">
+<p-dialog [(visible)]="visible" [modal]="true" [dismissableMask]="true" [style]="{ width: '1100px' }" styleClass="mx-4 trader-modal">
   @if (candidato(); as c) {
     <ng-template #header>
       <div class="flex items-center gap-3">
@@ -21,9 +21,7 @@
     </ng-template>
 
     @if (cargando()) {
-      <div class="flex items-center justify-center py-16">
-        <p-progressspinner styleClass="h-10 w-10" strokeWidth="4" />
-      </div>
+      <!-- el loader global de la app ya cubre esta carga -->
     } @else if (faceta() === 'trading') {
       <div class="panel overflow-hidden">
         <p-table [value]="bloquesTrading()" styleClass="text-sm">

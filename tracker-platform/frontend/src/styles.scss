@@ -94,6 +94,9 @@ textarea {
   // !important: PrimeNG's propio tema fija --p-dialog-background con mas
   // especificidad/orden de carga que este override global
   background: var(--bg) !important;
+  // sin esto el fondo de header/content (cuadrados) sobresale por encima
+  // del border-radius del dialogo, dejando un "pico" en las esquinas
+  overflow: hidden;
 
   .p-dialog-header,
   .p-dialog-content,

@@ -2,7 +2,6 @@ import { Component, computed, effect, inject, input, model, signal } from '@angu
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { Dialog } from 'primeng/dialog';
 import { TableModule } from 'primeng/table';
-import { ProgressSpinner } from 'primeng/progressspinner';
 import { colorTrader } from '../../utils/color-trader';
 import { Candidato, CandidatosService } from '../../../core/candidatos/candidatos.service';
 import { Bloque, FilaConCierre, agruparEpisodios, construirBloques, marcarCierres } from '../../utils/episodios';
@@ -28,7 +27,7 @@ interface BloqueVista {
 @Component({
   selector: 'app-trader-detail-modal',
   standalone: true,
-  imports: [Dialog, TableModule, ProgressSpinner, DecimalPipe, DatePipe],
+  imports: [Dialog, TableModule, DecimalPipe, DatePipe],
   templateUrl: './trader-detail-modal.component.html',
 })
 export class TraderDetailModalComponent {
