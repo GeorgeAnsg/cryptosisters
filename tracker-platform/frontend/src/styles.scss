@@ -104,11 +104,13 @@ textarea {
     background: var(--bg) !important;
   }
 
-  // el boton de cerrar (X) deja un circulo oscuro tras el click -- es el
-  // anillo de foco por defecto de PrimeNG/navegador, no un fallo visual
-  .p-dialog-close-button:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    box-shadow: none;
+  // el boton de cerrar (X) lleva anillo de foco por defecto de PrimeNG
+  // (circulo oscuro) -- se quita del todo, que quede solo la X
+  .p-dialog-close-button {
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
   }
 }
