@@ -88,14 +88,20 @@
                 [class.text-long]="(bv.pnl.valor ?? 0) > 0"
                 [class.text-short]="(bv.pnl.valor ?? 0) < 0"
                 class="font-semibold"
-                [title]="bv.pnl.realizado ? '' : 'Dato en vivo: lo que gana/pierde si cerrara ahora mismo'"
+                [title]="
+                  bv.pnl.realizado
+                    ? ''
+                    : bv.pnl.valor != null
+                      ? 'Dato en vivo: lo que gana/pierde si cerrara ahora mismo'
+                      : 'Puede que ya se haya cerrado: la posición en vivo se refresca cada 5 min, pero este histórico de operaciones solo una vez al día'
+                "
               >
                 @if (bv.pnl.valor != null) {
                   {{ bv.pnl.valor > 0 ? '+' : '' }}${{ bv.pnl.valor | number: '1.0-2' }}
                 } @else if (!bv.bloque.abierta) {
                   —
                 } @else {
-                  sin dato en vivo
+                  ¿cerrada? sin confirmar
                 }
               </td>
             </tr>

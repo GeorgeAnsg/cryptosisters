@@ -99,8 +99,21 @@ export class TraderDetailModalComponent {
     let pnl: { valor: number | null; realizado: boolean };
     if (b.abierta) {
       const vivo = this.tamañoEnVivoPerp(b.coin, b.lado);
-      tamanoCabecera = vivo ?? b.filas.reduce((a, o) => a + (o.accion === 'Abre' ? o.notional || 0 : -(o.notional || 0)), 0);
-      tituloTamano = 'Lo invertido ahora mismo en esta posición (precio de entrada × tamaño en vivo)';
+      if (vivo != null) {
+        tamanoCabecera = vivo;
+        tituloTamano = 'Lo invertido ahora mismo en esta posición (precio de entrada × tamaño en vivo)';
+      } else {
+        // sin dato en vivo (posicion_actual se refresca cada 5 min, pero
+        // operacionesRecientes solo en el ciclo de backtest diario -- puede
+        // que ya se haya cerrado en vivo y los fills aun no lo reflejen):
+        // estimar con lo que se ve aqui, en valor absoluto -- si el
+        // historico esta truncado (abre real fuera de la ventana de fills)
+        // "Abre" - "Cierra" puede salir negativo, y un tamaño nunca lo es
+        tamanoCabecera = Math.abs(b.filas.reduce((a, o) => a + (o.accion === 'Abre' ? o.notional || 0 : -(o.notional || 0)), 0));
+        tituloTamano = b.truncada
+          ? 'Estimado a partir de un histórico incompleto: la apertura real quedó fuera de los datos guardados'
+          : 'Estimado a partir de los últimos movimientos vistos (sin confirmar con el dato en vivo)';
+      }
       pnl = { valor: this.pnlEnVivoPerp(b.coin, b.lado), realizado: false };
     } else {
       tamanoCabecera = b.filas.filter((o) => o.accion === 'Abre').reduce((a, o) => a + (o.notional || 0), 0);
