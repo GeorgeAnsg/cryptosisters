@@ -100,7 +100,7 @@
       >
         <span class="relative inline-flex flex-none">
           <i class="pi" [class]="item.icono"></i>
-          @if (item.notificacion) {
+          @if (item.ruta === '/notificaciones' && notificaciones.hayNoLeidas()) {
             <span class="absolute -right-1 -top-0.5 h-1 w-1 rounded-full bg-bad"></span>
           }
         </span>

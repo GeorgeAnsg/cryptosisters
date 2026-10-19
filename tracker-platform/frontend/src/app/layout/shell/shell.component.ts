@@ -5,6 +5,7 @@ import { Avatar } from 'primeng/avatar';
 import { Drawer } from 'primeng/drawer';
 import { IconButtonComponent } from '../../shared/components/icon-button/icon-button.component';
 import { AuthService } from '../../core/auth/auth.service';
+import { NotificacionesService } from '../../core/notificaciones/notificaciones.service';
 
 interface SubItemNav {
   etiqueta: string;
@@ -16,7 +17,6 @@ interface ItemNav {
   etiqueta: string;
   icono: string;
   hijos?: SubItemNav[];
-  notificacion?: boolean;
 }
 
 // Cascaron de la app: layout a pantalla completa, sidebar fijo a la
@@ -47,7 +47,7 @@ export class ShellComponent {
     { ruta: '/consenso', etiqueta: 'Consenso', icono: 'pi pi-bolt' },
     { ruta: '/mercado', etiqueta: 'Mercado', icono: 'pi pi-chart-line' },
     { ruta: '/estadisticas', etiqueta: 'Estadísticas', icono: 'pi pi-chart-bar' },
-    { ruta: '/notificaciones', etiqueta: 'Notificaciones', icono: 'pi pi-bell', notificacion: true },
+    { ruta: '/notificaciones', etiqueta: 'Notificaciones', icono: 'pi pi-bell' },
   ];
 
   protected readonly menuAbierto = signal(false);
@@ -57,6 +57,7 @@ export class ShellComponent {
 
   constructor(
     protected readonly auth: AuthService,
+    protected readonly notificaciones: NotificacionesService,
     private readonly router: Router,
   ) {}
 

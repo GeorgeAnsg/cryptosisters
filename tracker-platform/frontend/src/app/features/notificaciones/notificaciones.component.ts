@@ -1,17 +1,37 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { NotificacionesService } from '../../core/notificaciones/notificaciones.service';
+import { tiempoRelativo } from '../../shared/utils/tiempo-relativo';
 
-// no existe en la app vieja -- se añadió al sidebar nuevo siguiendo el
-// patron del ejemplo de PrimeNG. Sin backend de notificaciones todavia,
-// asi que de momento es solo el estado vacio.
 @Component({
   selector: 'app-notificaciones',
   standalone: true,
   template: `
     <div class="mb-3.5 font-display text-lg font-semibold">Notificaciones</div>
-    <div class="panel flex flex-col items-center gap-2 p-panel py-16 text-center">
-      <i class="pi pi-bell text-2xl text-fg-muted"></i>
-      <div class="text-base text-fg-muted">No tienes notificaciones todavía.</div>
-    </div>
+    @if (servicio.items().length) {
+      <div class="panel flex flex-col divide-y divide-border overflow-hidden">
+        @for (n of servicio.items(); track n.id) {
+          <div class="flex items-center gap-3 p-panel">
+            <i class="pi" [class]="n.icono" [class.text-fg-muted]="true"></i>
+            <span class="flex-1 text-base">{{ n.texto }}</span>
+            <span class="flex-none text-xs text-fg-muted">{{ tiempoRelativo(n.fecha) }}</span>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="panel flex flex-col items-center gap-2 p-panel py-16 text-center">
+        <i class="pi pi-bell text-2xl text-fg-muted"></i>
+        <div class="text-base text-fg-muted">No tienes notificaciones todavía.</div>
+      </div>
+    }
   `,
 })
-export class NotificacionesComponent {}
+export class NotificacionesComponent {
+  protected readonly servicio = inject(NotificacionesService);
+  protected readonly tiempoRelativo = tiempoRelativo;
+
+  // al entrar a esta pagina se dan por leidas -- igual que el modal de la
+  // campanita en la app vieja marcaba /notificaciones/leidas al abrirse
+  constructor() {
+    this.servicio.marcarTodasLeidas();
+  }
+}

@@ -24,4 +24,7 @@ export interface Trader {
   profitFactor: number | null;
   siguiendo: boolean;
   monedas: MonedaOperada[];
+  // si el ciclo de descubrimiento lo desestimo del pool (ya no pasa el
+  // filtro de calidad) -- dispara notificacion a quien lo siga
+  desestimado?: { motivo: string; fecha: string };
 }

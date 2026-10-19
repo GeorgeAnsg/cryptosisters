@@ -111,5 +111,6 @@ export const TRADERS_MOCK: Trader[] = [
       { nombre: 'SUI', categoria: 'Cripto' },
       { nombre: 'SOL', categoria: 'Cripto' },
     ],
+    desestimado: { motivo: 'puntuación por debajo de 50 (mantener)', fecha: '2026-10-17T09:00:00Z' },
   },
 ];
