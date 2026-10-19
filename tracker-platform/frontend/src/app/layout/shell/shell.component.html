@@ -1,0 +1,148 @@
+<!-- layout a pantalla completa: sidebar fijo a la izquierda + contenido a
+     la derecha. En movil el sidebar se sustituye por un p-drawer de
+     PrimeNG (mismo enlacesNav/piePerfil de abajo), abierto con el sandwich. -->
+<div class="flex h-screen overflow-hidden bg-bg">
+  <!-- sidebar -- solo >= sm, en movil vive dentro del p-drawer. Colapsable
+       a una franja de solo iconos con el iconito de la cabecera (patron
+       "icon-collapsible sidebar" de los ejemplos de PrimeNG: cabecera +
+       seccion de navegacion agrupada + footer de usuario). Caja flotante
+       redondeada (como el resto de la app), SIN scroll propio -- solo el
+       <main> de la derecha scrollea. -->
+  <aside
+    class="panel my-3 ml-3 hidden min-h-0 flex-none flex-col self-stretch overflow-hidden py-6 transition-[width] sm:flex"
+    [class.w-60]="!sidebarColapsado()"
+    [class.px-4]="!sidebarColapsado()"
+    [class.w-16]="sidebarColapsado()"
+    [class.px-2]="sidebarColapsado()"
+  >
+    <div class="flex items-center gap-2.5" [class.justify-center]="sidebarColapsado()">
+      <!-- colapsado: el logo ES el boton para volver a expandir (evita que
+           el logo + la flechita compitan por los ~48px que quedan y la
+           flechita termine recortada por el overflow-hidden del aside) -->
+      <div
+        class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white"
+        [class.cursor-pointer]="sidebarColapsado()"
+        (click)="sidebarColapsado() && sidebarColapsado.set(false)"
+      >
+        C
+      </div>
+      @if (!sidebarColapsado()) {
+        <span class="font-display text-lg font-extrabold">Corvus</span>
+        <i class="pi pi-angle-left ml-auto cursor-pointer text-fg-muted transition-colors hover:text-fg" (click)="sidebarColapsado.set(true)"></i>
+      }
+    </div>
+
+    <div class="mt-6 min-h-0 flex-1 overflow-y-auto">
+      <ng-container [ngTemplateOutlet]="enlacesNav" [ngTemplateOutletContext]="{ colapsado: sidebarColapsado() }" />
+    </div>
+
+    <ng-container [ngTemplateOutlet]="piePerfil" [ngTemplateOutletContext]="{ colapsado: sidebarColapsado() }" />
+  </aside>
+
+  <div class="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+    <!-- topbar -- solo logo+sandwich en movil; en desktop la campana ya
+         vive en el menu, asi que aqui no queda nada que mostrar -->
+    <header class="flex flex-none items-center gap-3 border-b border-border bg-panel px-4 py-3 sm:hidden">
+      <div class="flex items-center gap-2.5">
+        <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white">C</div>
+        <span class="font-display text-lg font-extrabold">Corvus</span>
+      </div>
+      <app-icon-button class="ml-auto" icon="pi pi-bars" tamano="lg" (clicked)="menuAbierto.set(true)" />
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<p-drawer [(visible)]="menuAbierto" position="left" styleClass="w-60">
+  <ng-template #headless>
+    <div class="flex h-full flex-col bg-panel px-4 py-6">
+      <div class="flex items-center gap-2.5 px-2">
+        <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white">C</div>
+        <span class="font-display text-lg font-extrabold">Corvus</span>
+      </div>
+      <div class="mt-6 flex-1 overflow-y-auto">
+        <ng-container [ngTemplateOutlet]="enlacesNav" [ngTemplateOutletContext]="{ colapsado: false }" />
+      </div>
+      <ng-container [ngTemplateOutlet]="piePerfil" [ngTemplateOutletContext]="{ colapsado: false }" />
+    </div>
+  </ng-template>
+</p-drawer>
+
+<!-- enlaces de navegacion, compartidos entre el sidebar fijo y el drawer de
+     movil -- un solo sitio donde se define el estado activo/inactivo.
+     "colapsado" oculta la etiqueta y centra el icono (igual que el logo).
+     Los items con "hijos" (Traders) muestran su submenu siempre desplegado
+     (sin flechita ni logica de abrir/cerrar -- no hay nada que alternar).
+     Los subitems usan un icono invisible del mismo tamaño que el del padre
+     para alinear su
+     texto exactamente donde empieza la etiqueta del padre. -->
+<ng-template #enlacesNav let-colapsado="colapsado">
+  <nav class="flex flex-col gap-1">
+    @for (item of navegacion; track item.ruta) {
+      <a
+        [routerLink]="item.ruta"
+        [queryParams]="item.hijos ? { vista: item.hijos[0].vista } : null"
+        routerLinkActive
+        #rla="routerLinkActive"
+        [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'ignored', matrixParams: 'ignored', fragment: 'ignored' }"
+        (click)="menuAbierto.set(false)"
+        [title]="item.etiqueta"
+        class="flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm no-underline transition-colors"
+        [class.justify-center]="colapsado"
+        [class.bg-panel-dark]="rla.isActive"
+        [class.text-fg-on-dark]="rla.isActive"
+        [class.font-medium]="rla.isActive"
+        [class.text-fg-muted]="!rla.isActive"
+        [class.font-light]="!rla.isActive"
+      >
+        <span class="relative inline-flex flex-none">
+          <i class="pi" [class]="item.icono"></i>
+          @if (item.notificacion) {
+            <span class="absolute -right-1 -top-0.5 h-1 w-1 rounded-full bg-bad"></span>
+          }
+        </span>
+        @if (!colapsado) {
+          <span>{{ item.etiqueta }}</span>
+        }
+      </a>
+      @if (item.hijos && !colapsado) {
+        <div class="flex flex-col gap-0.5">
+          @for (hijo of item.hijos; track hijo.vista) {
+            <a
+              [routerLink]="item.ruta"
+              [queryParams]="{ vista: hijo.vista }"
+              routerLinkActive
+              #rlaHijo="routerLinkActive"
+              [routerLinkActiveOptions]="{ paths: 'exact', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' }"
+              (click)="menuAbierto.set(false)"
+              class="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm no-underline transition-colors"
+              [class.text-fg]="rlaHijo.isActive"
+              [class.font-medium]="rlaHijo.isActive"
+              [class.text-fg-muted]="!rlaHijo.isActive"
+              [class.font-light]="!rlaHijo.isActive"
+            >
+              <i class="pi invisible" [class]="item.icono"></i>
+              <span>{{ hijo.etiqueta }}</span>
+            </a>
+          }
+        </div>
+      }
+    }
+  </nav>
+</ng-template>
+
+<!-- footer de usuario al pie del sidebar -- nombre si Firebase lo tiene
+     (p.ej. login con Google), si no el email (login con contraseña, que no
+     pide nombre) -->
+<ng-template #piePerfil let-colapsado="colapsado">
+  <div class="mt-4 flex items-center gap-2.5 border-t border-border px-1 pt-4" [class.justify-center]="colapsado">
+    <p-avatar icon="pi pi-user" shape="circle" styleClass="border border-border bg-panel text-fg-muted" />
+    @if (!colapsado) {
+      <span class="min-w-0 flex-1 truncate text-sm text-fg">{{ auth.usuario()?.displayName ?? auth.usuario()?.email }}</span>
+      <i class="pi pi-sign-out cursor-pointer text-fg-muted transition-colors hover:text-fg" title="Cerrar sesión" (click)="salir()"></i>
+    }
+  </div>
+</ng-template>

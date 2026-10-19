@@ -1,0 +1,85 @@
+<div
+  class="panel relative border p-panel transition-opacity"
+  [class.border-border]="trader().estilo !== 'muy_activo'"
+  [class.border-warn-border]="trader().estilo === 'muy_activo'"
+  [class.opacity-50]="!trader().siguiendo"
+>
+  <!-- interruptor de seguir/dejar de seguir -->
+  <p-toggleswitch
+    class="absolute right-4 top-4"
+    [ngModel]="trader().siguiendo"
+    (ngModelChange)="seguirCambiado.emit($event)"
+  />
+
+  <div class="mb-3.5 flex items-center gap-3">
+    <div
+      class="flex h-11 w-11 flex-none flex-col items-center justify-center rounded-pill font-display text-lg font-extrabold leading-none text-white"
+      [style.background]="colorTrader(trader().address)"
+    >
+      @if (trader().puntuacion != null) {
+        <span class="text-base font-semibold">{{ trader().puntuacion }}</span>
+        <span class="text-[12px] font-light opacity-75">100</span>
+      } @else {
+        {{ inicial() }}
+      }
+    </div>
+    <div class="min-w-0 flex-1">
+      <span class="block truncate text-base font-semibold text-fg">{{ trader().nombre }}</span>
+      <span class="block truncate text-[12px] font-light text-fg-muted">{{ direccionCorta() }}</span>
+    </div>
+  </div>
+
+  <div class="mb-3.5 mt-2 grid grid-cols-2 gap-x-3 gap-y-2.5 border-t border-border pt-2">
+    <div class="col-span-2">
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Tipo</div>
+      <div class="flex flex-wrap gap-1.5">
+        <app-badge [variante]="VARIANTE_ESTILO[trader().estilo]">{{ trader().estilo.replace('_', ' ') }}</app-badge>
+        <app-badge [variante]="VARIANTE_RIESGO[trader().riesgo]">{{ trader().riesgo }}</app-badge>
+      </div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Antigüedad</div>
+      <div class="text-sm font-semibold">{{ trader().antiguedadDias }}d</div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Drawdown</div>
+      <div class="text-sm font-semibold">
+        {{ trader().drawdown != null ? (trader().drawdown! * 100 | number: '1.0-0') + '%' : '—' }}
+      </div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Cuenta</div>
+      <div class="text-sm font-semibold">${{ trader().cuenta | number: '1.0-0' }}</div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Win rate</div>
+      <div class="text-sm font-semibold">
+        {{ trader().winRate != null ? (trader().winRate! * 100 | number: '1.0-0') + '%' : '—' }}
+      </div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Retorno backtest</div>
+      <div
+        class="text-sm font-semibold"
+        [class.text-ok]="(trader().retornoPct ?? 0) > 0"
+        [class.text-bad]="(trader().retornoPct ?? 0) < 0"
+      >
+        {{ trader().retornoPct != null ? (trader().retornoPct! | number: '1.1-1') + '%' : '—' }}
+      </div>
+    </div>
+    <div>
+      <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Profit factor</div>
+      <div class="text-sm font-semibold">
+        {{ trader().profitFactor != null ? (trader().profitFactor! | number: '1.2-2') : '—' }}
+      </div>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-1.5">
+    @for (m of trader().monedas.slice(0, 6); track m.nombre) {
+      <span class="inline-block rounded-pill px-2 py-0.5 text-[12px] font-semibold" [class]="CLASE_CATEGORIA[m.categoria]">
+        {{ m.nombre }}
+      </span>
+    }
+  </div>
+</div>

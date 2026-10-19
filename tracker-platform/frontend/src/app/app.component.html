@@ -1,0 +1,7 @@
+<router-outlet />
+
+@if (loading.cargando()) {
+  <div class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/20 backdrop-blur-sm">
+    <p-progress-spinner strokeWidth="4" styleClass="h-12 w-12" />
+  </div>
+}

@@ -1,0 +1,218 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Posiciones</div>
+
+<div class="mb-3.5 flex items-center gap-1.5">
+  <div class="font-display text-base font-semibold">Trading</div>
+  <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ trading().length }}</span>
+</div>
+
+<div class="panel mb-10 overflow-hidden">
+  <p-table [value]="trading()" styleClass="text-base">
+    <ng-template #header>
+      <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+        <th>Fecha</th>
+        <th>Dirección</th>
+        <th>Moneda</th>
+        <th>$ invertido</th>
+        <th>% de su cartera</th>
+        <th>Entrada</th>
+        <th>Trader</th>
+        <th>Resultado</th>
+        <th></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-p>
+      @let clave = claveTrading(p);
+      <tr>
+        <td class="whitespace-nowrap text-fg-muted">{{ p.fecha | date: 'd MMM, HH:mm' }}</td>
+        <td>
+          <div class="flex items-center gap-1.5">
+            @if (p.movimientos?.length) {
+              <i
+                class="pi cursor-pointer text-[10px] text-fg-muted"
+                [class.pi-angle-right]="!estaAbierta(clave)"
+                [class.pi-angle-down]="estaAbierta(clave)"
+                (click)="alternarFila(clave)"
+              ></i>
+            }
+            <span
+              class="rounded-pill px-2 py-0.5 text-[12px] font-semibold uppercase"
+              [class.bg-long-bg]="p.lado === 'Long'"
+              [class.text-long]="p.lado === 'Long'"
+              [class.bg-short-bg]="p.lado === 'Short'"
+              [class.text-short]="p.lado === 'Short'"
+            >
+              {{ p.lado }}
+            </span>
+          </div>
+        </td>
+        <td class="font-semibold">{{ p.coin }}</td>
+        <td>${{ p.invertidoUsd | number: '1.0-0' }}</td>
+        <td class="text-fg-muted">{{ pctCartera(p.invertidoUsd, p.cuentaTrader) }}</td>
+        <td>
+          ${{ p.entrada | number: '1.0-2' }}
+          @if (p.takeProfit != null || p.stopLoss != null) {
+            <div class="text-xs text-fg-muted">
+              @if (p.takeProfit != null) {
+                TP ${{ p.takeProfit | number: '1.0-2' }}
+              }
+              @if (p.takeProfit != null && p.stopLoss != null) {
+                ·
+              }
+              @if (p.stopLoss != null) {
+                SL ${{ p.stopLoss | number: '1.0-2' }}
+              }
+            </div>
+          }
+        </td>
+        <td>
+          <div class="flex items-center gap-1.5">
+            <span
+              class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+              [style.background]="colorTrader(p.traderAddress)"
+            >
+              {{ inicial(p.traderNombre) }}
+            </span>
+            <span class="truncate">{{ p.traderNombre }}</span>
+          </div>
+        </td>
+        <td [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="font-semibold">
+          {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+        </td>
+        <td>
+          <!-- copiar la posicion a "mis posiciones" -- todavia no hay
+               backend de copy-trading, asi que solo marca el boton como
+               abierto en esta sesion -->
+          <p-button
+            [label]="estaCopiada(clave) ? 'Abierta' : 'Abrir'"
+            size="small"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="estaCopiada(clave)"
+            (onClick)="abrirPosicion(clave)"
+          />
+        </td>
+      </tr>
+      @if (p.movimientos?.length && estaAbierta(clave)) {
+        @for (m of movimientosOrdenados(p.movimientos); track m.fecha) {
+          <tr class="bg-bg text-sm">
+            <td class="whitespace-nowrap text-fg-muted">{{ m.fecha | date: 'd MMM, HH:mm' }}</td>
+            <td class="font-semibold">{{ m.verbo }}</td>
+            <td></td>
+            <td>${{ m.notionalUsd | number: '1.0-0' }}</td>
+            <td class="text-fg-muted">—</td>
+            <td>${{ m.precio | number: '1.0-2' }}</td>
+            <td></td>
+            <td [class.text-long]="(m.pnlUsd ?? 0) > 0" [class.text-short]="(m.pnlUsd ?? 0) < 0" class="font-semibold">
+              {{ m.pnlUsd != null ? (m.pnlUsd > 0 ? '+' : '') + '$' + (m.pnlUsd | number: '1.0-2') : '—' }}
+            </td>
+            <td></td>
+          </tr>
+        }
+      }
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="9" class="py-10 text-center text-base text-fg-muted">
+          <div class="flex flex-col items-center gap-2">
+            <i class="pi pi-chart-line text-2xl text-fg-muted"></i>
+            <span>Nadie que sigas tiene trading abierto ahora mismo.</span>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<div class="mb-3.5 flex items-center gap-1.5">
+  <div class="font-display text-base font-semibold">Spot</div>
+  <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ spot().length }}</span>
+</div>
+
+<div class="panel overflow-hidden">
+  <p-table [value]="spot()" styleClass="text-base">
+    <ng-template #header>
+      <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+        <th>Fecha</th>
+        <th>Moneda</th>
+        <th>$ invertido</th>
+        <th>% de su cartera</th>
+        <th>Trader</th>
+        <th>Valor actual</th>
+        <th>Resultado</th>
+        <th></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-p>
+      @let clave = claveSpot(p);
+      <tr>
+        <td class="whitespace-nowrap text-fg-muted">{{ p.fecha | date: 'd MMM, HH:mm' }}</td>
+        <td class="font-semibold">
+          <div class="flex items-center gap-1.5">
+            @if (p.movimientos?.length) {
+              <i
+                class="pi cursor-pointer text-[10px] text-fg-muted"
+                [class.pi-angle-right]="!estaAbierta(clave)"
+                [class.pi-angle-down]="estaAbierta(clave)"
+                (click)="alternarFila(clave)"
+              ></i>
+            }
+            {{ p.coin }}
+          </div>
+        </td>
+        <td>${{ p.invertidoUsd | number: '1.0-0' }}</td>
+        <td class="text-fg-muted">{{ pctCartera(p.invertidoUsd, p.cuentaTrader) }}</td>
+        <td>
+          <div class="flex items-center gap-1.5">
+            <span
+              class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+              [style.background]="colorTrader(p.traderAddress)"
+            >
+              {{ inicial(p.traderNombre) }}
+            </span>
+            <span class="truncate">{{ p.traderNombre }}</span>
+          </div>
+        </td>
+        <td>${{ p.valorActualUsd | number: '1.0-0' }}</td>
+        <td [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="font-semibold">
+          {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+        </td>
+        <td>
+          <p-button
+            [label]="estaCopiada(clave) ? 'Abierta' : 'Abrir'"
+            size="small"
+            severity="secondary"
+            [outlined]="true"
+            [disabled]="estaCopiada(clave)"
+            (onClick)="abrirPosicion(clave)"
+          />
+        </td>
+      </tr>
+      @if (p.movimientos?.length && estaAbierta(clave)) {
+        @for (m of movimientosOrdenados(p.movimientos); track m.fecha) {
+          <tr class="bg-bg text-sm">
+            <td class="whitespace-nowrap text-fg-muted">{{ m.fecha | date: 'd MMM, HH:mm' }}</td>
+            <td class="font-semibold">{{ m.verbo }}</td>
+            <td>{{ m.verbo.includes('Compra') ? '+' : '-' }}${{ m.notionalUsd | number: '1.0-0' }}</td>
+            <td class="text-fg-muted">—</td>
+            <td></td>
+            <td class="text-fg-muted">—</td>
+            <td [class.text-long]="(m.pnlUsd ?? 0) > 0" [class.text-short]="(m.pnlUsd ?? 0) < 0" class="font-semibold">
+              {{ m.pnlUsd != null ? (m.pnlUsd > 0 ? '+' : '') + '$' + (m.pnlUsd | number: '1.0-2') : '—' }}
+            </td>
+            <td></td>
+          </tr>
+        }
+      }
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="8" class="py-10 text-center text-base text-fg-muted">
+          <div class="flex flex-col items-center gap-2">
+            <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+            <span>Nadie que sigas tiene nada en spot ahora mismo.</span>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

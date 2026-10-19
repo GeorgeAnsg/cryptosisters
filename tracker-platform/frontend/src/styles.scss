@@ -1,0 +1,87 @@
+// tokens de diseño -- copiados tal cual de la app vieja (backend/static/index.html)
+// para que el aspecto sea identico. Todo lo demas (Tailwind, componentes)
+// consume estas variables, nunca un color/radio suelto a mano.
+:root {
+  --bg: #e7e9ee;
+  --panel: #ffffff;
+  --panel-dark: #131417;
+  --fg: #131417;
+  --fg-on-dark: #f3f4f6;
+  --fg-muted: #6b7078;
+  --border: #e1e3e8;
+  --accent: #2f5bf0;
+  --accent-fg: #ffffff;
+  --accent-weak: #e8edfe;
+  --ok: #1a9c5c;
+  --ok-bg: #e3f6ec;
+  --warn: #b4760a;
+  --warn-bg: #fdf1dd;
+  --warn-border: #eecd93;
+  --bad: #d5362a;
+  --bad-bg: #fbe9e7;
+  // indicativos de direccion de trade (Long/Short) -- distintos de ok/bad
+  // (que son ganancia/perdida): pedido explicito para diferenciar
+  // visualmente "sentido de la operacion" de "resultado de la operacion"
+  --long: #508aa8;
+  --long-bg: #e3eef1;
+  --short: #a14f18;
+  --short-bg: #fdeae0;
+  // version viva del naranja (la elegida: Tangerine Dream) para rellenos
+  // solidos (barras) -- el --short de arriba es una version oscurecida,
+  // necesaria solo para que el texto sea legible sobre --short-bg
+  --short-fill: #ff934f;
+  --shadow: 0 1px 2px rgba(19, 20, 23, 0.04), 0 4px 16px rgba(19, 20, 23, 0.06);
+}
+
+// con preflight de Tailwind desactivado tambien se pierde el box-sizing:
+// border-box del reset -- sin esto, el padding de un elemento con altura
+// fija (h-full, h-screen...) se SUMA a esa altura en vez de repartirse
+// dentro de ella, y desborda su contenedor con un scroll que no debería
+// existir (visto en el sidebar: py-6 + h-full = unos px de scroll fantasma).
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+// UNA sola tipografia para toda la app (pedido explícito: nada de mezclar
+// con una monoespaciada para datos, como hacía la app vieja)
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', system-ui, sans-serif;
+  // base de la escala tipografica unica (ver tailwind.config.js fontSize):
+  // 15px en todas partes salvo texto marcado explicitamente como xs/sm/lg
+  font-size: 0.9375rem;
+}
+
+// con preflight de Tailwind desactivado, los controles nativos (button,
+// input, select, textarea) NO heredan la fuente del body -- el user-agent
+// stylesheet del navegador les pone la suya propia (Arial en Chrome/mac).
+// Sin este reset, cualquier <button> nativo que se añada (como el submenu
+// de traders) sale en una tipografia distinta al resto sin que se note en
+// el codigo del componente.
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+@import 'primeicons/primeicons.css';
+
+@tailwind base;
+@tailwind components;
+
+@layer components {
+  // UNA sola definicion de "caja panel" (fondo blanco, radio, sombra) --
+  // el sidebar, las trader-card y cualquier contenedor nuevo la usan tal
+  // cual, asi que cambiar el radio o la sombra aqui los cambia en TODOS a
+  // la vez en vez de tener que ir componente a componente.
+  .panel {
+    @apply rounded-card bg-panel shadow-card;
+  }
+}
+
+@tailwind utilities;

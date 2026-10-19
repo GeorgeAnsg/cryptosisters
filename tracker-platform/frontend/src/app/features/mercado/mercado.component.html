@@ -1,0 +1,45 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Mercado</div>
+
+<div class="panel mb-10 p-panel">
+  <div class="mb-3.5 font-display text-base font-semibold">Trading</div>
+
+  <div class="flex flex-col gap-2.5">
+    @for (f of filasTrading(); track f.coin) {
+      <div class="flex items-center gap-3" [class.opacity-50]="f.nLong + f.nShort <= 1">
+        <div class="w-14 flex-none text-sm font-semibold">{{ f.coin }}</div>
+        <div class="flex h-7 flex-1 overflow-hidden rounded-lg">
+          @if (100 - pctLong(f) > 0) {
+            <div class="flex items-center justify-center bg-short-fill text-xs font-semibold text-white" [style.width.%]="100 - pctLong(f)">
+              ↓ {{ f.nShort }} · ${{ f.dShort | number: '1.0-0' }}
+            </div>
+          }
+          @if (pctLong(f) > 0) {
+            <div class="flex items-center justify-center bg-long text-xs font-semibold text-white" [style.width.%]="pctLong(f)">
+              ↑ {{ f.nLong }} · ${{ f.dLong | number: '1.0-0' }}
+            </div>
+          }
+        </div>
+      </div>
+    } @empty {
+      <div class="py-6 text-center text-base text-fg-muted">Nadie tiene trading abierto ahora mismo.</div>
+    }
+  </div>
+</div>
+
+<div class="panel p-panel">
+  <div class="mb-3.5 font-display text-base font-semibold">Spot</div>
+
+  <div class="flex flex-col gap-2.5">
+    @for (f of filasSpot(); track f.coin) {
+      <div class="flex items-center gap-3" [class.opacity-50]="f.n <= 1">
+        <div class="w-14 flex-none text-sm font-semibold">{{ f.coin }}</div>
+        <div class="relative h-7 flex-1 rounded-lg bg-border">
+          <div class="h-full rounded-lg bg-long" [style.width.%]="anchoSpot(f)"></div>
+          <span class="absolute inset-y-0 left-3 flex items-center text-xs font-semibold text-white">{{ f.n }} · ${{ f.d | number: '1.0-0' }}</span>
+        </div>
+      </div>
+    } @empty {
+      <div class="py-6 text-center text-base text-fg-muted">Nadie tiene holdings spot ahora mismo.</div>
+    }
+  </div>
+</div>

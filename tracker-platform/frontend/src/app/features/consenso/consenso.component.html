@@ -1,0 +1,71 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Consenso</div>
+
+<div class="panel bg-panel-dark p-panel text-fg-on-dark">
+  <div class="mb-3.5 flex items-center gap-2">
+    <div class="font-display text-base font-semibold">Consenso reciente</div>
+    <span class="rounded-pill bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold opacity-70">últimas 72h</span>
+  </div>
+
+  <div class="flex flex-col gap-3">
+    @for (g of grupos(); track g.coin + g.lado) {
+      <div class="rounded-xl bg-white/5 p-3.5">
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-2.5">
+          <div class="flex flex-wrap items-center gap-2.5">
+            <span class="font-semibold">{{ g.coin }}</span>
+            <span
+              class="rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase"
+              [class.bg-long-bg]="g.lado === 'Long'"
+              [class.text-long]="g.lado === 'Long'"
+              [class.bg-short-bg]="g.lado === 'Short'"
+              [class.text-short]="g.lado === 'Short'"
+            >
+              {{ g.lado }}
+            </span>
+            <span class="text-xs font-light opacity-70">{{ g.traders.length }} traders {{ g.verbo }}</span>
+          </div>
+          <span class="rounded-pill bg-white/10 px-2.5 py-0.5 text-[10px] opacity-60">{{ tiempoRelativo(fechaGrupo(g.traders)) }}</span>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          @for (t of ordenados(g.traders); track t.address) {
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5 text-xs">
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
+                <span
+                  class="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+                  [style.background]="colorTrader(t.address)"
+                >
+                  {{ inicial(t.nombre) }}
+                </span>
+                <span class="font-semibold">{{ t.nombre }}</span>
+                <span class="opacity-60">· {{ tiempoRelativo(t.fecha) }}</span>
+                <span class="opacity-60">· Tamaño ${{ t.invertidoUsd | number: '1.0-0' }} · {{ g.verbo === 'han entrado' ? 'Entrada' : 'Salida' }} ${{ t.precio | number: '1.0-0' }}</span>
+              </div>
+              <div class="flex flex-none items-center gap-3">
+                @if (t.pnlPct != null) {
+                  <span [class.text-long]="t.pnlPct > 0" [class.text-short]="t.pnlPct < 0" class="font-semibold">
+                    {{ t.pnlPct > 0 ? '+' : '' }}{{ t.pnlPct }}%
+                  </span>
+                }
+                @if (g.verbo === 'han entrado') {
+                  <p-button
+                    [label]="estaCopiada(clave(g.coin, g.lado, t.address)) ? 'Abierta' : 'Abrir'"
+                    size="small"
+                    severity="secondary"
+                    [outlined]="true"
+                    [disabled]="estaCopiada(clave(g.coin, g.lado, t.address))"
+                    (onClick)="abrirPosicion(clave(g.coin, g.lado, t.address))"
+                  />
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    } @empty {
+      <div class="flex flex-col items-center gap-2 py-6 text-center">
+        <i class="pi pi-bolt text-2xl opacity-60"></i>
+        <span class="text-sm opacity-70">No hay consenso en las últimas 72 horas.</span>
+      </div>
+    }
+  </div>
+</div>

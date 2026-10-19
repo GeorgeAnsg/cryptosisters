@@ -1,0 +1,12 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - FIREBASE_PROJECT_ID=comprasapp-bc812
+      - FIREBASE_CREDENTIALS_PATH=/app/secrets/firebase-service-account.json
+    volumes:
+      - ./data:/app/data
+      - ./secrets:/app/secrets
+    restart: unless-stopped

@@ -1,0 +1,54 @@
+<div class="flex min-h-screen items-center justify-center bg-bg px-4">
+  <div class="panel w-full max-w-sm p-panel">
+    <div class="mb-6 flex items-center gap-2.5">
+      <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white">C</div>
+      <span class="font-display text-lg font-extrabold">Corvus</span>
+    </div>
+
+    <div class="mb-5 font-display text-base font-semibold">
+      {{ modo() === 'login' ? 'Inicia sesión' : 'Crea tu cuenta' }}
+    </div>
+
+    <form class="flex flex-col gap-3" (ngSubmit)="enviar()">
+      <app-input-text type="email" placeholder="Email" autocomplete="email" [valor]="email()" (valorChange)="email.set($event)" />
+      <p-password
+        placeholder="Contraseña"
+        autocomplete="current-password"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        name="password"
+        [feedback]="false"
+        [toggleMask]="true"
+        styleClass="w-full"
+        inputStyleClass="w-full !text-sm"
+      />
+
+      @if (error()) {
+        <div class="text-sm text-bad">{{ error() }}</div>
+      }
+
+      <p-button type="submit" [label]="modo() === 'login' ? 'Entrar' : 'Registrarme'" [loading]="cargando()" styleClass="w-full" />
+    </form>
+
+    <div class="my-4 flex items-center gap-3 text-xs text-fg-muted">
+      <div class="h-px flex-1 bg-border"></div>
+      o
+      <div class="h-px flex-1 bg-border"></div>
+    </div>
+
+    <p-button
+      label="Continuar con Google"
+      icon="pi pi-google"
+      severity="secondary"
+      [outlined]="true"
+      styleClass="w-full"
+      [loading]="cargando()"
+      (onClick)="conGoogle()"
+    />
+
+    <div class="mt-5 text-center text-sm text-fg-muted">
+      {{ modo() === 'login' ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?' }}
+      <a class="cursor-pointer text-fg" (click)="alternarModo()">{{ modo() === 'login' ? 'Regístrate' : 'Inicia sesión' }}</a>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,44 @@
+@switch (vista()) {
+  @case ('posiciones') {
+    <app-posiciones />
+  }
+  @case ('cribado') {
+    <app-cribado />
+  }
+  @default {
+    <div class="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+      <div class="flex items-center gap-1.5">
+        <div class="font-display text-lg font-semibold">{{ titulo() }}</div>
+        <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">
+          {{ contadorSiguiendo() }}/{{ tradersFiltrados().length }}
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <p-inputnumber placeholder="Retorno mín. %" size="small" [inputStyle]="{ width: '130px' }" [ngModel]="retornoMin()" (ngModelChange)="retornoMin.set($event)" />
+
+        <p-select
+          [options]="categorias"
+          optionLabel="label"
+          optionValue="value"
+          size="small"
+          [ngModel]="categoriaFiltro()"
+          (ngModelChange)="categoriaFiltro.set($event)"
+        />
+
+        <p-select [options]="camposOrden" optionLabel="label" optionValue="value" size="small" [ngModel]="campoOrden()" (ngModelChange)="campoOrden.set($event)" />
+
+        <app-icon-button [icon]="ordenAsc() ? 'pi pi-sort-amount-up' : 'pi pi-sort-amount-down'" (clicked)="ordenAsc.set(!ordenAsc())" />
+        <app-icon-button icon="pi pi-refresh" />
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+      @for (t of tradersFiltrados(); track t.address) {
+        <app-trader-card [trader]="t" (seguirCambiado)="alternarSeguir(t, $event)" />
+      } @empty {
+        <div class="col-span-full py-10 text-center text-base text-fg-muted">Nadie tiene puntuación en esta categoría todavía.</div>
+      }
+    </div>
+  }
+}

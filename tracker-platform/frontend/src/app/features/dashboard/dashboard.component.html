@@ -1,0 +1,149 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Dashboard</div>
+
+<div class="grid grid-cols-1 gap-3.5 lg:grid-cols-12">
+  <!-- Consenso reciente -- varios traders coincidiendo en la misma jugada -->
+  <div class="panel bg-panel-dark p-panel text-fg-on-dark lg:col-span-8">
+    <div class="mb-3.5 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2">
+        <div class="font-display text-base font-semibold">Consenso reciente</div>
+        <span class="rounded-pill bg-white/10 px-2.5 py-0.5 text-[11px] font-semibold opacity-70">últimas 72h</span>
+      </div>
+      <a routerLink="/consenso" class="flex-none text-xs font-light text-fg-on-dark opacity-60 no-underline hover:opacity-100">Ver todo →</a>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      @for (g of grupos(); track g.coin + g.lado) {
+        <div class="rounded-xl bg-white/5 p-3.5">
+          <div class="mb-2.5 flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex flex-wrap items-center gap-2.5">
+              <span class="font-semibold">{{ g.coin }}</span>
+              <span
+                class="rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase"
+                [class.bg-long-bg]="g.lado === 'Long'"
+                [class.text-long]="g.lado === 'Long'"
+                [class.bg-short-bg]="g.lado === 'Short'"
+                [class.text-short]="g.lado === 'Short'"
+              >
+                {{ g.lado }}
+              </span>
+              <span class="text-xs font-light opacity-70">{{ g.traders.length }} traders {{ g.verbo }}</span>
+            </div>
+            <span class="rounded-pill bg-white/10 px-2.5 py-0.5 text-[10px] opacity-60">{{ tiempoRelativo(fechaGrupo(g.traders)) }}</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            @for (t of g.traders; track t.address) {
+              <div class="flex flex-1 basis-[32%] items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs">
+                <span
+                  class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+                  [style.background]="colorTrader(t.address)"
+                >
+                  {{ inicial(t.nombre) }}
+                </span>
+                <span>{{ t.nombre }}</span>
+                <span class="opacity-60">· {{ tiempoRelativo(t.fecha) }}</span>
+                @if (t.pnlPct != null) {
+                  <span [class.text-long]="t.pnlPct > 0" [class.text-short]="t.pnlPct < 0" class="font-semibold">
+                    {{ t.pnlPct > 0 ? '+' : '' }}{{ t.pnlPct }}%
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      } @empty {
+        <div class="flex flex-col items-center gap-2 py-6 text-center">
+          <i class="pi pi-bolt text-2xl opacity-60"></i>
+          <span class="text-sm opacity-70">No hay consenso en las últimas 72 horas.</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Mis posiciones -- de momento siempre vacio: es el sistema de
+       copy-trading propio, todavia sin montar en este rebuild -->
+  <div class="panel flex flex-col p-panel lg:col-span-4">
+    <div class="mb-3.5 font-display text-base font-semibold">Mis posiciones</div>
+    <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
+      <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+      <span class="text-sm text-fg-muted">No hay posiciones abiertas.</span>
+    </div>
+  </div>
+
+  <!-- Trading resumido -- version corta de la tabla de Posiciones, con
+       link a la tabla completa -->
+  <div class="panel p-panel lg:col-span-6">
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <div class="font-display text-base font-semibold">
+        Trading <span class="text-xs font-light text-fg-muted">· {{ resumenTrading().length }} posiciones</span>
+      </div>
+      <a routerLink="/traders" [queryParams]="{ vista: 'posiciones' }" class="flex-none text-xs font-light text-fg-muted no-underline hover:text-fg">Ver todas →</a>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      @for (p of resumenTrading(); track p.coin + p.traderAddress) {
+        <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
+          <div class="flex min-w-0 items-center gap-2">
+            <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
+            <span
+              class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+              [class.bg-long-bg]="p.lado === 'Long'"
+              [class.text-long]="p.lado === 'Long'"
+              [class.bg-short-bg]="p.lado === 'Short'"
+              [class.text-short]="p.lado === 'Short'"
+            >
+              {{ p.lado }}
+            </span>
+            <span
+              class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+              [style.background]="colorTrader(p.traderAddress)"
+            >
+              {{ inicial(p.traderNombre) }}
+            </span>
+            <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+          </div>
+          <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+            {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+          </span>
+        </div>
+      } @empty {
+        <div class="flex flex-col items-center gap-2 py-6 text-center">
+          <i class="pi pi-chart-line text-2xl text-fg-muted"></i>
+          <span class="text-sm text-fg-muted">Nadie que sigas tiene trading abierto ahora mismo.</span>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Spot resumido -->
+  <div class="panel p-panel lg:col-span-6">
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <div class="font-display text-base font-semibold">
+        Spot <span class="text-xs font-light text-fg-muted">· {{ resumenSpot().length }} posiciones</span>
+      </div>
+      <a routerLink="/traders" [queryParams]="{ vista: 'posiciones' }" class="flex-none text-xs font-light text-fg-muted no-underline hover:text-fg">Ver todas →</a>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      @for (p of resumenSpot(); track p.coin + p.traderAddress) {
+        <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
+          <div class="flex min-w-0 items-center gap-2">
+            <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
+            <span
+              class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+              [style.background]="colorTrader(p.traderAddress)"
+            >
+              {{ inicial(p.traderNombre) }}
+            </span>
+            <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+          </div>
+          <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+            {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+          </span>
+        </div>
+      } @empty {
+        <div class="flex flex-col items-center gap-2 py-6 text-center">
+          <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+          <span class="text-sm text-fg-muted">Nadie que sigas tiene nada en spot ahora mismo.</span>
+        </div>
+      }
+    </div>
+  </div>
+</div>

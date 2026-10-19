@@ -1,0 +1,18 @@
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# tracker-platform (Angular + FastAPI)
+tracker-platform/backend/secrets/
+tracker-platform/backend/data/
+tracker-platform/backend/.venv/
+tracker-platform/frontend/node_modules/
+tracker-platform/frontend/dist/
+tracker-platform/frontend/.angular/
+paper_*_state.json
+paper_*.log
+backtest_*.json
+cache_ohlcv_*.csv
+optimization_results.json
+optimizer_*.log
