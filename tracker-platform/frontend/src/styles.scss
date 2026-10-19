@@ -85,3 +85,19 @@ textarea {
 }
 
 @tailwind utilities;
+
+// el modal de detalle de trader (app-trader-detail-modal) lleva tablas .panel
+// (fondo blanco) dentro -- el propio dialogo tiene que ser gris (--bg, igual
+// que el fondo de toda la app) para que esas tablas resalten encima, en vez
+// del blanco por defecto de PrimeNG que las deja invisibles
+.trader-modal {
+  // !important: PrimeNG's propio tema fija --p-dialog-background con mas
+  // especificidad/orden de carga que este override global
+  background: var(--bg) !important;
+
+  .p-dialog-header,
+  .p-dialog-content,
+  .p-dialog-footer {
+    background: var(--bg) !important;
+  }
+}

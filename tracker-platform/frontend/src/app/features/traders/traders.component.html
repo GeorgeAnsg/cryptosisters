@@ -35,10 +35,12 @@
 
     <div class="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
       @for (t of tradersFiltrados(); track t.address) {
-        <app-trader-card [trader]="t" (seguirCambiado)="alternarSeguir(t, $event)" />
+        <app-trader-card [trader]="t" (seguirCambiado)="alternarSeguir(t, $event)" (detalleAbierto)="abrirDetalle(t)" />
       } @empty {
         <div class="col-span-full py-10 text-center text-base text-fg-muted">Nadie tiene puntuación en esta categoría todavía.</div>
       }
     </div>
+
+    <app-trader-detail-modal [(visible)]="detalleAbierto" [candidato]="detalleCandidato()" [faceta]="detalleFaceta()" />
   }
 }

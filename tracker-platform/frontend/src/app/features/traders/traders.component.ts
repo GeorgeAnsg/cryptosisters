@@ -7,11 +7,12 @@ import { Select } from 'primeng/select';
 import { InputNumber } from 'primeng/inputnumber';
 import { TraderCardComponent } from '../../shared/components/trader-card/trader-card.component';
 import { IconButtonComponent } from '../../shared/components/icon-button/icon-button.component';
+import { TraderDetailModalComponent } from '../../shared/components/trader-detail-modal/trader-detail-modal.component';
 import { PosicionesComponent } from './posiciones/posiciones.component';
 import { CribadoComponent } from './cribado/cribado.component';
 import { CategoriaMercado, Trader } from '../../shared/models/trader';
-import { TRADERS_MOCK } from './mock-traders';
 import { SeguidosService } from '../../core/seguidos/seguidos.service';
+import { Candidato, CandidatosService } from '../../core/candidatos/candidatos.service';
 
 type CampoOrden = 'puntuacion' | 'retorno' | 'actividad';
 type Vista = 'trading' | 'spot' | 'posiciones' | 'cribado';
@@ -40,7 +41,16 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
 @Component({
   selector: 'app-traders',
   standalone: true,
-  imports: [TraderCardComponent, IconButtonComponent, FormsModule, Select, InputNumber, PosicionesComponent, CribadoComponent],
+  imports: [
+    TraderCardComponent,
+    IconButtonComponent,
+    TraderDetailModalComponent,
+    FormsModule,
+    Select,
+    InputNumber,
+    PosicionesComponent,
+    CribadoComponent,
+  ],
   templateUrl: './traders.component.html',
 })
 export class TradersComponent {
@@ -65,11 +75,45 @@ export class TradersComponent {
   }
 
   private readonly seguidos = inject(SeguidosService);
-  // "siguiendo" ya no es un campo fijo del mock -- se recalcula en cada
-  // render a partir de la lista real del usuario (SeguidosService)
-  protected readonly traders = computed<Trader[]>(() =>
-    TRADERS_MOCK.map((t) => ({ ...t, siguiendo: this.seguidos.estaSiguiendo(t.address) })),
-  );
+  private readonly candidatos = inject(CandidatosService);
+  // "siguiendo" se recalcula en cada render a partir de la lista real del
+  // usuario (SeguidosService); los traders en si vienen del pool global de
+  // descubrimiento (CandidatosService), no de un mock.
+  //
+  // Trading y Spot son facetas INDEPENDIENTES de un mismo candidato (puede
+  // puntuar en una, en la otra, en ambas o en ninguna -- ver
+  // descubrimiento.py): igual que la app vieja (index.html, filtroActividad),
+  // cada vista solo lista a quien puntua en ESA faceta, y muestra las metricas
+  // de esa faceta -- mostrar la puntuacion de trading en la vista Spot (o un
+  // candidato sin puntuacion de trading en el listado de Trading) es lo que
+  // producia las tarjetas con guiones.
+  protected readonly traders = computed<Trader[]>(() => {
+    const esSpot = this.vista() === 'spot';
+    return this.candidatos
+      .candidatos()
+      // 'especulativo' (apuesta curada a mano) nunca se juzga por backtest y
+      // puede no tener puntuacion de trading -- igual que index.html, solo
+      // la vista Trading la deja pasar por ese motivo; Spot exige su propia
+      // puntuacion siempre, no hay especulativos de spot
+      .filter((c) => (esSpot ? c.puntuacionSpot != null : c.esEspeculativo || c.puntuacion != null))
+      .map((c) => ({
+        address: c.address,
+        nombre: c.nombre,
+        esEspeculativo: c.esEspeculativo,
+        puntuacion: esSpot ? c.puntuacionSpot : c.puntuacion,
+        estilo: c.estilo,
+        riesgo: c.riesgo,
+        antiguedadDias: c.antiguedadDias ?? 0,
+        drawdown: esSpot ? c.drawdownSpot : c.drawdown,
+        cuenta: c.cuenta ?? 0,
+        winRate: esSpot ? c.winRateSpot : c.winRate,
+        retornoPct: esSpot ? c.retornoPctSpot : c.retornoPct,
+        profitFactor: esSpot ? c.profitFactorSpot : c.profitFactor,
+        monedas: c.monedas,
+        desestimado: c.desestimado ?? undefined,
+        siguiendo: this.seguidos.estaSiguiendo(c.address),
+      }));
+  });
   protected readonly retornoMin = signal<number | null>(null);
   protected readonly categoriaFiltro = signal<CategoriaMercado | null>(null);
   protected readonly campoOrden = signal<CampoOrden>('puntuacion');
@@ -91,12 +135,29 @@ export class TradersComponent {
     const campo = this.campoOrden();
     const valorDe = (t: Trader) => (campo === 'retorno' ? t.retornoPct : campo === 'actividad' ? t.antiguedadDias : t.puntuacion);
     const dir = this.ordenAsc() ? 1 : -1;
-    return [...lista].sort((a, b) => dir * ((valorDe(a) ?? -1) - (valorDe(b) ?? -1)));
+    // especulativos siempre al final -- no tienen metrica de backtest con
+    // la que competir por orden contra el resto (igual que index.html:781)
+    return [...lista].sort((a, b) => {
+      if (a.esEspeculativo !== b.esEspeculativo) return a.esEspeculativo ? 1 : -1;
+      return dir * ((valorDe(a) ?? -1) - (valorDe(b) ?? -1));
+    });
   });
 
   protected readonly contadorSiguiendo = computed(() => this.tradersFiltrados().filter((t) => t.siguiendo).length);
 
   alternarSeguir(trader: Trader, siguiendo: boolean): void {
     this.seguidos.establecer(trader.address, siguiendo);
+  }
+
+  // modal de detalle -- igual que abrirModal(c, faceta) en la app vieja: la
+  // faceta la decide la pestaña desde la que se tocó la tarjeta (vista())
+  protected readonly detalleAbierto = signal(false);
+  protected readonly detalleCandidato = signal<Candidato | null>(null);
+  protected readonly detalleFaceta = computed<'trading' | 'spot'>(() => (this.vista() === 'spot' ? 'spot' : 'trading'));
+
+  abrirDetalle(trader: Trader): void {
+    const candidato = this.candidatos.candidatos().find((c) => c.address === trader.address) ?? null;
+    this.detalleCandidato.set(candidato);
+    this.detalleAbierto.set(true);
   }
 }

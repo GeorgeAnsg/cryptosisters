@@ -1,6 +1,7 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
-import { FilaMercadoSpot, FilaMercadoTrading, MERCADO_SPOT_MOCK, MERCADO_TRADING_MOCK } from './mercado-mock';
+import { FilaMercadoSpot, FilaMercadoTrading } from './mercado.model';
+import { CandidatosService } from '../../core/candidatos/candidatos.service';
 
 // monedas "de referencia" siempre arriba del todo, igual que
 // PRIORIDAD_MERCADO en la app vieja -- antes de ordenar el resto por $
@@ -30,8 +31,9 @@ function ordenarPorPrioridad<T>(filas: T[], coinDe: (f: T) => string, valorDe: (
   templateUrl: './mercado.component.html',
 })
 export class MercadoComponent {
-  private readonly trading = signal<FilaMercadoTrading[]>(MERCADO_TRADING_MOCK);
-  private readonly spot = signal<FilaMercadoSpot[]>(MERCADO_SPOT_MOCK);
+  private readonly candidatos = inject(CandidatosService);
+  private readonly trading = this.candidatos.mercadoTrading;
+  private readonly spot = this.candidatos.mercadoSpot;
 
   protected readonly filasTrading = computed(() =>
     ordenarPorPrioridad(

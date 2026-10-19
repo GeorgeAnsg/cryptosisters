@@ -37,6 +37,9 @@ const CLASE_CATEGORIA: Record<CategoriaMercado, string> = {
 export class TraderCardComponent {
   trader = input.required<Trader>();
   seguirCambiado = output<boolean>();
+  // tocar la tarjeta (fuera del interruptor) abre el modal de detalle --
+  // equivalente a data-abre-modal + card.onclick en la app vieja
+  detalleAbierto = output<void>();
 
   protected readonly colorTrader = colorTrader;
   protected readonly VARIANTE_ESTILO = VARIANTE_ESTILO;

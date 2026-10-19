@@ -1,0 +1,208 @@
+<p-dialog [(visible)]="visible" [modal]="true" [dismissableMask]="true" [style]="{ width: '900px' }" styleClass="mx-4 trader-modal">
+  @if (candidato(); as c) {
+    <ng-template #header>
+      <div class="flex items-center gap-3">
+        <span
+          class="flex h-9 w-9 flex-none items-center justify-center rounded-pill text-sm font-bold text-white"
+          [style.background]="colorTrader(c.address)"
+        >
+          {{ c.nombre.charAt(0) }}
+        </span>
+        <div>
+          <div class="font-display text-base font-semibold">{{ c.nombre }}</div>
+          <div class="text-xs text-fg-muted">
+            {{ direccionCorta(c) }}
+            @if (totalOperaciones() != null) {
+              · {{ totalOperaciones() }} operaciones más recientes (instantánea)
+            }
+          </div>
+        </div>
+      </div>
+    </ng-template>
+
+    @if (cargando()) {
+      <div class="flex items-center justify-center py-16">
+        <p-progressspinner styleClass="h-10 w-10" strokeWidth="4" />
+      </div>
+    } @else if (faceta() === 'trading') {
+      <div class="panel overflow-hidden">
+        <p-table [value]="bloquesTrading()" styleClass="text-sm">
+          <ng-template #header>
+            <tr class="[&>th]:text-[11px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+              <th>Dirección</th>
+              <th>Moneda</th>
+              <th title="Lo invertido en dólares: en la cabecera, en esta posición entera; en cada movimiento, lo añadido o reducido esa vez">Tamaño</th>
+              <th>Precio</th>
+              <th title="Tamaño × precio: el valor en dólares que movió esa operación">Inversión</th>
+              <th>Fecha</th>
+              <th title="Si sigue abierta: lo que gana/pierde AHORA (dato en vivo). Si está cerrada: lo realmente ganado/perdido">Resultado</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-bv>
+            @let k = clave(bv.bloque.coin, bv.bloque.lado);
+            <tr>
+              <td>
+                <div class="flex items-center gap-1.5">
+                  @if (bv.hijos.length) {
+                    <i
+                      class="pi cursor-pointer text-[10px] text-fg-muted"
+                      [class.pi-angle-right]="!estaAbierta(k)"
+                      [class.pi-angle-down]="estaAbierta(k)"
+                      (click)="alternarFila(k)"
+                    ></i>
+                  }
+                  <span
+                    class="rounded-pill px-2 py-0.5 text-[12px] font-semibold uppercase"
+                    [class.bg-long-bg]="bv.bloque.lado === 'Long'"
+                    [class.text-long]="bv.bloque.lado === 'Long'"
+                    [class.bg-short-bg]="bv.bloque.lado === 'Short'"
+                    [class.text-short]="bv.bloque.lado === 'Short'"
+                  >
+                    {{ bv.bloque.lado }}
+                  </span>
+                </div>
+              </td>
+              <td class="font-semibold">{{ bv.bloque.coin }}</td>
+              <td [title]="bv.tituloTamano">${{ bv.tamanoCabecera | number: '1.0-0' }}</td>
+              <td>—</td>
+              <td>—</td>
+              <td class="whitespace-nowrap text-fg-muted">
+                {{ bv.fecha | date: 'd MMM, HH:mm' }}
+                <span
+                  class="ml-1.5 rounded-pill px-1.5 py-0.5 text-[10px] font-semibold uppercase"
+                  [class.bg-long-bg]="bv.bloque.abierta"
+                  [class.text-long]="bv.bloque.abierta"
+                  [class.bg-border]="!bv.bloque.abierta"
+                  [class.text-fg-muted]="!bv.bloque.abierta"
+                >
+                  {{ bv.bloque.abierta ? 'abierta' : 'cerrada' }}
+                </span>
+                @if (bv.bloque.truncada) {
+                  <span
+                    class="ml-1 text-[10px] text-warn"
+                    title="El primer movimiento que tenemos de esto ya es una reducción/venta: existía antes de nuestro historial, así que esta cifra es solo lo que cambió, no el tamaño total"
+                  >
+                    ⚠ histórico incompleto
+                  </span>
+                }
+              </td>
+              <td
+                [class.text-long]="(bv.pnl.valor ?? 0) > 0"
+                [class.text-short]="(bv.pnl.valor ?? 0) < 0"
+                class="font-semibold"
+                [title]="bv.pnl.realizado ? '' : 'Dato en vivo: lo que gana/pierde si cerrara ahora mismo'"
+              >
+                @if (bv.pnl.valor != null) {
+                  {{ bv.pnl.valor > 0 ? '+' : '' }}${{ bv.pnl.valor | number: '1.0-2' }}
+                } @else if (!bv.bloque.abierta) {
+                  —
+                } @else {
+                  sin dato en vivo
+                }
+              </td>
+            </tr>
+            @if (bv.hijos.length && estaAbierta(k)) {
+              @for (o of bv.hijos; track o.ts + o.coin) {
+                <tr class="bg-bg text-xs">
+                  <td class="font-semibold">{{ verboHijo(o) }}</td>
+                  <td></td>
+                  <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
+                    {{ o.accion === 'Abre' ? '+' : '-' }}${{ o.notional | number: '1.0-0' }}
+                  </td>
+                  <td>${{ o.px | number: '1.0-2' }}</td>
+                  <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
+                    {{ o.accion === 'Abre' ? '+' : '-' }}${{ o.notional | number: '1.0-0' }}
+                  </td>
+                  <td class="whitespace-nowrap text-fg-muted">{{ o.ts | date: 'd MMM, HH:mm' }}</td>
+                  <td [class.text-long]="o.closedPnl > 0" [class.text-short]="o.closedPnl < 0" class="font-semibold">
+                    {{ o.closedPnl ? (o.closedPnl > 0 ? '+' : '') + '$' + (o.closedPnl | number: '1.0-2') : '—' }}
+                  </td>
+                </tr>
+              }
+            }
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="7" class="py-10 text-center text-base text-fg-muted">
+                <div class="flex flex-col items-center gap-2">
+                  <i class="pi pi-chart-line text-2xl text-fg-muted"></i>
+                  <span>Sin operaciones de trading (long/short) registradas todavía.</span>
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    } @else {
+      <div class="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Spot (en vivo)</div>
+      <div class="panel mb-3.5 overflow-hidden">
+        <p-table [value]="holdingsSpot()" styleClass="text-sm">
+          <ng-template #header>
+            <tr class="[&>th]:text-[11px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+              <th>Moneda</th>
+              <th>Cantidad</th>
+              <th title="'Sin dato' si Hyperliquid no tiene registrada una compra (p.ej. lo recibió, no lo compró)">Coste base</th>
+              <th>Valor actual</th>
+              <th>Resultado</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-h>
+            <tr>
+              <td class="font-semibold">{{ h.coin }}</td>
+              <td>{{ h['tamaño'] }}</td>
+              <td>{{ h.costeBase != null ? '$' + (h.costeBase | number: '1.0-0') : 'sin dato' }}</td>
+              <td>{{ h.valorActual != null ? '$' + (h.valorActual | number: '1.0-0') : '—' }}</td>
+              <td [class.text-long]="(h.pnlNoRealizado ?? 0) > 0" [class.text-short]="(h.pnlNoRealizado ?? 0) < 0" class="font-semibold">
+                {{ h.pnlNoRealizado != null ? (h.pnlNoRealizado > 0 ? '+' : '') + '$' + (h.pnlNoRealizado | number: '1.0-0') : '—' }}
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="5" class="py-6 text-center text-sm text-fg-muted">Sin nada en cartera spot ahora mismo.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+
+      <div class="mb-2 text-xs font-bold uppercase tracking-wide text-fg-muted">Compras y ventas recientes</div>
+      <div class="panel overflow-hidden">
+        <p-table [value]="movimientosSpot()" styleClass="text-sm">
+          <ng-template #header>
+            <tr class="[&>th]:text-[11px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+              <th>Dirección</th>
+              <th>Moneda</th>
+              <th>Tamaño</th>
+              <th>Precio</th>
+              <th>Inversión</th>
+              <th>Fecha</th>
+              <th>Resultado</th>
+            </tr>
+          </ng-template>
+          <ng-template #body let-o>
+            <tr>
+              <td class="font-semibold">{{ verboSpot(o) }}</td>
+              <td>{{ o.coin }}</td>
+              <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
+                {{ o.accion === 'Abre' ? '+' : '-' }}${{ o.notional | number: '1.0-0' }}
+              </td>
+              <td>${{ o.px | number: '1.0-2' }}</td>
+              <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
+                {{ o.accion === 'Abre' ? '+' : '-' }}${{ o.notional | number: '1.0-0' }}
+              </td>
+              <td class="whitespace-nowrap text-fg-muted">{{ o.ts | date: 'd MMM, HH:mm' }}</td>
+              <td [class.text-long]="o.closedPnl > 0" [class.text-short]="o.closedPnl < 0" class="font-semibold">
+                {{ o.closedPnl ? (o.closedPnl > 0 ? '+' : '') + '$' + (o.closedPnl | number: '1.0-2') : '—' }}
+              </td>
+            </tr>
+          </ng-template>
+          <ng-template #emptymessage>
+            <tr>
+              <td colspan="7" class="py-6 text-center text-sm text-fg-muted">Sin compras/ventas spot registradas todavía.</td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </div>
+    }
+  }
+</p-dialog>

@@ -38,3 +38,66 @@ def inicializar_tablas() -> None:
             )
             """
         )
+        # pool global de descubrimiento (igual que backend/candidatos de la app
+        # vieja) -- a diferencia de alli, aqui NO guarda quien lo sigue (eso
+        # vive en usuario_sigue, es por usuario); desestimado_motivo/fecha se
+        # rellena cuando el ciclo de descubrimiento decide que ya no cumple el
+        # minimo de mantenimiento, para poder avisar a quien lo seguia antes
+        # de que refrescar_no_seguidos/revisar_requisitos_permanencia lo borre
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS candidatos (
+                address TEXT PRIMARY KEY,
+                categoria TEXT, antiguedad INTEGER, estilo TEXT, riesgo TEXT,
+                cuenta REAL,
+                retorno_pct REAL, profit_factor REAL, puntuacion INTEGER, win_rate REAL, drawdown REAL,
+                puntuacion_spot INTEGER, win_rate_spot REAL, retorno_pct_spot REAL, drawdown_spot REAL, profit_factor_spot REAL,
+                descubierto_ts INTEGER,
+                desestimado_motivo TEXT, desestimado_fecha INTEGER,
+                posicion_actual TEXT DEFAULT '[]',
+                holdings_spot TEXT DEFAULT '[]',
+                operaciones_recientes TEXT DEFAULT '[]'
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS alertas (
+                id TEXT PRIMARY KEY, tipo TEXT, addr TEXT, coin TEXT, lado TEXT,
+                tamaño REAL, tamaño_antes REAL, precio REAL, coste REAL, estado TEXT DEFAULT 'pendiente', detectado INTEGER
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS consenso_visto (
+                clave TEXT PRIMARY KEY, n INTEGER
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS meta (
+                clave TEXT PRIMARY KEY, valor TEXT
+            )
+            """
+        )
+
+
+def meta_get(conn: sqlite3.Connection, clave: str) -> str | None:
+    fila = conn.execute("SELECT valor FROM meta WHERE clave=?", (clave,)).fetchone()
+    return fila["valor"] if fila else None
+
+
+def meta_set(conn: sqlite3.Connection, clave: str, valor: str) -> None:
+    conn.execute("INSERT INTO meta (clave, valor) VALUES (?,?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor", (clave, valor))
+    conn.commit()
+
+
+def direcciones_seguidas_por_alguien(conn: sqlite3.Connection) -> set[str]:
+    """El equivalente multiusuario de 'candidatos.siguiendo=1' en la app
+    vieja: alli habia un unico usuario, aqui el seguimiento vive en
+    usuario_sigue (una fila por usuario), asi que lo que importa para decidir
+    cuanto esfuerzo de refresco dedicarle a un trader es si lo sigue ALGUIEN,
+    no un flag unico en candidatos."""
+    return {r["trader_address"] for r in conn.execute("SELECT DISTINCT trader_address FROM usuario_sigue")}

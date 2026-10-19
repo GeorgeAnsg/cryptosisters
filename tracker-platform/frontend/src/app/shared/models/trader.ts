@@ -24,6 +24,9 @@ export interface Trader {
   profitFactor: number | null;
   siguiendo: boolean;
   monedas: MonedaOperada[];
+  // apuesta curada a mano, nunca juzgada por backtest -- por eso puede
+  // puntuacion==null y aun debe aparecer en el listado (ver traders.component.ts)
+  esEspeculativo: boolean;
   // si el ciclo de descubrimiento lo desestimo del pool (ya no pasa el
   // filtro de calidad) -- dispara notificacion a quien lo siga
   desestimado?: { motivo: string; fecha: string };

@@ -1,12 +1,15 @@
 <div
-  class="panel relative border p-panel transition-opacity"
+  class="panel relative cursor-pointer border p-panel transition-opacity"
   [class.border-border]="trader().estilo !== 'muy_activo'"
   [class.border-warn-border]="trader().estilo === 'muy_activo'"
   [class.opacity-50]="!trader().siguiendo"
+  (click)="detalleAbierto.emit()"
 >
-  <!-- interruptor de seguir/dejar de seguir -->
+  <!-- interruptor de seguir/dejar de seguir -- stopPropagation para que
+       tocarlo no abra tambien el modal de detalle -->
   <p-toggleswitch
     class="absolute right-4 top-4"
+    (click)="$event.stopPropagation()"
     [ngModel]="trader().siguiendo"
     (ngModelChange)="seguirCambiado.emit($event)"
   />
@@ -70,7 +73,16 @@
     <div>
       <div class="mb-0.5 text-xs tracking-wide text-fg-muted">Profit factor</div>
       <div class="text-sm font-semibold">
-        {{ trader().profitFactor != null ? (trader().profitFactor! | number: '1.2-2') : '—' }}
+        <!-- profitFactor null con retornoPct real = hubo backtest y nunca
+             perdio (division por cero perdidas) -- "sin dato" seria
+             confundirlo con un candidato sin backtest en absoluto -->
+        @if (trader().profitFactor != null) {
+          {{ trader().profitFactor! | number: '1.2-2' }}
+        } @else if (trader().retornoPct != null) {
+          ∞
+        } @else {
+          —
+        }
       </div>
     </div>
   </div>

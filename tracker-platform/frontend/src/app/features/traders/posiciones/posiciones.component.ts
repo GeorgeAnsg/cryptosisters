@@ -3,14 +3,14 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { colorTrader } from '../../../shared/utils/color-trader';
-import { MovimientoPosicion, POSICIONES_SPOT_MOCK, POSICIONES_TRADING_MOCK, PosicionSpot, PosicionTrading } from './posiciones-mock';
-import { SeguidosService } from '../../../core/seguidos/seguidos.service';
+import { MovimientoPosicion, PosicionSpot, PosicionTrading } from './posiciones.model';
+import { CandidatosService } from '../../../core/candidatos/candidatos.service';
 
 // "Posiciones" -- lo que tienen abierto AHORA los traders que sigues, no la
 // rejilla de descubrimiento (eso es Trading/Spot). Misma idea que
 // calcularSeguimiento() en la app vieja: dos tablas, Trading y Spot, cada
 // fila desplegable con su historial de movimientos (Abre/Añade/Reduce/
-// Cierra) cuando tiene mas de uno. Ver posiciones-mock.ts para lo que
+// Cierra) cuando tiene mas de uno. Ver posiciones.model.ts para lo que
 // sigue simplificado (consenso, copiar posicion).
 @Component({
   selector: 'app-posiciones',
@@ -20,11 +20,13 @@ import { SeguidosService } from '../../../core/seguidos/seguidos.service';
 })
 export class PosicionesComponent {
   protected readonly colorTrader = colorTrader;
-  private readonly seguidos = inject(SeguidosService);
-  // solo traders que el usuario sigue -- un usuario que no sigue a nadie no
-  // debe ver ninguna posicion de nadie
-  protected readonly trading = computed(() => POSICIONES_TRADING_MOCK.filter((p) => this.seguidos.estaSiguiendo(p.traderAddress)));
-  protected readonly spot = computed(() => POSICIONES_SPOT_MOCK.filter((p) => this.seguidos.estaSiguiendo(p.traderAddress)));
+  private readonly candidatos = inject(CandidatosService);
+
+  // solo traders que el usuario sigue -- derivado en CandidatosService
+  // (compartido con el resumen del Dashboard) a partir de posicionActual/
+  // holdingsSpot de cada candidato seguido, no de un mock.
+  protected readonly trading = this.candidatos.posicionesTrading;
+  protected readonly spot = this.candidatos.posicionesSpot;
 
   private readonly abiertas = signal<ReadonlySet<string>>(new Set());
   // posiciones que el usuario ya ha copiado a "mis posiciones" -- de

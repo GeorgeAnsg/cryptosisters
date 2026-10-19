@@ -7,6 +7,20 @@
       "runtimeArgs": ["-c", "cd backend && python3 -m uvicorn main:app --host 0.0.0.0 --port 8010"],
       "port": 8010,
       "url": "http://localhost:8010"
+    },
+    {
+      "name": "tracker-platform-backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/jorgeansotegui/Desktop/tracker-platform/backend && .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8011"],
+      "port": 8011,
+      "url": "http://localhost:8011"
+    },
+    {
+      "name": "tracker-platform-frontend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/jorgeansotegui/Desktop/tracker-platform/frontend && npx ng serve --port 4217"],
+      "port": 4217,
+      "url": "http://localhost:4217"
     }
   ]
 }

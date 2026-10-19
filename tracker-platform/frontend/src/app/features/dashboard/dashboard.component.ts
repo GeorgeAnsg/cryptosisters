@@ -3,9 +3,8 @@ import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { colorTrader } from '../../shared/utils/color-trader';
 import { tiempoRelativo } from '../../shared/utils/tiempo-relativo';
-import { CONSENSO_MOCK, fechaGrupo } from '../consenso/consenso-mock';
-import { POSICIONES_SPOT_MOCK, POSICIONES_TRADING_MOCK } from '../traders/posiciones/posiciones-mock';
-import { SeguidosService } from '../../core/seguidos/seguidos.service';
+import { fechaGrupo } from '../consenso/consenso.model';
+import { CandidatosService } from '../../core/candidatos/candidatos.service';
 
 const LIMITE_RESUMEN = 5;
 
@@ -29,22 +28,11 @@ export class DashboardComponent {
   protected readonly colorTrader = colorTrader;
   protected readonly tiempoRelativo = tiempoRelativo;
   protected readonly fechaGrupo = fechaGrupo;
-  private readonly seguidos = inject(SeguidosService);
+  private readonly candidatos = inject(CandidatosService);
 
-  // solo traders que el usuario sigue -- grupos de consenso sin ningun
-  // trader seguido desaparecen (no tiene sentido un "consenso" de gente que
-  // no sigues)
-  protected readonly grupos = computed(() =>
-    CONSENSO_MOCK.map((g) => ({ ...g, traders: g.traders.filter((t) => this.seguidos.estaSiguiendo(t.address)) })).filter(
-      (g) => g.traders.length > 0,
-    ),
-  );
-  protected readonly resumenTrading = computed(() =>
-    POSICIONES_TRADING_MOCK.filter((p) => this.seguidos.estaSiguiendo(p.traderAddress)).slice(0, LIMITE_RESUMEN),
-  );
-  protected readonly resumenSpot = computed(() =>
-    POSICIONES_SPOT_MOCK.filter((p) => this.seguidos.estaSiguiendo(p.traderAddress)).slice(0, LIMITE_RESUMEN),
-  );
+  protected readonly grupos = this.candidatos.consensoSeguido;
+  protected readonly resumenTrading = computed(() => this.candidatos.posicionesTrading().slice(0, LIMITE_RESUMEN));
+  protected readonly resumenSpot = computed(() => this.candidatos.posicionesSpot().slice(0, LIMITE_RESUMEN));
 
   protected inicial(nombre: string): string {
     return nombre.charAt(0);

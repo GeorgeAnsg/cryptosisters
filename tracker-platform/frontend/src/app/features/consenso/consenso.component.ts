@@ -3,8 +3,8 @@ import { DecimalPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
 import { colorTrader } from '../../shared/utils/color-trader';
 import { tiempoRelativo } from '../../shared/utils/tiempo-relativo';
-import { CONSENSO_MOCK, ConsensoTrader, fechaGrupo } from './consenso-mock';
-import { SeguidosService } from '../../core/seguidos/seguidos.service';
+import { ConsensoTrader, fechaGrupo } from './consenso.model';
+import { CandidatosService } from '../../core/candidatos/candidatos.service';
 
 // "Consenso" -- equivalente a renderPaginaConsenso() en la app vieja:
 // la version expandida de la misma caja negra que aparece resumida
@@ -20,13 +20,9 @@ export class ConsensoComponent {
   protected readonly colorTrader = colorTrader;
   protected readonly tiempoRelativo = tiempoRelativo;
   protected readonly fechaGrupo = fechaGrupo;
-  private readonly seguidos = inject(SeguidosService);
+  private readonly candidatos = inject(CandidatosService);
 
-  protected readonly grupos = computed(() =>
-    CONSENSO_MOCK.map((g) => ({ ...g, traders: g.traders.filter((t) => this.seguidos.estaSiguiendo(t.address)) })).filter(
-      (g) => g.traders.length > 0,
-    ),
-  );
+  protected readonly grupos = this.candidatos.consensoSeguido;
 
   // igual que en Posiciones -- "Abrir" copia la jugada a "mis posiciones",
   // sistema que este rebuild todavia no tiene; de momento solo marca el
