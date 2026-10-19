@@ -169,7 +169,10 @@ export class TraderDetailModalComponent {
   }
 
   protected verboHijo(o: FilaConCierre): string {
-    return o.accion === 'Abre' ? 'Añade' : o.cierraDelTodo ? 'Cierra' : 'Reduce';
+    // esInicio (ver marcarCierres) distingue el "Abre" que de verdad arranca
+    // la posicion del resto de "Añade" posteriores -- antes se etiquetaban
+    // igual y no habia forma de saber cual fue el inicio real
+    return o.accion === 'Abre' ? (o.esInicio ? 'Abre' : 'Añade') : o.cierraDelTodo ? 'Cierra' : 'Reduce';
   }
 
   protected verboSpot(o: FilaConCierre): string {
