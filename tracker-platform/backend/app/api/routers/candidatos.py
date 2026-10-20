@@ -79,13 +79,19 @@ def _ms_a_iso(ms: int) -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ms / 1000))
 
 
-def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool) -> dict:
+def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicion_actual_vivo=None, holdings_spot_vivo=None) -> dict:
     """con_operaciones=False (listado masivo): sin operacionesRecientes --
     hasta 2000 fills x cada candidato hacia que /candidatos pesara
     20+ MB con 80 candidatos y se atascara en el navegador. Solo el detalle
-    de UN trader (ver /candidatos/{address}) la necesita."""
-    posicion_actual = json.loads(f["posicion_actual"] or "[]")
-    holdings_spot = json.loads(f["holdings_spot"] or "[]")
+    de UN trader (ver /candidatos/{address}) la necesita.
+
+    posicion_actual_vivo/holdings_spot_vivo: cuando se pasan (detalle de UN
+    trader), sustituyen a la version cacheada en BD (refrescada cada 5 min)
+    por una instantanea pedida a Hyperliquid en este mismo instante -- igual
+    que hacia la app vieja al abrir el modal, para que nunca se vea "sin
+    confirmar" en una posicion que sigue abierta de verdad ahora mismo."""
+    posicion_actual = posicion_actual_vivo if posicion_actual_vivo is not None else json.loads(f["posicion_actual"] or "[]")
+    holdings_spot = holdings_spot_vivo if holdings_spot_vivo is not None else json.loads(f["holdings_spot"] or "[]")
     operaciones_recientes = json.loads(f["operaciones_recientes"] or "[]") if con_operaciones else []
     # los fills de spot traen el coin como "@idx" (indice interno de
     # Hyperliquid), no el ticker -- las posiciones/holdings en vivo ya vienen
@@ -211,4 +217,10 @@ def detalle_candidato(address: str, _uid: str = Depends(usuario_actual)):
         if f is None:
             raise HTTPException(status_code=404, detail="candidato no encontrado")
         todas = [r["address"] for r in conn.execute("SELECT address FROM candidatos")]
-        return _candidato_dict(conn, f, todas, con_operaciones=True)
+        try:
+            idx_por_nombre = hyperliquid.cargar_idx_por_nombre()
+            precios = hyperliquid.fetch_json({"type": "allMids"})
+            posiciones, holdings = hyperliquid.posicion_y_holdings_de(address, idx_por_nombre, precios)
+        except Exception:
+            posiciones = holdings = None  # Hyperliquid no responde: cae al dato cacheado, mejor que romper el modal
+        return _candidato_dict(conn, f, todas, con_operaciones=True, posicion_actual_vivo=posiciones, holdings_spot_vivo=holdings)
