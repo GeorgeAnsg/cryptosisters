@@ -56,12 +56,31 @@ export class PosicionesComponent {
     return this.misPosiciones.estaAbierta(clave);
   }
 
+  // pide cuanto quiere invertir antes de copiar la posicion -- null si
+  // cancela (no abre nada) o deja el campo vacio (abre sin monto, se puede
+  // fijar luego con Añadir en Mis Posiciones)
+  private pedirMonto(): number | null | undefined {
+    const texto = prompt('¿Cuántos $ quieres invertir copiando esta posición?');
+    if (texto === null) return undefined; // cancelado
+    if (texto.trim() === '') return null; // sin monto por ahora
+    const monto = parseFloat(texto.replace(',', '.'));
+    if (isNaN(monto) || monto < 0) {
+      alert('Eso no es un número.');
+      return undefined;
+    }
+    return monto;
+  }
+
   abrirTrading(p: PosicionTrading): void {
-    this.misPosiciones.abrir(this.claveTrading(p), p.traderAddress, 'trading', p.coin, p.lado);
+    const monto = this.pedirMonto();
+    if (monto === undefined) return;
+    this.misPosiciones.abrir(this.claveTrading(p), p.traderAddress, 'trading', p.coin, p.lado, monto);
   }
 
   abrirSpot(p: PosicionSpot): void {
-    this.misPosiciones.abrir(this.claveSpot(p), p.traderAddress, 'spot', p.coin, null);
+    const monto = this.pedirMonto();
+    if (monto === undefined) return;
+    this.misPosiciones.abrir(this.claveSpot(p), p.traderAddress, 'spot', p.coin, null, monto);
   }
 
   protected pctCartera(invertido: number, cuenta: number): string {

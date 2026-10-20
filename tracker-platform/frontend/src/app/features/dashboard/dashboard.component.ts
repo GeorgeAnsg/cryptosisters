@@ -1,11 +1,12 @@
-import { Component, computed, inject } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { Component, computed, inject, signal } from '@angular/core';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { colorTrader } from '../../shared/utils/color-trader';
 import { tiempoRelativo } from '../../shared/utils/tiempo-relativo';
 import { fechaGrupo } from '../consenso/consenso.model';
 import { CandidatosService } from '../../core/candidatos/candidatos.service';
 import { MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
+import { MovimientoPosicion } from '../traders/posiciones/posiciones.model';
 
 const LIMITE_RESUMEN = 5;
 
@@ -18,7 +19,7 @@ const LIMITE_RESUMEN = 5;
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DecimalPipe, RouterLink],
+  imports: [DecimalPipe, DatePipe, RouterLink],
   templateUrl: './dashboard.component.html',
 })
 export class DashboardComponent {
@@ -45,5 +46,24 @@ export class DashboardComponent {
 
   protected inicial(nombre: string): string {
     return nombre.charAt(0);
+  }
+
+  // flechita de detalle, igual que en Posiciones (ver posiciones.component.ts)
+  private readonly abiertas = signal<ReadonlySet<string>>(new Set());
+
+  estaAbierta(clave: string): boolean {
+    return this.abiertas().has(clave);
+  }
+
+  alternarFila(clave: string): void {
+    this.abiertas.update((actual) => {
+      const siguiente = new Set(actual);
+      siguiente.has(clave) ? siguiente.delete(clave) : siguiente.add(clave);
+      return siguiente;
+    });
+  }
+
+  protected movimientosOrdenados(movimientos: MovimientoPosicion[]): MovimientoPosicion[] {
+    return [...movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
   }
 }

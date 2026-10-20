@@ -45,4 +45,18 @@ export class MisPosicionesComponent {
     }
     this.misPosiciones.cerrar(clave, pnl);
   }
+
+  // Añadir/Reducir -- mismo patron que Cerrar (prompt con el monto a mano,
+  // el usuario copia lo que ve que hace el trader, no se infiere solo)
+  protected ajustar(clave: string, coin: string, signo: 1 | -1): void {
+    const verbo = signo > 0 ? 'añadir' : 'reducir';
+    const texto = prompt(`¿Cuántos $ quieres ${verbo} en ${coin}?`);
+    if (texto === null) return;
+    const monto = parseFloat(texto.replace(',', '.'));
+    if (isNaN(monto) || monto < 0) {
+      alert('Eso no es un número.');
+      return;
+    }
+    this.misPosiciones.ajustar(clave, signo * monto);
+  }
 }

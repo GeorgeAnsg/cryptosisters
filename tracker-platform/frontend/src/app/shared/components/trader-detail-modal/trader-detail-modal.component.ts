@@ -15,6 +15,12 @@ interface BloqueVista {
   fecha: string;
   pnl: { valor: number | null; realizado: boolean };
   hijos: FilaConCierre[];
+  // puede diferir de bloque.abierta: el historial de fills solo se refresca
+  // una vez al dia, pero aqui ya tenemos la instantanea en vivo pedida al
+  // abrir el modal -- si ya no aparece ahi, esta cerrada de verdad aunque
+  // el historial todavia no lo sepa (antes esto se mostraba como "¿cerrada?
+  // sin confirmar", una ambiguedad que ya no hace falta)
+  abiertaReal: boolean;
 }
 
 // equivalente a abrirModal(c, faceta) en backend/static/index.html --
@@ -97,24 +103,26 @@ export class TraderDetailModalComponent {
     let tamanoCabecera: number;
     let tituloTamano: string;
     let pnl: { valor: number | null; realizado: boolean };
-    if (b.abierta) {
-      const vivo = this.tamañoEnVivoPerp(b.coin, b.lado);
-      if (vivo != null) {
-        tamanoCabecera = vivo;
-        tituloTamano = 'Lo invertido ahora mismo en esta posición (precio de entrada × tamaño en vivo)';
-      } else {
-        // sin dato en vivo (posicion_actual se refresca cada 5 min, pero
-        // operacionesRecientes solo en el ciclo de backtest diario -- puede
-        // que ya se haya cerrado en vivo y los fills aun no lo reflejen):
-        // estimar con lo que se ve aqui, en valor absoluto -- si el
-        // historico esta truncado (abre real fuera de la ventana de fills)
-        // "Abre" - "Cierra" puede salir negativo, y un tamaño nunca lo es
-        tamanoCabecera = Math.abs(b.filas.reduce((a, o) => a + (o.accion === 'Abre' ? o.notional || 0 : -(o.notional || 0)), 0));
-        tituloTamano = b.truncada
-          ? 'Estimado a partir de un histórico incompleto: la apertura real quedó fuera de los datos guardados'
-          : 'Estimado a partir de los últimos movimientos vistos (sin confirmar con el dato en vivo)';
-      }
-      pnl = { valor: this.pnlEnVivoPerp(b.coin, b.lado), realizado: false };
+    // la instantanea en vivo (pedida al abrir el modal, ver candidatos.py
+    // detalle_candidato) es la fuente de verdad de si sigue abierta ahora
+    // mismo -- mas fiable que b.abierta, que sale del historial de fills
+    // (solo se refresca una vez al dia)
+    const vivo = b.abierta ? this.tamañoEnVivoPerp(b.coin, b.lado) : null;
+    const pnlVivo = b.abierta ? this.pnlEnVivoPerp(b.coin, b.lado) : null;
+    const abiertaReal = b.abierta && (vivo != null || pnlVivo != null);
+    if (abiertaReal) {
+      tamanoCabecera = vivo ?? Math.abs(b.filas.reduce((a, o) => a + (o.accion === 'Abre' ? o.notional || 0 : -(o.notional || 0)), 0));
+      tituloTamano = 'Lo invertido ahora mismo en esta posición (precio de entrada × tamaño en vivo)';
+      pnl = { valor: pnlVivo, realizado: false };
+    } else if (b.abierta) {
+      // el historial de fills la cree abierta pero la instantanea en vivo
+      // ya no la tiene: se cerro de verdad, el historial aun no se ha
+      // actualizado (solo corre una vez al dia) -- no hay dato en vivo que
+      // mostrar ni closedPnl en estos fills (el fill de cierre real todavia
+      // no esta aqui), asi que no se inventa un resultado
+      tamanoCabecera = Math.abs(b.filas.reduce((a, o) => a + (o.accion === 'Abre' ? o.notional || 0 : -(o.notional || 0)), 0));
+      tituloTamano = 'Ya no aparece en la posición en vivo (instantánea al abrir); el historial de operaciones todavía no registra el cierre, se actualiza una vez al día';
+      pnl = { valor: null, realizado: true };
     } else {
       tamanoCabecera = b.filas.filter((o) => o.accion === 'Abre').reduce((a, o) => a + (o.notional || 0), 0);
       tituloTamano = 'Total invertido en esta posición a lo largo de todo el historial visible';
@@ -127,6 +135,7 @@ export class TraderDetailModalComponent {
       tituloTamano,
       fecha: new Date(ultima.ts).toISOString(),
       pnl,
+      abiertaReal,
       // hijos solo si hay mas de un episodio -- igual que la flechita ▸ en
       // la app vieja (b.filas.length > 1)
       hijos: b.filas.length > 1 ? marcarCierres(b.filas).reverse() : [],

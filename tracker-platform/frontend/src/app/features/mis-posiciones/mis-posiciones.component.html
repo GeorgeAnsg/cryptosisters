@@ -16,6 +16,7 @@
         <th>Copiada de</th>
         <th>Dirección</th>
         <th>Moneda</th>
+        <th>$ invertido</th>
         <th></th>
       </tr>
     </ng-template>
@@ -49,14 +50,19 @@
           }
         </td>
         <td class="font-semibold">{{ m.coin }}</td>
+        <td>{{ m.montoInvertido != null ? '$' + (m.montoInvertido | number: '1.0-0') : '—' }}</td>
         <td>
-          <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" (onClick)="cerrar(m.clave, m.coin)" />
+          <div class="flex gap-1.5">
+            <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" (onClick)="ajustar(m.clave, m.coin, 1)" />
+            <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" (onClick)="ajustar(m.clave, m.coin, -1)" />
+            <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" (onClick)="cerrar(m.clave, m.coin)" />
+          </div>
         </td>
       </tr>
     </ng-template>
     <ng-template #emptymessage>
       <tr>
-        <td colspan="5" class="py-10 text-center text-base text-fg-muted">
+        <td colspan="6" class="py-10 text-center text-base text-fg-muted">
           <div class="flex flex-col items-center gap-2">
             <i class="pi pi-wallet text-2xl text-fg-muted"></i>
             <span>Todavía no has abierto ninguna. Ve a Traders &gt; Posiciones y pulsa "Abrir".</span>

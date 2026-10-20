@@ -114,36 +114,59 @@
     </div>
     <div class="flex flex-col gap-1.5">
       @for (p of resumenTrading(); track p.coin + p.traderAddress) {
-        <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
-          <div class="flex min-w-0 items-center gap-2">
-            <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
-            <span
-              class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
-              [class.bg-long-bg]="p.lado === 'Long'"
-              [class.text-long]="p.lado === 'Long'"
-              [class.bg-short-bg]="p.lado === 'Short'"
-              [class.text-short]="p.lado === 'Short'"
-            >
-              {{ p.lado }}
-            </span>
-            <span
-              class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
-              [style.background]="colorTrader(p.traderAddress)"
-            >
-              {{ inicial(p.traderNombre) }}
-            </span>
-            <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
-          </div>
-          <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
-            @if (p.resultadoUsd != null) {
-              {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
-              @if (p.invertidoUsd) {
-                <span class="font-normal text-fg-muted">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+        @let clave = p.traderAddress + '_' + p.coin + '_' + p.lado;
+        <div class="rounded-lg bg-bg px-3 py-2 text-sm">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex min-w-0 items-center gap-2">
+              @if (p.movimientos?.length) {
+                <i
+                  class="pi cursor-pointer text-[10px] text-fg-muted"
+                  [class.pi-angle-right]="!estaAbierta(clave)"
+                  [class.pi-angle-down]="estaAbierta(clave)"
+                  (click)="alternarFila(clave)"
+                ></i>
               }
-            } @else {
-              sin dato
-            }
-          </span>
+              <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
+              <span
+                class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+                [class.bg-long-bg]="p.lado === 'Long'"
+                [class.text-long]="p.lado === 'Long'"
+                [class.bg-short-bg]="p.lado === 'Short'"
+                [class.text-short]="p.lado === 'Short'"
+              >
+                {{ p.lado }}
+              </span>
+              <span
+                class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+                [style.background]="colorTrader(p.traderAddress)"
+              >
+                {{ inicial(p.traderNombre) }}
+              </span>
+              <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+            </div>
+            <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+              @if (p.resultadoUsd != null) {
+                {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+                @if (p.invertidoUsd) {
+                  <span class="font-normal">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+                }
+              } @else {
+                sin dato
+              }
+            </span>
+          </div>
+          @if (p.movimientos?.length && estaAbierta(clave)) {
+            <div class="mt-1.5 flex flex-col gap-1 border-t border-border pt-1.5">
+              @for (m of movimientosOrdenados(p.movimientos!); track m.fecha) {
+                <div class="flex items-center justify-between gap-2 text-xs text-fg-muted">
+                  <span>{{ m.verbo }} · {{ m.fecha | date: 'd MMM, HH:mm' }}</span>
+                  <span [class.text-long]="(m.pnlUsd ?? 0) > 0" [class.text-short]="(m.pnlUsd ?? 0) < 0">
+                    ${{ m.notionalUsd | number: '1.0-0' }}
+                  </span>
+                </div>
+              }
+            </div>
+          }
         </div>
       } @empty {
         <div class="flex flex-col items-center gap-2 py-6 text-center">
@@ -164,27 +187,48 @@
     </div>
     <div class="flex flex-col gap-1.5">
       @for (p of resumenSpot(); track p.coin + p.traderAddress) {
-        <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
-          <div class="flex min-w-0 items-center gap-2">
-            <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
-            <span
-              class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
-              [style.background]="colorTrader(p.traderAddress)"
-            >
-              {{ inicial(p.traderNombre) }}
-            </span>
-            <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
-          </div>
-          <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
-            @if (p.resultadoUsd != null) {
-              {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
-              @if (p.invertidoUsd) {
-                <span class="font-normal text-fg-muted">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+        @let clave = 's_' + p.traderAddress + '_' + p.coin;
+        <div class="rounded-lg bg-bg px-3 py-2 text-sm">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex min-w-0 items-center gap-2">
+              @if (p.movimientos?.length) {
+                <i
+                  class="pi cursor-pointer text-[10px] text-fg-muted"
+                  [class.pi-angle-right]="!estaAbierta(clave)"
+                  [class.pi-angle-down]="estaAbierta(clave)"
+                  (click)="alternarFila(clave)"
+                ></i>
               }
-            } @else {
-              sin dato
-            }
-          </span>
+              <span class="w-14 flex-none font-semibold">{{ p.coin }}</span>
+              <span
+                class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+                [style.background]="colorTrader(p.traderAddress)"
+              >
+                {{ inicial(p.traderNombre) }}
+              </span>
+              <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+            </div>
+            <span [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+              @if (p.resultadoUsd != null) {
+                {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+                @if (p.invertidoUsd) {
+                  <span class="font-normal">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+                }
+              } @else {
+                sin dato
+              }
+            </span>
+          </div>
+          @if (p.movimientos?.length && estaAbierta(clave)) {
+            <div class="mt-1.5 flex flex-col gap-1 border-t border-border pt-1.5">
+              @for (m of movimientosOrdenados(p.movimientos!); track m.fecha) {
+                <div class="flex items-center justify-between gap-2 text-xs text-fg-muted">
+                  <span>{{ m.verbo }} · {{ m.fecha | date: 'd MMM, HH:mm' }}</span>
+                  <span>${{ m.notionalUsd | number: '1.0-0' }}</span>
+                </div>
+              }
+            </div>
+          }
         </div>
       } @empty {
         <div class="flex flex-col items-center gap-2 py-6 text-center">

@@ -14,6 +14,7 @@ export interface MiPosicion {
   fechaApertura: number;
   fechaCierre: number | null;
   pnl: number | null;
+  montoInvertido: number | null;
 }
 
 // posiciones que el usuario ha "abierto" el mismo copiando a un trader que
@@ -47,12 +48,31 @@ export class MisPosicionesService {
     return this.abiertas().some((m) => m.clave === clave);
   }
 
-  async abrir(clave: string, traderAddress: string, tipo: 'trading' | 'spot', coin: string, lado: string | null): Promise<void> {
-    await firstValueFrom(this.http.put(`${environment.apiUrl}/mis-posiciones/${clave}`, { traderAddress, tipo, coin, lado }));
+  async abrir(
+    clave: string,
+    traderAddress: string,
+    tipo: 'trading' | 'spot',
+    coin: string,
+    lado: string | null,
+    montoInvertido: number | null,
+  ): Promise<void> {
+    await firstValueFrom(this.http.put(`${environment.apiUrl}/mis-posiciones/${clave}`, { traderAddress, tipo, coin, lado, montoInvertido }));
     this.lista.update((actual) => [
       ...actual,
-      { clave, traderAddress, tipo, coin, lado: lado as MiPosicion['lado'], estado: 'abierta', fechaApertura: Date.now(), fechaCierre: null, pnl: null },
+      {
+        clave, traderAddress, tipo, coin, lado: lado as MiPosicion['lado'],
+        estado: 'abierta', fechaApertura: Date.now(), fechaCierre: null, pnl: null, montoInvertido,
+      },
     ]);
+  }
+
+  // delta positivo = añade, negativo = reduce (ver btn-abrir/op-flecha de
+  // la app vieja: aqui el usuario dice cuanto mueve, no se infiere)
+  async ajustar(clave: string, delta: number): Promise<void> {
+    await firstValueFrom(this.http.put(`${environment.apiUrl}/mis-posiciones/${clave}/ajustar`, { delta }));
+    this.lista.update((actual) =>
+      actual.map((m) => (m.clave === clave ? { ...m, montoInvertido: Math.max(0, (m.montoInvertido ?? 0) + delta) } : m)),
+    );
   }
 
   async cerrar(clave: string, pnl: number): Promise<void> {

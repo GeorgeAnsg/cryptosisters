@@ -76,7 +76,14 @@
           </div>
         </td>
         <td [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="font-semibold">
-          {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+          @if (p.resultadoUsd != null) {
+            {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+            @if (p.invertidoUsd) {
+              <span class="font-normal">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+            }
+          } @else {
+            sin dato
+          }
         </td>
         <td>
           <!-- copiar la posicion a "mis posiciones" (ver pestaña Mis
@@ -173,7 +180,14 @@
         </td>
         <td>${{ p.valorActualUsd | number: '1.0-0' }}</td>
         <td [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="font-semibold">
-          {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
+          @if (p.resultadoUsd != null) {
+            {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+            @if (p.invertidoUsd) {
+              <span class="font-normal">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+            }
+          } @else {
+            sin dato
+          }
         </td>
         <td>
           <p-button

@@ -68,12 +68,12 @@
                 {{ bv.fecha | date: 'd MMM, HH:mm' }}
                 <span
                   class="ml-1.5 rounded-pill px-1.5 py-0.5 text-[10px] font-semibold uppercase"
-                  [class.bg-long-bg]="bv.bloque.abierta"
-                  [class.text-long]="bv.bloque.abierta"
-                  [class.bg-border]="!bv.bloque.abierta"
-                  [class.text-fg-muted]="!bv.bloque.abierta"
+                  [class.bg-long-bg]="bv.abiertaReal"
+                  [class.text-long]="bv.abiertaReal"
+                  [class.bg-border]="!bv.abiertaReal"
+                  [class.text-fg-muted]="!bv.abiertaReal"
                 >
-                  {{ bv.bloque.abierta ? 'abierta' : 'cerrada' }}
+                  {{ bv.abiertaReal ? 'abierta' : 'cerrada' }}
                 </span>
                 @if (bv.bloque.truncada) {
                   <span
@@ -88,23 +88,20 @@
                 [class.text-long]="(bv.pnl.valor ?? 0) > 0"
                 [class.text-short]="(bv.pnl.valor ?? 0) < 0"
                 class="font-semibold"
-                [title]="
-                  bv.pnl.realizado
-                    ? ''
-                    : bv.pnl.valor != null
-                      ? 'Dato en vivo: lo que gana/pierde si cerrara ahora mismo'
-                      : 'Puede que ya se haya cerrado: la posición en vivo se refresca cada 5 min, pero este histórico de operaciones solo una vez al día'
-                "
+                [title]="bv.pnl.realizado ? '' : 'Dato en vivo (instantánea al abrir): lo que gana/pierde si cerrara ahora mismo'"
               >
                 @if (bv.pnl.valor != null) {
                   {{ bv.pnl.valor > 0 ? '+' : '' }}${{ bv.pnl.valor | number: '1.0-2' }}
                   @if (bv.tamanoCabecera) {
-                    <span class="font-normal text-fg-muted">({{ bv.pnl.valor > 0 ? '+' : '' }}{{ (bv.pnl.valor / bv.tamanoCabecera) * 100 | number: '1.0-1' }}%)</span>
+                    <span
+                      [class.text-long]="bv.pnl.valor > 0"
+                      [class.text-short]="bv.pnl.valor < 0"
+                      class="font-normal"
+                      >({{ bv.pnl.valor > 0 ? '+' : '' }}{{ (bv.pnl.valor / bv.tamanoCabecera) * 100 | number: '1.0-1' }}%)</span
+                    >
                   }
-                } @else if (!bv.bloque.abierta) {
-                  —
                 } @else {
-                  ¿cerrada? sin confirmar
+                  —
                 }
               </td>
             </tr>
