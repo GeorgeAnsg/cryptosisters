@@ -7,7 +7,7 @@ import { MonedaOperada, Estilo, Riesgo } from '../../shared/models/trader';
 import { MovimientoPosicion, PosicionSpot, PosicionTrading } from '../../features/traders/posiciones/posiciones.model';
 import { GrupoConsenso } from '../../features/consenso/consenso.model';
 import { FilaMercadoSpot, FilaMercadoTrading } from '../../features/mercado/mercado.model';
-import { FillCrudo } from '../../shared/utils/episodios';
+import { agruparEpisodios, construirBloques, FillCrudo, marcarCierres } from '../../shared/utils/episodios';
 import { SeguidosService } from '../seguidos/seguidos.service';
 
 export interface PosicionCandidato {
@@ -93,6 +93,68 @@ export class CandidatosService {
   readonly candidatos = computed(() => this.lista());
   readonly consenso = computed(() => this.grupos());
 
+  // detalle completo (con operacionesRecientes, el historial real de fills)
+  // de cada trader SEGUIDO -- el listado masivo no lo trae (pesaria
+  // demasiado con 2000 fills x cada uno de los 193+ candidatos), pero el
+  // conjunto de seguidos es pequeño, así que aquí sí se puede pedir uno a
+  // uno. Esto es lo que permite que Posiciones muestre el mismo historial
+  // Abre/Añade/Reduce/Cierra que ya calcula el modal (ver episodios.ts),
+  // en vez del recorte sin apenas pasado que daba la tabla "alertas".
+  private readonly detallesSeguidos = signal<ReadonlyMap<string, Candidato>>(new Map());
+  // direcciones ya pedidas (con exito o no) -- sin esto, una que falla (404,
+  // red caida) nunca entra en detallesSeguidos y el effect la vuelve a
+  // pedir en cada ciclo porque sigue "faltando", en bucle infinito
+  private readonly intentadas = new Set<string>();
+
+  private readonly _cargarDetallesSeguidos = effect(() => {
+    const direcciones = this.seguidos.direcciones();
+    const faltan = [...direcciones].filter((a) => !this.intentadas.has(a));
+    if (!faltan.length) return;
+    faltan.forEach((a) => this.intentadas.add(a));
+    Promise.all(faltan.map((a) => this.cargarDetalle(a).catch(() => null))).then((detalles) => {
+      this.detallesSeguidos.update((mapa) => {
+        const nuevo = new Map(mapa);
+        detalles.forEach((d: Candidato | null, i: number) => d && nuevo.set(faltan[i], d));
+        return nuevo;
+      });
+    });
+  });
+
+  // movimientos reales (fills agrupados en bloques, igual que el modal) de
+  // UNA posicion concreta de un trader seguido -- null si aun no hemos
+  // pedido su detalle o no tiene historial de fills
+  private movimientosReales(traderAddress: string, coin: string, lado: string): MovimientoPosicion[] | null {
+    const detalle = this.detallesSeguidos().get(traderAddress);
+    if (!detalle?.operacionesRecientes?.length) return null;
+    const bloques = construirBloques(agruparEpisodios(detalle.operacionesRecientes));
+    const bloque = bloques.find((b) => b.coin === coin && b.lado === lado);
+    if (!bloque || bloque.filas.length <= 1) return null;
+    return marcarCierres(bloque.filas)
+      .map((o) => ({
+        fecha: new Date(o.ts).toISOString(),
+        verbo:
+          lado === 'Spot'
+            ? o.accion === 'Abre'
+              ? 'Compra'
+              : o.cierraDelTodo
+                ? 'Cierra'
+                : 'Vende'
+            : o.accion === 'Abre'
+              ? o.esInicio
+                ? 'Abre'
+                : 'Añade'
+              : o.cierraDelTodo
+                ? 'Cierra'
+                : 'Reduce',
+        notionalUsd: o.notional,
+        precio: o.px,
+        pnlUsd: o.closedPnl || null,
+        coin: o.coin,
+        lado: lado as MovimientoPosicion['lado'],
+      }))
+      .reverse(); // mas reciente primero, igual que movimientosTrading/Spot
+  }
+
   // detalle de UN trader, con su historial completo de fills --
   // (operacionesRecientes) para el modal; pedido aparte y a demanda, nunca
   // como parte del listado masivo (ver _candidato_dict en el backend)
@@ -116,7 +178,10 @@ export class CandidatosService {
   // posicionesTrading/posicionesSpot (acotados a seguidos)
   private mapTrading(c: Candidato): PosicionTrading[] {
     return c.posicionActual.map((p) => {
-      const movimientos = c.movimientosTrading.filter((m) => m.coin === p.coin && m.lado === p.lado);
+      // movimientos reales (fills, con Añade/Reduce de verdad) si ya
+      // tenemos el detalle del trader; si no, el recorte de "alertas"
+      // (puede estar vacio recien desplegado, ver movimientosTrading)
+      const movimientos = this.movimientosReales(c.address, p.coin, p.lado) ?? c.movimientosTrading.filter((m) => m.coin === p.coin && m.lado === p.lado);
       return {
         fecha: movimientos[0]?.fecha ?? new Date().toISOString(),
         lado: p.lado,
@@ -136,7 +201,7 @@ export class CandidatosService {
 
   private mapSpot(c: Candidato): PosicionSpot[] {
     return c.holdingsSpot.map((h) => {
-      const movimientos = c.movimientosSpot.filter((m) => m.coin === h.coin);
+      const movimientos = this.movimientosReales(c.address, h.coin, 'Spot') ?? c.movimientosSpot.filter((m) => m.coin === h.coin);
       return {
         fecha: movimientos[0]?.fecha ?? new Date().toISOString(),
         coin: h.coin,
