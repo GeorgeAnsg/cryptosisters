@@ -33,8 +33,10 @@ def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, prec
     if bt_spot and bt_spot["retorno_pct"] is not None and not hyperliquid.veto_catastrofico(bt_spot["retorno_pct"]):
         puntuacion_spot = hyperliquid.puntuacion_de(bt_spot["retorno_pct"], bt_spot["profit_factor"], -bt_spot["drawdown"] * 100)
 
+    monedas_top = hyperliquid.monedas_mas_usadas(datos["operaciones_backtest"], datos["posicion_actual"], datos["holdings_spot"], spot_nombres)
+
     conn.execute(
-        """UPDATE candidatos SET posicion_actual=?, holdings_spot=?, operaciones_recientes=?,
+        """UPDATE candidatos SET posicion_actual=?, holdings_spot=?, operaciones_recientes=?, monedas_top=?,
            retorno_pct=?, profit_factor=?, win_rate=?, drawdown=?, puntuacion=?,
            puntuacion_spot=?, win_rate_spot=?, retorno_pct_spot=?, drawdown_spot=?, profit_factor_spot=?
            WHERE address=?""",
@@ -42,6 +44,7 @@ def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, prec
             json.dumps(datos["posicion_actual"], ensure_ascii=False),
             json.dumps(datos["holdings_spot"], ensure_ascii=False),
             json.dumps(datos["operaciones_recientes"], ensure_ascii=False),
+            json.dumps(monedas_top, ensure_ascii=False),
             bt["retorno_pct"] if bt else None,
             bt["profit_factor"] if bt else None,
             bt["win_rate"] if bt else None,

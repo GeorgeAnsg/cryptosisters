@@ -209,6 +209,21 @@ def convertir_fill(f):
     }
 
 
+def monedas_mas_usadas(operaciones_backtest, posicion_actual, holdings_spot, spot_nombres, n=5):
+    """Top N monedas por frecuencia real de uso (sobre el AÑO completo del
+    backtest, no solo los 2000 fills guardados) -- las que tiene abiertas
+    ahora mismo van primero, da igual su frecuencia, y dentro de cada grupo
+    se ordena por nº de operaciones. Esto es lo que se enseña como "tags"
+    en el listado masivo de traders (ver candidatos.py _candidato_dict)."""
+    frecuencia: dict[str, int] = {}
+    for o in operaciones_backtest:
+        nombre = spot_nombres.get(o["coin"], o["coin"]) if o["lado"] == "Spot" else o["coin"]
+        frecuencia[nombre] = frecuencia.get(nombre, 0) + 1
+    abiertas = {p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot}
+    ordenadas = sorted(frecuencia, key=lambda m: (m not in abiertas, -frecuencia[m]))
+    return ordenadas[:n]
+
+
 def tpsl_por_moneda(address):
     """Las ordenes stop-loss/take-profit son publicas igual que todo en
     Hyperliquid (frontendOpenOrders, isPositionTpsl=true) -- se devuelven

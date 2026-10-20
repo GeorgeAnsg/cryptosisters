@@ -56,10 +56,17 @@ def inicializar_tablas() -> None:
                 desestimado_motivo TEXT, desestimado_fecha INTEGER,
                 posicion_actual TEXT DEFAULT '[]',
                 holdings_spot TEXT DEFAULT '[]',
-                operaciones_recientes TEXT DEFAULT '[]'
+                operaciones_recientes TEXT DEFAULT '[]',
+                monedas_top TEXT DEFAULT '[]'
             )
             """
         )
+        # migracion explicita para BDs creadas antes de monedas_top (la
+        # tabla ya existe, CREATE TABLE IF NOT EXISTS no la toca)
+        try:
+            conn.execute("ALTER TABLE candidatos ADD COLUMN monedas_top TEXT DEFAULT '[]'")
+        except sqlite3.OperationalError:
+            pass
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS alertas (

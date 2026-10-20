@@ -92,16 +92,16 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool) -> dict
     # traducidos (ver hyperliquid.py), solo los fills crudos necesitan esto
     for op in operaciones_recientes:
         op["coin"] = _nombre_moneda(op["coin"])
-    monedas = {p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot}
-    # orden por actividad real (nº de operaciones recientes en esa moneda),
-    # no alfabetico -- igual que monedasConCategoria() en la app vieja, para
-    # que las 6 que recorta la tarjeta sean las mas activas. Si no se cargo
-    # operacionesRecientes (listado masivo) no hay con que calcular
-    # frecuencia real -- cae a orden alfabetico, que es lo que ya habia.
-    frecuencia: dict[str, int] = {}
-    for op in operaciones_recientes:
-        frecuencia[op["coin"]] = frecuencia.get(op["coin"], 0) + 1
-    monedas_ordenadas = sorted(monedas, key=lambda m: (-frecuencia.get(m, 0), m))
+    # las tags de la tarjeta son las monedas que MAS opera en general (ver
+    # hyperliquid.monedas_mas_usadas, calculado sobre el año completo del
+    # backtest en descubrimiento/refresher), con las que tiene abiertas
+    # ahora mismo primero -- no solo lo que tiene abierto en este instante,
+    # que es como estaba antes y dejaba traders activos sin ninguna tag
+    monedas_top = json.loads(f["monedas_top"] or "[]")
+    if not monedas_top:
+        # fallback para candidatos descubiertos antes de monedas_top (o aun
+        # sin su primer ciclo de backtest): mejor esto que no mostrar nada
+        monedas_top = sorted({p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot})
     return {
         "address": f["address"],
         "nombre": nombres.nombre_de(f["address"], todas),
@@ -124,7 +124,7 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool) -> dict
         "winRateSpot": f["win_rate_spot"],
         "retornoPctSpot": f["retorno_pct_spot"],
         "profitFactorSpot": f["profit_factor_spot"],
-        "monedas": [{"nombre": m, "categoria": _categoria_de(m)} for m in monedas_ordenadas],
+        "monedas": [{"nombre": m, "categoria": _categoria_de(m)} for m in monedas_top],
         "desestimado": (
             {"motivo": f["desestimado_motivo"], "fecha": _ms_a_iso(f["desestimado_fecha"])}
             if f["desestimado_motivo"] else None

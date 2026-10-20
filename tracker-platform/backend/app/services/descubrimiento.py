@@ -219,11 +219,12 @@ def descubrir_candidatos():
                 continue
 
             ahora = int(time.time() * 1000)
+            monedas_top = hyperliquid.monedas_mas_usadas(ops, datos["posicion_actual"], datos["holdings_spot"], spot_nombres)
             conn.execute(
                 """INSERT INTO candidatos (address, categoria, antiguedad, estilo, riesgo, cuenta,
                    retorno_pct, profit_factor, puntuacion, win_rate, drawdown, puntuacion_spot, win_rate_spot,
-                   retorno_pct_spot, drawdown_spot, profit_factor_spot, posicion_actual, holdings_spot, operaciones_recientes, descubierto_ts)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   retorno_pct_spot, drawdown_spot, profit_factor_spot, posicion_actual, holdings_spot, operaciones_recientes, monedas_top, descubierto_ts)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     addr, "descubierto", _antiguedad_dias(ops), "activo", "moderado", cuenta,
                     bt["retorno_pct"] if bt else None, bt["profit_factor"] if bt else None,
@@ -233,6 +234,7 @@ def descubrir_candidatos():
                     json.dumps(datos["posicion_actual"], ensure_ascii=False),
                     json.dumps(datos["holdings_spot"], ensure_ascii=False),
                     json.dumps(datos["operaciones_recientes"], ensure_ascii=False),
+                    json.dumps(monedas_top, ensure_ascii=False),
                     ahora,
                 ),
             )
