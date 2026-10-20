@@ -79,16 +79,15 @@
           {{ p.resultadoUsd != null ? (p.resultadoUsd > 0 ? '+' : '') + '$' + (p.resultadoUsd | number: '1.0-0') : 'sin dato' }}
         </td>
         <td>
-          <!-- copiar la posicion a "mis posiciones" -- todavia no hay
-               backend de copy-trading, asi que solo marca el boton como
-               abierto en esta sesion -->
+          <!-- copiar la posicion a "mis posiciones" (ver pestaña Mis
+               posiciones del menu) -->
           <p-button
             [label]="estaCopiada(clave) ? 'Abierta' : 'Abrir'"
             size="small"
             severity="secondary"
             [outlined]="true"
             [disabled]="estaCopiada(clave)"
-            (onClick)="abrirPosicion(clave)"
+            (onClick)="abrirTrading(p)"
           />
         </td>
       </tr>
@@ -183,7 +182,7 @@
             severity="secondary"
             [outlined]="true"
             [disabled]="estaCopiada(clave)"
-            (onClick)="abrirPosicion(clave)"
+            (onClick)="abrirSpot(p)"
           />
         </td>
       </tr>

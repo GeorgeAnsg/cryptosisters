@@ -67,6 +67,27 @@ def inicializar_tablas() -> None:
             conn.execute("ALTER TABLE candidatos ADD COLUMN monedas_top TEXT DEFAULT '[]'")
         except sqlite3.OperationalError:
             pass
+        # lo que el usuario ha "abierto" el mismo, copiando una posicion de
+        # alguien que sigue -- equivalente a la coleccion mis_posiciones de
+        # Firestore en la app vieja (boton Abrir en Posiciones/alertas,
+        # Cerrar aqui mismo con tu propio pnl a mano, eso alimenta Estadisticas)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mis_posiciones (
+                uid TEXT NOT NULL,
+                clave TEXT NOT NULL,
+                trader_address TEXT NOT NULL,
+                tipo TEXT NOT NULL,
+                coin TEXT NOT NULL,
+                lado TEXT,
+                estado TEXT NOT NULL DEFAULT 'abierta',
+                fecha_apertura INTEGER NOT NULL,
+                fecha_cierre INTEGER,
+                pnl REAL,
+                PRIMARY KEY (uid, clave)
+            )
+            """
+        )
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS alertas (

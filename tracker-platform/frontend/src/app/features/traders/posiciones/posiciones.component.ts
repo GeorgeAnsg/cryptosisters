@@ -1,10 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { colorTrader } from '../../../shared/utils/color-trader';
 import { MovimientoPosicion, PosicionSpot, PosicionTrading } from './posiciones.model';
 import { CandidatosService } from '../../../core/candidatos/candidatos.service';
+import { MisPosicionesService } from '../../../core/mis-posiciones/mis-posiciones.service';
 
 // "Posiciones" -- lo que tienen abierto AHORA los traders que sigues, no la
 // rejilla de descubrimiento (eso es Trading/Spot). Misma idea que
@@ -21,6 +22,7 @@ import { CandidatosService } from '../../../core/candidatos/candidatos.service';
 export class PosicionesComponent {
   protected readonly colorTrader = colorTrader;
   private readonly candidatos = inject(CandidatosService);
+  private readonly misPosiciones = inject(MisPosicionesService);
 
   // solo traders que el usuario sigue -- derivado en CandidatosService
   // (compartido con el resumen del Dashboard) a partir de posicionActual/
@@ -29,11 +31,6 @@ export class PosicionesComponent {
   protected readonly spot = this.candidatos.posicionesSpot;
 
   private readonly abiertas = signal<ReadonlySet<string>>(new Set());
-  // posiciones que el usuario ya ha copiado a "mis posiciones" -- de
-  // momento solo marca el boton como abierto en esta sesion (no persiste,
-  // no hay backend de copy-trading todavia), pero al menos "Abrir" hace
-  // algo visible en vez de no reaccionar
-  private readonly copiadas = signal<ReadonlySet<string>>(new Set());
 
   claveTrading(p: PosicionTrading): string {
     return `t_${p.traderAddress}_${p.coin}_${p.lado}`;
@@ -56,11 +53,15 @@ export class PosicionesComponent {
   }
 
   estaCopiada(clave: string): boolean {
-    return this.copiadas().has(clave);
+    return this.misPosiciones.estaAbierta(clave);
   }
 
-  abrirPosicion(clave: string): void {
-    this.copiadas.update((actual) => new Set(actual).add(clave));
+  abrirTrading(p: PosicionTrading): void {
+    this.misPosiciones.abrir(this.claveTrading(p), p.traderAddress, 'trading', p.coin, p.lado);
+  }
+
+  abrirSpot(p: PosicionSpot): void {
+    this.misPosiciones.abrir(this.claveSpot(p), p.traderAddress, 'spot', p.coin, null);
   }
 
   protected pctCartera(invertido: number, cuenta: number): string {

@@ -44,6 +44,7 @@ export class ShellComponent {
         { etiqueta: 'Cribado', vista: 'cribado' },
       ],
     },
+    { ruta: '/mis-posiciones', etiqueta: 'Mis Posiciones', icono: 'pi pi-wallet' },
     { ruta: '/consenso', etiqueta: 'Consenso', icono: 'pi pi-bolt' },
     { ruta: '/mercado', etiqueta: 'Mercado', icono: 'pi pi-chart-line' },
     { ruta: '/estadisticas', etiqueta: 'Estadísticas', icono: 'pi pi-chart-bar' },

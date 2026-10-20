@@ -3,7 +3,7 @@ import threading
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import candidatos, salud, usuarios
+from app.api.routers import candidatos, mis_posiciones, salud, usuarios
 from app.db.database import inicializar_tablas
 from app.services import descubrimiento, refresher
 
@@ -29,6 +29,7 @@ def startup():
 app.include_router(salud.router)
 app.include_router(usuarios.router)
 app.include_router(candidatos.router)
+app.include_router(mis_posiciones.router)
 
 # cada router nuevo (mercado...) se registra aqui a medida que se porta
 # desde la app vieja -- un router por recurso, no un solo main.py con todos

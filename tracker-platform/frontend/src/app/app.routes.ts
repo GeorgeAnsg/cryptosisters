@@ -26,6 +26,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/traders/traders.component').then((m) => m.TradersComponent),
       },
       {
+        path: 'mis-posiciones',
+        loadComponent: () => import('./features/mis-posiciones/mis-posiciones.component').then((m) => m.MisPosicionesComponent),
+      },
+      {
         path: 'consenso',
         loadComponent: () => import('./features/consenso/consenso.component').then((m) => m.ConsensoComponent),
       },

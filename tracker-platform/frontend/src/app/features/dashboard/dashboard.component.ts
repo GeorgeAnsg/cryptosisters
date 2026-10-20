@@ -5,6 +5,7 @@ import { colorTrader } from '../../shared/utils/color-trader';
 import { tiempoRelativo } from '../../shared/utils/tiempo-relativo';
 import { fechaGrupo } from '../consenso/consenso.model';
 import { CandidatosService } from '../../core/candidatos/candidatos.service';
+import { MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
 
 const LIMITE_RESUMEN = 5;
 
@@ -14,10 +15,6 @@ const LIMITE_RESUMEN = 5;
 // + Mis posiciones (las dos "cajas negras", fondo panel-dark) arriba, y
 // debajo Trading/Spot resumidos (version corta de las tablas de
 // Posiciones, limitada a 5 filas cada una, con link "Ver todas").
-//
-// Simplificado respecto a la app vieja: "Mis posiciones" siempre en su
-// estado vacio -- ese es un sistema de copy-trading propio (misPosiciones)
-// que este rebuild todavia no tiene montado.
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -29,10 +26,22 @@ export class DashboardComponent {
   protected readonly tiempoRelativo = tiempoRelativo;
   protected readonly fechaGrupo = fechaGrupo;
   private readonly candidatos = inject(CandidatosService);
+  private readonly misPosiciones = inject(MisPosicionesService);
 
   protected readonly grupos = this.candidatos.consensoSeguido;
   protected readonly resumenTrading = computed(() => this.candidatos.posicionesTrading().slice(0, LIMITE_RESUMEN));
   protected readonly resumenSpot = computed(() => this.candidatos.posicionesSpot().slice(0, LIMITE_RESUMEN));
+  protected readonly misPosicionesAbiertas = this.misPosiciones.abiertas;
+
+  private readonly nombrePorDireccion = computed(() => {
+    const mapa = new Map<string, string>();
+    for (const c of this.candidatos.candidatos()) mapa.set(c.address, c.nombre);
+    return mapa;
+  });
+
+  protected nombreDe(direccion: string): string {
+    return this.nombrePorDireccion().get(direccion) ?? `${direccion.slice(0, 8)}…`;
+  }
 
   protected inicial(nombre: string): string {
     return nombre.charAt(0);

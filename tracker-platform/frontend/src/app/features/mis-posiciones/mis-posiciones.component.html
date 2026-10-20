@@ -1,0 +1,119 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Mis Posiciones</div>
+<div class="mb-6 text-sm text-fg-muted">
+  Lo que tú mismo has abierto copiando a alguien que sigues (botón "Abrir" en Traders &gt; Posiciones). Cuando la cierres, el resultado que indiques alimenta Estadísticas.
+</div>
+
+<div class="mb-3.5 flex items-center gap-1.5">
+  <div class="font-display text-base font-semibold">Abiertas</div>
+  <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ abiertas().length }}</span>
+</div>
+
+<div class="panel mb-10 overflow-hidden">
+  <p-table [value]="abiertas()" styleClass="text-base">
+    <ng-template #header>
+      <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+        <th>Abierta</th>
+        <th>Copiada de</th>
+        <th>Dirección</th>
+        <th>Moneda</th>
+        <th></th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-m>
+      <tr>
+        <td class="whitespace-nowrap text-fg-muted">{{ m.fechaApertura | date: 'd MMM, HH:mm' }}</td>
+        <td>
+          <div class="flex items-center gap-1.5">
+            <span
+              class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+              [style.background]="colorTrader(m.traderAddress)"
+            >
+              {{ nombreDe(m.traderAddress).charAt(0) }}
+            </span>
+            {{ nombreDe(m.traderAddress) }}
+          </div>
+        </td>
+        <td>
+          @if (m.lado) {
+            <span
+              class="rounded-pill px-2 py-0.5 text-[12px] font-semibold uppercase"
+              [class.bg-long-bg]="m.lado === 'Long'"
+              [class.text-long]="m.lado === 'Long'"
+              [class.bg-short-bg]="m.lado === 'Short'"
+              [class.text-short]="m.lado === 'Short'"
+            >
+              {{ m.lado }}
+            </span>
+          } @else {
+            Spot
+          }
+        </td>
+        <td class="font-semibold">{{ m.coin }}</td>
+        <td>
+          <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" (onClick)="cerrar(m.clave, m.coin)" />
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="5" class="py-10 text-center text-base text-fg-muted">
+          <div class="flex flex-col items-center gap-2">
+            <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+            <span>Todavía no has abierto ninguna. Ve a Traders &gt; Posiciones y pulsa "Abrir".</span>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<div class="mb-3.5 flex items-center gap-1.5">
+  <div class="font-display text-base font-semibold">Historial</div>
+  <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ cerradas().length }}</span>
+</div>
+
+<div class="panel overflow-hidden">
+  <p-table [value]="cerradas()" styleClass="text-base">
+    <ng-template #header>
+      <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
+        <th>Abierta</th>
+        <th>Cerrada</th>
+        <th>Copiada de</th>
+        <th>Dirección</th>
+        <th>Moneda</th>
+        <th>Resultado</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-m>
+      <tr>
+        <td class="whitespace-nowrap text-fg-muted">{{ m.fechaApertura | date: 'd MMM, HH:mm' }}</td>
+        <td class="whitespace-nowrap text-fg-muted">{{ m.fechaCierre | date: 'd MMM, HH:mm' }}</td>
+        <td>{{ nombreDe(m.traderAddress) }}</td>
+        <td>
+          @if (m.lado) {
+            <span
+              class="rounded-pill px-2 py-0.5 text-[12px] font-semibold uppercase"
+              [class.bg-long-bg]="m.lado === 'Long'"
+              [class.text-long]="m.lado === 'Long'"
+              [class.bg-short-bg]="m.lado === 'Short'"
+              [class.text-short]="m.lado === 'Short'"
+            >
+              {{ m.lado }}
+            </span>
+          } @else {
+            Spot
+          }
+        </td>
+        <td class="font-semibold">{{ m.coin }}</td>
+        <td [class.text-long]="(m.pnl ?? 0) > 0" [class.text-short]="(m.pnl ?? 0) < 0" class="font-semibold">
+          {{ m.pnl != null ? (m.pnl > 0 ? '+' : '') + '$' + (m.pnl | number: '1.0-2') : '—' }}
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="6" class="py-6 text-center text-sm text-fg-muted">Todavía no has cerrado ninguna.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

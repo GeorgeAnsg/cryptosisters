@@ -59,14 +59,48 @@
     </div>
   </div>
 
-  <!-- Mis posiciones -- de momento siempre vacio: es el sistema de
-       copy-trading propio, todavia sin montar en este rebuild -->
+  <!-- Mis posiciones -- lo que tu mismo has abierto copiando a alguien que
+       sigues (boton "Abrir" en Traders > Posiciones); detalle completo,
+       con cerrar y resultado, en la pestaña Mis Posiciones -->
   <div class="panel flex flex-col p-panel lg:col-span-4">
-    <div class="mb-3.5 font-display text-base font-semibold">Mis posiciones</div>
-    <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
-      <i class="pi pi-wallet text-2xl text-fg-muted"></i>
-      <span class="text-sm text-fg-muted">No hay posiciones abiertas.</span>
+    <div class="mb-3.5 flex items-center justify-between gap-2">
+      <div class="font-display text-base font-semibold">Mis posiciones</div>
+      <a routerLink="/mis-posiciones" class="flex-none text-xs font-light text-fg-muted no-underline hover:text-fg">Ver todas →</a>
     </div>
+    @if (misPosicionesAbiertas().length) {
+      <div class="flex flex-col gap-1.5">
+        @for (m of misPosicionesAbiertas(); track m.clave) {
+          <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
+            <div class="flex min-w-0 items-center gap-2">
+              <span class="w-14 flex-none font-semibold">{{ m.coin }}</span>
+              @if (m.lado) {
+                <span
+                  class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+                  [class.bg-long-bg]="m.lado === 'Long'"
+                  [class.text-long]="m.lado === 'Long'"
+                  [class.bg-short-bg]="m.lado === 'Short'"
+                  [class.text-short]="m.lado === 'Short'"
+                >
+                  {{ m.lado }}
+                </span>
+              }
+              <span
+                class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
+                [style.background]="colorTrader(m.traderAddress)"
+              >
+                {{ inicial(nombreDe(m.traderAddress)) }}
+              </span>
+              <span class="truncate text-fg-muted">{{ nombreDe(m.traderAddress) }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="flex flex-1 flex-col items-center justify-center gap-2 py-6 text-center">
+        <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+        <span class="text-sm text-fg-muted">No hay posiciones abiertas.</span>
+      </div>
+    }
   </div>
 
   <!-- Trading resumido -- version corta de la tabla de Posiciones, con
