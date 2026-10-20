@@ -118,9 +118,18 @@ export class TradersComponent {
   protected readonly categoriaFiltro = signal<CategoriaMercado | null>(null);
   protected readonly campoOrden = signal<CampoOrden>('puntuacion');
   protected readonly ordenAsc = signal(false);
+  // muchos traders comparten nombre de planta (solo hay 40 nombres para
+  // 193+ candidatos, ver nombres.py) -- sin esto, encontrar a quien sigues
+  // entre varias tarjetas con el mismo nombre es casi imposible a simple
+  // vista, aunque el contador de arriba sea correcto
+  protected readonly soloSeguidos = signal(false);
 
   protected readonly tradersFiltrados = computed(() => {
     let lista = this.traders();
+
+    if (this.soloSeguidos()) {
+      lista = lista.filter((t) => t.siguiendo);
+    }
 
     const minimo = this.retornoMin();
     if (minimo != null) {
@@ -136,9 +145,11 @@ export class TradersComponent {
     const valorDe = (t: Trader) => (campo === 'retorno' ? t.retornoPct : campo === 'actividad' ? t.antiguedadDias : t.puntuacion);
     const dir = this.ordenAsc() ? 1 : -1;
     // especulativos siempre al final -- no tienen metrica de backtest con
-    // la que competir por orden contra el resto (igual que index.html:781)
+    // la que competir por orden contra el resto (igual que index.html:781);
+    // dentro de cada grupo, los que sigues primero (misma razon que arriba)
     return [...lista].sort((a, b) => {
       if (a.esEspeculativo !== b.esEspeculativo) return a.esEspeculativo ? 1 : -1;
+      if (a.siguiendo !== b.siguiendo) return a.siguiendo ? -1 : 1;
       return dir * ((valorDe(a) ?? -1) - (valorDe(b) ?? -1));
     });
   });

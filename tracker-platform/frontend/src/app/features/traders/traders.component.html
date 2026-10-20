@@ -15,6 +15,10 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <label class="flex items-center gap-1.5 text-xs font-semibold text-fg-muted">
+          <input type="checkbox" [ngModel]="soloSeguidos()" (ngModelChange)="soloSeguidos.set($event)" />
+          Solo los que sigo
+        </label>
         <p-inputnumber placeholder="Retorno mín. %" size="small" [inputStyle]="{ width: '130px' }" [ngModel]="retornoMin()" (ngModelChange)="retornoMin.set($event)" />
 
         <p-select
