@@ -21,8 +21,8 @@ export class SeguidosService {
     // cerrar sesion, que la vacia) -- asi un usuario nuevo nunca hereda lo
     // que veia el anterior
     effect(() => {
-      const usuario = this.auth.usuario();
-      if (usuario) {
+      const uid = this.auth.uid();
+      if (uid) {
         firstValueFrom(this.http.get<string[]>(`${environment.apiUrl}/usuarios/sigue`))
           .then((direcciones) => this.seguidos.set(new Set(direcciones)))
           .catch(() => this.seguidos.set(new Set()));

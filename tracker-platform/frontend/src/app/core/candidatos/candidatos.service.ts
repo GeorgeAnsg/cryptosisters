@@ -75,8 +75,8 @@ export class CandidatosService {
 
   constructor() {
     effect(() => {
-      const usuario = this.auth.usuario();
-      if (!usuario) {
+      const uid = this.auth.uid();
+      if (!uid) {
         this.lista.set([]);
         this.grupos.set([]);
         return;

@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import {
@@ -20,6 +20,14 @@ export class AuthService {
 
   // null = no logueado, undefined = todavia resolviendo el estado inicial
   readonly usuario = toSignal(authState(this.auth), { initialValue: undefined });
+
+  // Firebase emite un objeto User NUEVO en cada refresco de token (misma
+  // sesion, misma persona) -- un effect() que dependa de "usuario" entero
+  // se repite en cada refresco porque la comparacion es por referencia, lo
+  // que disparaba un refetch en cadena de /candidatos y /usuarios/sigue
+  // (a veces coincidiendo con que el token nuevo aun no estaba listo, 401).
+  // Los effects deben depender de esto, no de "usuario" directamente.
+  readonly uid = computed(() => this.usuario()?.uid ?? null);
 
   async login(email: string, password: string) {
     await signInWithEmailAndPassword(this.auth, email, password);
