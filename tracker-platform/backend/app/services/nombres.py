@@ -1,11 +1,14 @@
-"""Asigna el mismo nombre de planta que usa el frontend (static/index.html,
-PLANTAS/hashAddr/asignarPlantas) para que las alertas de Telegram usen el
-mismo nombre que se ve en la web, en vez de la dirección en crudo."""
+"""Asigna un nombre de planta + código corto a cada dirección -- único por
+construcción (el código sale de la propia dirección), así que a diferencia
+de la version anterior no hace falta conocer el resto de direcciones para
+evitar colisiones ni repartir nada."""
 
 PLANTAS = ['Roble', 'Sauce', 'Bambú', 'Olivo', 'Ciprés', 'Abedul', 'Acacia', 'Laurel', 'Jazmín', 'Lavanda',
            'Romero', 'Tomillo', 'Helecho', 'Magnolia', 'Cerezo', 'Pino', 'Cedro', 'Haya', 'Álamo', 'Arce',
            'Eucalipto', 'Hiedra', 'Loto', 'Girasol', 'Orquídea', 'Bonsái', 'Palmera', 'Secuoya', 'Baobab', 'Mimosa',
-           'Nogal', 'Fresno', 'Tilo', 'Azalea', 'Camelia', 'Begonia', 'Hortensia', 'Tulipán', 'Narciso', 'Peonía']
+           'Nogal', 'Fresno', 'Tilo', 'Azalea', 'Camelia', 'Begonia', 'Hortensia', 'Tulipán', 'Narciso', 'Peonía',
+           'Jacarandá', 'Glicina', 'Buganvilla', 'Madreselva', 'Clavel', 'Dalia', 'Petunia', 'Crisantemo', 'Amapola', 'Lirio',
+           'Jengibre', 'Salvia', 'Menta', 'Albahaca', 'Enebro', 'Avellano', 'Castaño', 'Manzano', 'Membrillo', 'Granado']
 
 
 def _hash_addr(addr):
@@ -17,18 +20,11 @@ def _hash_addr(addr):
     return abs(h)
 
 
-def nombre_de(addr, todas_direcciones):
-    """todas_direcciones: direcciones de TODOS los candidatos actuales (el
-    mismo conjunto que ve el frontend), para que el reparto evite las mismas
-    colisiones y de el mismo resultado."""
-    usadas = set()
-    asignado = {}
-    for a in sorted(set(todas_direcciones) | {addr}):
-        i = _hash_addr(a) % len(PLANTAS)
-        intentos = 0
-        while PLANTAS[i] in usadas and intentos < len(PLANTAS):
-            i = (i + 1) % len(PLANTAS)
-            intentos += 1
-        asignado[a] = PLANTAS[i]
-        usadas.add(PLANTAS[i])
-    return asignado.get(addr, addr[:6])
+def nombre_de(addr, todas_direcciones=None):
+    """todas_direcciones ya no hace falta (se mantiene el parametro por
+    compatibilidad con las llamadas existentes) -- la planta sale de un hash
+    de la direccion y el codigo de sus 2 ultimos caracteres, asi que el
+    resultado es unico por direccion sin tener que mirar las demas."""
+    planta = PLANTAS[_hash_addr(addr) % len(PLANTAS)]
+    codigo = addr[-2:].upper() if len(addr) >= 2 else '00'
+    return f"{planta}-{codigo}"
