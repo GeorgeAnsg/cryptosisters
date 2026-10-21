@@ -1,11 +1,22 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
+import { InputNumber } from 'primeng/inputnumber';
 import { colorTrader } from '../../../shared/utils/color-trader';
 import { MovimientoPosicion, PosicionSpot, PosicionTrading } from './posiciones.model';
 import { CandidatosService } from '../../../core/candidatos/candidatos.service';
 import { MisPosicionesService } from '../../../core/mis-posiciones/mis-posiciones.service';
+
+interface AberturaPendiente {
+  clave: string;
+  traderAddress: string;
+  tipo: 'trading' | 'spot';
+  coin: string;
+  lado: string | null;
+}
 
 // "Posiciones" -- lo que tienen abierto AHORA los traders que sigues, no la
 // rejilla de descubrimiento (eso es Trading/Spot). Misma idea que
@@ -16,7 +27,7 @@ import { MisPosicionesService } from '../../../core/mis-posiciones/mis-posicione
 @Component({
   selector: 'app-posiciones',
   standalone: true,
-  imports: [TableModule, ButtonModule, DecimalPipe, DatePipe],
+  imports: [TableModule, ButtonModule, Dialog, InputNumber, FormsModule, DecimalPipe, DatePipe],
   templateUrl: './posiciones.component.html',
 })
 export class PosicionesComponent {
@@ -56,31 +67,30 @@ export class PosicionesComponent {
     return this.misPosiciones.estaAbierta(clave);
   }
 
-  // pide cuanto quiere invertir antes de copiar la posicion -- null si
-  // cancela (no abre nada) o deja el campo vacio (abre sin monto, se puede
-  // fijar luego con Añadir en Mis Posiciones)
-  private pedirMonto(): number | null | undefined {
-    const texto = prompt('¿Cuántos $ quieres invertir copiando esta posición?');
-    if (texto === null) return undefined; // cancelado
-    if (texto.trim() === '') return null; // sin monto por ahora
-    const monto = parseFloat(texto.replace(',', '.'));
-    if (isNaN(monto) || monto < 0) {
-      alert('Eso no es un número.');
-      return undefined;
-    }
-    return monto;
-  }
+  // modal propio (PrimeNG Dialog) para preguntar cuanto invertir al copiar
+  // una posicion -- antes era un prompt() nativo del navegador
+  protected readonly montoDialogVisible = signal(false);
+  protected readonly montoValor = signal<number | null>(null);
+  private pendiente: AberturaPendiente | null = null;
 
   abrirTrading(p: PosicionTrading): void {
-    const monto = this.pedirMonto();
-    if (monto === undefined) return;
-    this.misPosiciones.abrir(this.claveTrading(p), p.traderAddress, 'trading', p.coin, p.lado, monto);
+    this.pendiente = { clave: this.claveTrading(p), traderAddress: p.traderAddress, tipo: 'trading', coin: p.coin, lado: p.lado };
+    this.montoValor.set(null);
+    this.montoDialogVisible.set(true);
   }
 
   abrirSpot(p: PosicionSpot): void {
-    const monto = this.pedirMonto();
-    if (monto === undefined) return;
-    this.misPosiciones.abrir(this.claveSpot(p), p.traderAddress, 'spot', p.coin, null, monto);
+    this.pendiente = { clave: this.claveSpot(p), traderAddress: p.traderAddress, tipo: 'spot', coin: p.coin, lado: null };
+    this.montoValor.set(null);
+    this.montoDialogVisible.set(true);
+  }
+
+  protected confirmarAbrir(): void {
+    if (!this.pendiente) return;
+    const { clave, traderAddress, tipo, coin, lado } = this.pendiente;
+    this.misPosiciones.abrir(clave, traderAddress, tipo, coin, lado, this.montoValor());
+    this.montoDialogVisible.set(false);
+    this.pendiente = null;
   }
 
   protected pctCartera(invertido: number, cuenta: number): string {

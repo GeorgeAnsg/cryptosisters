@@ -5,6 +5,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { Select } from 'primeng/select';
 import { InputNumber } from 'primeng/inputnumber';
+import { MultiSelect } from 'primeng/multiselect';
+import { Popover } from 'primeng/popover';
 import { TraderCardComponent } from '../../shared/components/trader-card/trader-card.component';
 import { IconButtonComponent } from '../../shared/components/icon-button/icon-button.component';
 import { TraderDetailModalComponent } from '../../shared/components/trader-detail-modal/trader-detail-modal.component';
@@ -48,6 +50,8 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
     FormsModule,
     Select,
     InputNumber,
+    MultiSelect,
+    Popover,
     PosicionesComponent,
     CribadoComponent,
   ],
@@ -116,6 +120,14 @@ export class TradersComponent {
   });
   protected readonly retornoMin = signal<number | null>(null);
   protected readonly categoriaFiltro = signal<CategoriaMercado | null>(null);
+  // filtro por moneda concreta -- vacio = sin restriccion. Pensado para
+  // poder excluir a traders que operan monedas raras/ilíquidas (ej. dejar
+  // marcado solo BTC/ETH/SOL/HYPE) sin tener que fiarse solo de la
+  // puntuacion, que no dice nada sobre si la moneda es facil de seguir
+  protected readonly monedasFiltro = signal<string[]>([]);
+  protected readonly opcionesMonedas = computed(() =>
+    [...new Set(this.traders().flatMap((t) => t.monedas.map((m) => m.nombre)))].sort().map((nombre) => ({ label: nombre, value: nombre })),
+  );
   protected readonly campoOrden = signal<CampoOrden>('puntuacion');
   protected readonly ordenAsc = signal(false);
   // muchos traders comparten nombre de planta (solo hay 40 nombres para
@@ -123,6 +135,13 @@ export class TradersComponent {
   // entre varias tarjetas con el mismo nombre es casi imposible a simple
   // vista, aunque el contador de arriba sea correcto
   protected readonly soloSeguidos = signal(false);
+
+  // cuantos filtros (del popover de Filtros) estan activos -- numerito del
+  // icono, para saber de un vistazo si hay algo filtrando sin tener que
+  // abrir el panel
+  protected readonly filtrosActivos = computed(
+    () => (this.retornoMin() != null ? 1 : 0) + (this.categoriaFiltro() != null ? 1 : 0) + (this.monedasFiltro().length ? 1 : 0),
+  );
 
   protected readonly tradersFiltrados = computed(() => {
     let lista = this.traders();
@@ -139,6 +158,11 @@ export class TradersComponent {
     const categoria = this.categoriaFiltro();
     if (categoria != null) {
       lista = lista.filter((t) => t.monedas.some((m) => m.categoria === categoria));
+    }
+
+    const monedas = this.monedasFiltro();
+    if (monedas.length) {
+      lista = lista.filter((t) => t.monedas.some((m) => monedas.includes(m.nombre)));
     }
 
     const campo = this.campoOrden();

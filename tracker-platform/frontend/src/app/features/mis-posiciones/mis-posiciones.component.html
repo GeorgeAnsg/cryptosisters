@@ -51,8 +51,8 @@
         </td>
         <td class="font-semibold">{{ m.coin }}</td>
         <td>{{ m.montoInvertido != null ? '$' + (m.montoInvertido | number: '1.0-0') : '—' }}</td>
-        <td>
-          <div class="flex gap-1.5">
+        <td class="text-right">
+          <div class="flex justify-end gap-1.5">
             <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" (onClick)="ajustar(m.clave, m.coin, 1)" />
             <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" (onClick)="ajustar(m.clave, m.coin, -1)" />
             <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" (onClick)="cerrar(m.clave, m.coin)" />

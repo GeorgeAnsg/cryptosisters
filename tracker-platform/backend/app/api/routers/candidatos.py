@@ -163,6 +163,21 @@ def consenso_actual(_uid: str = Depends(usuario_actual)):
     desde = int(time.time() * 1000) - VENTANA_MOVIMIENTOS_MS
     with db.conectar() as conn:
         todas = [r["address"] for r in conn.execute("SELECT address FROM candidatos")]
+        # posicion_actual por trader (cacheada cada 5 min) para calcular el %
+        # en vivo de los que siguen abiertos -- los que ya cerraron ("han
+        # cerrado") no tienen dato en vivo que mostrar, se dejan sin %
+        posicion_por_addr: dict[str, list[dict]] = {
+            r["address"]: json.loads(r["posicion_actual"] or "[]")
+            for r in conn.execute("SELECT address, posicion_actual FROM candidatos")
+        }
+
+        def pnl_pct_en_vivo(addr: str, coin: str, lado: str) -> float | None:
+            for p in posicion_por_addr.get(addr, []):
+                if p["coin"] == coin and p["lado"] == lado:
+                    coste = p["valorPosicion"] - p["pnlNoRealizado"]
+                    return round(p["pnlNoRealizado"] / coste * 100, 1) if coste else None
+            return None
+
         grupos: dict[tuple, dict[str, dict]] = {}
 
         def agrupar(sql, verbo):
@@ -196,7 +211,7 @@ def consenso_actual(_uid: str = Depends(usuario_actual)):
                         "fecha": _ms_a_iso(fila["detectado"]),
                         "invertidoUsd": (fila["tamaño"] or 0) * (fila["precio"] or 0),
                         "precio": fila["precio"],
-                        "pnlPct": None,
+                        "pnlPct": pnl_pct_en_vivo(addr, coin, lado) if verbo == "han entrado" else None,
                     }
                     for addr, fila in por_addr.items()
                 ],
