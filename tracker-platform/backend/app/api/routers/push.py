@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from app.api.deps import usuario_actual
 from app.db.database import conectar
+from app.services import push
 from app.services.push import VAPID_PUBLIC_KEY
 
 router = APIRouter(prefix="/push", tags=["push"])
@@ -37,4 +38,13 @@ def suscribirse(s: Suscripcion, uid: str = Depends(usuario_actual)):
 def desuscribirse(endpoint: str, uid: str = Depends(usuario_actual)):
     with conectar() as conn:
         conn.execute("DELETE FROM push_suscripciones WHERE endpoint=?", (endpoint,))
+    return {"ok": True}
+
+
+# boton "Enviar prueba" en Notificaciones -- para poder confirmar de punta
+# a punta (VAPID + suscripcion + que de verdad salta en el dispositivo) sin
+# tener que esperar a la proxima alerta real
+@router.post("/probar")
+def probar(uid: str = Depends(usuario_actual)):
+    push.enviar_a_todos("Corvus", "Esto es una notificación de prueba 🔔")
     return {"ok": True}

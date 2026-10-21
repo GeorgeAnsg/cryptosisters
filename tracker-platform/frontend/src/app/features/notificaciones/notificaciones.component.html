@@ -1,11 +1,14 @@
 <div class="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
   <div class="font-display text-lg font-semibold">Notificaciones</div>
   @if (push.disponible) {
-    @if (push.suscrito()) {
-      <p-button label="Avisos activados" icon="pi pi-bell" severity="secondary" [outlined]="true" (onClick)="push.desactivar()" />
-    } @else {
-      <p-button label="Activar avisos en este dispositivo" icon="pi pi-bell" severity="secondary" (onClick)="push.activar()" />
-    }
+    <div class="flex flex-wrap items-center gap-2">
+      @if (push.suscrito()) {
+        <p-button label="Avisos activados" icon="pi pi-bell" severity="secondary" [outlined]="true" (onClick)="push.desactivar()" />
+        <p-button label="Enviar prueba" icon="pi pi-send" severity="secondary" [text]="true" (onClick)="push.probar()" />
+      } @else {
+        <p-button label="Activar avisos en este dispositivo" icon="pi pi-bell" severity="secondary" (onClick)="push.activar()" />
+      }
+    </div>
   }
 </div>
 

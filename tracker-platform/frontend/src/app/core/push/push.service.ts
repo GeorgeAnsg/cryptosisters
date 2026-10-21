@@ -46,4 +46,8 @@ export class PushService {
     await firstValueFrom(this.http.delete(`${environment.apiUrl}/push/suscribirse`, { params: { endpoint } }));
     this.suscrito.set(false);
   }
+
+  async probar(): Promise<void> {
+    await firstValueFrom(this.http.post(`${environment.apiUrl}/push/probar`, {}));
+  }
 }
