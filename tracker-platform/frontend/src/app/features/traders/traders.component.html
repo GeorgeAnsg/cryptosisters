@@ -30,12 +30,12 @@
         <div class="grid grid-cols-3 gap-4">
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-semibold text-fg-muted">Retorno mín. %</label>
-            <p-inputnumber placeholder="Retorno mín. %" size="small" [ngModel]="retornoMin()" (ngModelChange)="retornoMin.set($event)" />
+            <p-inputnumber placeholder="Retorno mín. %" size="small" class="w-full" [ngModel]="retornoMin()" (ngModelChange)="retornoMin.set($event)" />
           </div>
 
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-semibold text-fg-muted">Categoría</label>
-            <p-select [options]="categorias" optionLabel="label" optionValue="value" size="small" [ngModel]="categoriaFiltro()" (ngModelChange)="categoriaFiltro.set($event)" />
+            <p-select [options]="categorias" optionLabel="label" optionValue="value" size="small" class="w-full" [ngModel]="categoriaFiltro()" (ngModelChange)="categoriaFiltro.set($event)" />
           </div>
 
           <div class="flex flex-col gap-1.5">
@@ -49,6 +49,7 @@
               placeholder="Todas"
               size="small"
               display="chip"
+              class="w-full"
               [ngModel]="monedasFiltro()"
               (ngModelChange)="monedasFiltro.set($event)"
             />
@@ -56,7 +57,7 @@
 
           <div class="flex flex-col gap-1.5">
             <label class="text-xs font-semibold text-fg-muted">Ordenar por</label>
-            <p-select [options]="camposOrden" optionLabel="label" optionValue="value" size="small" [ngModel]="campoOrden()" (ngModelChange)="campoOrden.set($event)" />
+            <p-select [options]="camposOrden" optionLabel="label" optionValue="value" size="small" class="w-full" [ngModel]="campoOrden()" (ngModelChange)="campoOrden.set($event)" />
           </div>
 
           <div class="flex flex-col gap-1.5">
@@ -66,6 +67,7 @@
               [icon]="ordenAsc() ? 'pi pi-sort-amount-up' : 'pi pi-sort-amount-down'"
               severity="secondary"
               size="small"
+              styleClass="w-full"
               (onClick)="ordenAsc.set(!ordenAsc())"
             />
           </div>

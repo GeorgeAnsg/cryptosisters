@@ -1,0 +1,75 @@
+<div class="mb-3.5 flex flex-wrap items-center justify-between gap-2.5">
+  <div class="font-display text-lg font-semibold">Notificaciones</div>
+  @if (push.disponible) {
+    @if (push.suscrito()) {
+      <p-button label="Avisos activados" icon="pi pi-bell" severity="secondary" [outlined]="true" (onClick)="push.desactivar()" />
+    } @else {
+      <p-button label="Activar avisos en este dispositivo" icon="pi pi-bell" severity="secondary" (onClick)="push.activar()" />
+    }
+  }
+</div>
+
+@if (servicio.items().length) {
+  <div class="flex flex-col gap-2.5">
+    @for (n of servicio.items(); track n.id) {
+      <div class="panel flex flex-wrap items-center justify-between gap-3 p-panel text-sm">
+        <div class="flex min-w-0 flex-wrap items-center gap-2.5">
+          @if (n.traderAddress) {
+            <span
+              class="flex h-7 w-7 flex-none items-center justify-center rounded-pill text-[11px] font-bold text-white"
+              [style.background]="colorTrader(n.traderAddress)"
+            >
+              {{ n.traderNombre!.charAt(0) }}
+            </span>
+          } @else {
+            <span class="flex h-7 w-7 flex-none items-center justify-center rounded-pill bg-border">
+              <i class="pi" [class]="n.icono"></i>
+            </span>
+          }
+
+          @switch (n.tipo) {
+            @case ('consenso') {
+              <span class="font-semibold">{{ n.nTraders }} traders {{ n.accion }} en {{ n.coin }}</span>
+              <span
+                class="rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase"
+                [class.bg-long-bg]="n.lado === 'Long'"
+                [class.text-long]="n.lado === 'Long'"
+                [class.bg-short-bg]="n.lado === 'Short'"
+                [class.text-short]="n.lado === 'Short'"
+              >
+                {{ n.lado }}
+              </span>
+            }
+            @case ('desestimado') {
+              <span class="font-semibold">{{ n.traderNombre }}</span>
+              <span class="text-fg-muted">{{ n.texto }}</span>
+            }
+            @default {
+              <span class="font-semibold">{{ n.traderNombre }}</span>
+              <span class="text-fg-muted">{{ n.accion }}</span>
+              @if (n.lado) {
+                <span
+                  class="rounded-pill px-2 py-0.5 text-[11px] font-semibold uppercase"
+                  [class.bg-long-bg]="n.lado === 'Long'"
+                  [class.text-long]="n.lado === 'Long'"
+                  [class.bg-short-bg]="n.lado === 'Short'"
+                  [class.text-short]="n.lado === 'Short'"
+                >
+                  {{ n.lado }}
+                </span>
+              }
+              <span class="font-semibold">{{ n.coin }}</span>
+              <span class="text-fg-muted">· ${{ n.montoUsd | number: '1.0-0' }} a ${{ n.precio | number: '1.0-0' }}</span>
+            }
+          }
+        </div>
+        <span class="flex-none text-xs text-fg-muted">{{ tiempoRelativo(n.fecha) }}</span>
+      </div>
+    }
+  </div>
+} @else {
+  <div class="panel flex flex-col items-center gap-2 p-panel py-16 text-center">
+    <i class="pi pi-bell text-2xl text-fg-muted"></i>
+    <div class="text-base text-fg-muted">No tienes notificaciones todavía.</div>
+  </div>
+}

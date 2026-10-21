@@ -33,6 +33,8 @@ export class DashboardComponent {
   protected readonly resumenTrading = computed(() => this.candidatos.posicionesTrading().slice(0, LIMITE_RESUMEN));
   protected readonly resumenSpot = computed(() => this.candidatos.posicionesSpot().slice(0, LIMITE_RESUMEN));
   protected readonly misPosicionesAbiertas = this.misPosiciones.abiertas;
+  protected readonly pctEnVivo = this.misPosiciones.pctEnVivo.bind(this.misPosiciones);
+  protected readonly usdEnVivo = this.misPosiciones.usdEnVivo.bind(this.misPosiciones);
 
   private readonly nombrePorDireccion = computed(() => {
     const mapa = new Map<string, string>();

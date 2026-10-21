@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../auth/auth.service';
+import { CandidatosService } from '../candidatos/candidatos.service';
 
 export interface MiPosicion {
   clave: string;
@@ -25,6 +26,7 @@ export interface MiPosicion {
 export class MisPosicionesService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
+  private readonly candidatos = inject(CandidatosService);
 
   private readonly lista = signal<readonly MiPosicion[]>([]);
 
@@ -46,6 +48,25 @@ export class MisPosicionesService {
 
   estaAbierta(clave: string): boolean {
     return this.abiertas().some((m) => m.clave === clave);
+  }
+
+  // % en vivo de una posicion ABIERTA -- el del trader copiado, aplicado a
+  // lo que tu invertiste (asume misma entrada que el; es una estimacion,
+  // no un seguimiento propio de precio). Null si el trader ya no tiene esa
+  // posicion o no sabemos cuanto invertiste. Usado tanto en el resumen del
+  // Dashboard como en la tabla completa de Mis Posiciones.
+  pctEnVivo(m: MiPosicion): number | null {
+    const p =
+      m.tipo === 'trading'
+        ? this.candidatos.posicionesTrading().find((x) => x.traderAddress === m.traderAddress && x.coin === m.coin && x.lado === m.lado)
+        : this.candidatos.posicionesSpot().find((x) => x.traderAddress === m.traderAddress && x.coin === m.coin);
+    if (!p || p.resultadoUsd == null || !p.invertidoUsd) return null;
+    return (p.resultadoUsd / p.invertidoUsd) * 100;
+  }
+
+  usdEnVivo(m: MiPosicion): number | null {
+    const pct = this.pctEnVivo(m);
+    return pct == null || m.montoInvertido == null ? null : (m.montoInvertido * pct) / 100;
   }
 
   async abrir(

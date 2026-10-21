@@ -218,8 +218,9 @@ def monedas_mas_usadas(operaciones_backtest, posicion_actual, holdings_spot, spo
     frecuencia: dict[str, int] = {}
     for o in operaciones_backtest:
         nombre = spot_nombres.get(o["coin"], o["coin"]) if o["lado"] == "Spot" else o["coin"]
+        nombre = etiqueta_moneda(nombre)
         frecuencia[nombre] = frecuencia.get(nombre, 0) + 1
-    abiertas = {p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot}
+    abiertas = {etiqueta_moneda(p["coin"]) for p in posicion_actual} | {etiqueta_moneda(h["coin"]) for h in holdings_spot}
     ordenadas = sorted(frecuencia, key=lambda m: (m not in abiertas, -frecuencia[m]))
     return ordenadas[:n]
 

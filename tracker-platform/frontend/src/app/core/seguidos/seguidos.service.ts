@@ -14,7 +14,10 @@ export class SeguidosService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
 
-  private readonly seguidos = signal<ReadonlySet<string>>(new Set());
+  // direccion -> fecha ISO desde la que la sigue (para filtrar, ver
+  // Notificaciones: no tiene sentido notificar de un movimiento de ANTES de
+  // empezar a seguir a ese trader)
+  private readonly seguidos = signal<ReadonlyMap<string, string>>(new Map());
 
   constructor() {
     // recarga la lista cada vez que cambia quien esta logueado (incluido al
@@ -23,11 +26,11 @@ export class SeguidosService {
     effect(() => {
       const uid = this.auth.uid();
       if (uid) {
-        firstValueFrom(this.http.get<string[]>(`${environment.apiUrl}/usuarios/sigue`))
-          .then((direcciones) => this.seguidos.set(new Set(direcciones)))
-          .catch(() => this.seguidos.set(new Set()));
+        firstValueFrom(this.http.get<{ address: string; desde: string }[]>(`${environment.apiUrl}/usuarios/sigue`))
+          .then((filas) => this.seguidos.set(new Map(filas.map((f) => [f.address, `${f.desde.replace(' ', 'T')}Z`]))))
+          .catch(() => this.seguidos.set(new Map()));
       } else {
-        this.seguidos.set(new Set());
+        this.seguidos.set(new Map());
       }
     });
   }
@@ -36,15 +39,19 @@ export class SeguidosService {
     return this.seguidos().has(traderAddress);
   }
 
+  desde(traderAddress: string): string | null {
+    return this.seguidos().get(traderAddress) ?? null;
+  }
+
   // computed, no metodo -- para usarlo directamente en una plantilla o un
   // computed() de otro componente sin volver a pedir la lista
-  readonly direcciones = computed(() => this.seguidos());
+  readonly direcciones = computed(() => new Set(this.seguidos().keys()));
 
   async establecer(traderAddress: string, siguiendo: boolean): Promise<void> {
     // optimista: refleja el cambio al instante, revierte si el backend falla
     const anterior = this.seguidos();
-    const siguiente = new Set(anterior);
-    siguiendo ? siguiente.add(traderAddress) : siguiente.delete(traderAddress);
+    const siguiente = new Map(anterior);
+    siguiendo ? siguiente.set(traderAddress, new Date().toISOString()) : siguiente.delete(traderAddress);
     this.seguidos.set(siguiente);
 
     try {

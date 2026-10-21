@@ -35,6 +35,9 @@ export class MisPosicionesComponent {
     return this.nombrePorDireccion().get(direccion) ?? `${direccion.slice(0, 8)}…`;
   }
 
+  protected readonly pctEnVivo = this.misPosiciones.pctEnVivo.bind(this.misPosiciones);
+  protected readonly usdEnVivo = this.misPosiciones.usdEnVivo.bind(this.misPosiciones);
+
   protected cerrar(clave: string, coin: string): void {
     const texto = prompt(`¿Cuánto has ganado o perdido cerrando ${coin}? (en $, negativo si has perdido)`);
     if (texto === null) return;

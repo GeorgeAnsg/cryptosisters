@@ -92,6 +92,14 @@
               </span>
               <span class="truncate text-fg-muted">{{ nombreDe(m.traderAddress) }}</span>
             </div>
+            <div [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0" class="flex-none font-semibold">
+              @if (usdEnVivo(m) != null) {
+                {{ usdEnVivo(m)! > 0 ? '+' : '' }}${{ usdEnVivo(m) | number: '1.0-0' }}
+                <span class="font-normal opacity-70">({{ pctEnVivo(m)! > 0 ? '+' : '' }}{{ pctEnVivo(m) | number: '1.0-1' }}%)</span>
+              } @else {
+                <span class="font-normal text-fg-muted">—</span>
+              }
+            </div>
           </div>
         }
       </div>

@@ -25,9 +25,9 @@ def abrir_sesion(uid: str = Depends(usuario_actual)):
 def listar_seguidos(uid: str = Depends(usuario_actual)):
     with conectar() as conn:
         filas = conn.execute(
-            "SELECT trader_address FROM usuario_sigue WHERE uid = ?", (uid,)
+            "SELECT trader_address, creado_en FROM usuario_sigue WHERE uid = ?", (uid,)
         ).fetchall()
-    return [f["trader_address"] for f in filas]
+    return [{"address": f["trader_address"], "desde": f["creado_en"]} for f in filas]
 
 
 @router.put("/sigue/{trader_address}")
