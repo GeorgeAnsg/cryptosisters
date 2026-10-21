@@ -7,6 +7,7 @@ import { Select } from 'primeng/select';
 import { InputNumber } from 'primeng/inputnumber';
 import { MultiSelect } from 'primeng/multiselect';
 import { Popover } from 'primeng/popover';
+import { Button } from 'primeng/button';
 import { TraderCardComponent } from '../../shared/components/trader-card/trader-card.component';
 import { IconButtonComponent } from '../../shared/components/icon-button/icon-button.component';
 import { TraderDetailModalComponent } from '../../shared/components/trader-detail-modal/trader-detail-modal.component';
@@ -52,6 +53,7 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
     InputNumber,
     MultiSelect,
     Popover,
+    Button,
     PosicionesComponent,
     CribadoComponent,
   ],
@@ -140,7 +142,11 @@ export class TradersComponent {
   // icono, para saber de un vistazo si hay algo filtrando sin tener que
   // abrir el panel
   protected readonly filtrosActivos = computed(
-    () => (this.retornoMin() != null ? 1 : 0) + (this.categoriaFiltro() != null ? 1 : 0) + (this.monedasFiltro().length ? 1 : 0),
+    () =>
+      (this.retornoMin() != null ? 1 : 0) +
+      (this.categoriaFiltro() != null ? 1 : 0) +
+      (this.monedasFiltro().length ? 1 : 0) +
+      (this.soloSeguidos() ? 1 : 0),
   );
 
   protected readonly tradersFiltrados = computed(() => {
