@@ -32,6 +32,14 @@ export class PushService {
         alert('Este navegador/dispositivo no soporta notificaciones push (o no estás en HTTPS).');
         return;
       }
+      // en iPhone/iPad, PushManager NO existe en una pestaña normal de
+      // Safari -- solo cuando la app esta instalada en pantalla de inicio
+      // Y abierta desde ahi. Sin este chequeo, el error que da iOS es un
+      // "undefined is not an object" ilegible en vez de esto
+      if (!('PushManager' in window)) {
+        alert('En iPhone/iPad, las notificaciones solo funcionan si añades la app a la pantalla de inicio (botón compartir → "Añadir a pantalla de inicio") y la abres desde ese icono, no desde Safari.');
+        return;
+      }
       const { clave } = await firstValueFrom(this.http.get<{ clave: string | null }>(`${environment.apiUrl}/push/clave-publica`));
       if (!clave) {
         alert('El backend no tiene configuradas las claves VAPID (VAPID_PUBLIC_KEY) -- revísalo en Coolify.');
