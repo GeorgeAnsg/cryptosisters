@@ -1,3 +1,5 @@
+from urllib.parse import urlparse
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -38,6 +40,26 @@ def suscribirse(s: Suscripcion, uid: str = Depends(usuario_actual)):
 def desuscribirse(endpoint: str, uid: str = Depends(usuario_actual)):
     with conectar() as conn:
         conn.execute("DELETE FROM push_suscripciones WHERE endpoint=?", (endpoint,))
+    return {"ok": True}
+
+
+# diagnostico -- para saber de verdad cuantas suscripciones hay guardadas y
+# de que proveedor es cada una (web.push.apple.com, fcm.googleapis.com...)
+# sin tener que adivinar por el numero de "enviados" del boton de prueba
+@router.get("/suscripciones")
+def listar_suscripciones(uid: str = Depends(usuario_actual)):
+    with conectar() as conn:
+        filas = conn.execute("SELECT endpoint, creado_en FROM push_suscripciones ORDER BY creado_en").fetchall()
+    return [{"proveedor": urlparse(f["endpoint"]).netloc, "desde": f["creado_en"]} for f in filas]
+
+
+# boton "Borrar todas" -- para empezar de cero cuando hay suscripciones
+# fantasma (de un dispositivo reinstalado, de un intento fallido...) que
+# inflan el numero de "enviados" sin que lleguen de verdad
+@router.delete("/suscripciones")
+def borrar_todas(uid: str = Depends(usuario_actual)):
+    with conectar() as conn:
+        conn.execute("DELETE FROM push_suscripciones")
     return {"ok": True}
 
 

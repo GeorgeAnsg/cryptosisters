@@ -94,4 +94,25 @@ export class PushService {
     if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
     return String(e);
   }
+
+  // diagnostico -- ver exactamente que hay guardado en el backend (de que
+  // proveedor es cada suscripcion) y poder vaciarlo si hay fantasmas de
+  // reinstalaciones/intentos anteriores inflando el numero de "enviados"
+  async verSuscripciones(): Promise<void> {
+    const lista = await firstValueFrom(
+      this.http.get<{ proveedor: string; desde: string }[]>(`${environment.apiUrl}/push/suscripciones`),
+    );
+    if (!lista.length) {
+      alert('No hay ninguna suscripción guardada.');
+      return;
+    }
+    alert(lista.map((s, i) => `${i + 1}. ${s.proveedor} (desde ${s.desde})`).join('\n'));
+  }
+
+  async borrarTodas(): Promise<void> {
+    if (!confirm('¿Borrar TODAS las suscripciones guardadas (de todos los dispositivos)? Tendrás que volver a activar los avisos en cada uno.')) return;
+    await firstValueFrom(this.http.delete(`${environment.apiUrl}/push/suscripciones`));
+    this.suscrito.set(false);
+    alert('Borradas. Vuelve a activar los avisos en cada dispositivo.');
+  }
 }
