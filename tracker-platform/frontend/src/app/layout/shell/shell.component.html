@@ -19,13 +19,13 @@
       <!-- colapsado: el logo ES el boton para volver a expandir (evita que
            el logo + la flechita compitan por los ~48px que quedan y la
            flechita termine recortada por el overflow-hidden del aside) -->
-      <div
-        class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white"
+      <img
+        src="/icons/icon-96x96.png"
+        alt="Corvus"
+        class="h-[34px] w-[34px] flex-none rounded-[10px]"
         [class.cursor-pointer]="sidebarColapsado()"
         (click)="sidebarColapsado() && sidebarColapsado.set(false)"
-      >
-        C
-      </div>
+      />
       @if (!sidebarColapsado()) {
         <span class="font-display text-lg font-extrabold">Corvus</span>
         <i class="pi pi-angle-left ml-auto cursor-pointer text-fg-muted transition-colors hover:text-fg" (click)="sidebarColapsado.set(true)"></i>
@@ -44,7 +44,7 @@
          vive en el menu, asi que aqui no queda nada que mostrar -->
     <header class="flex flex-none items-center gap-3 border-b border-border bg-panel px-4 py-3 sm:hidden">
       <div class="flex items-center gap-2.5">
-        <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white">C</div>
+        <img src="/icons/icon-96x96.png" alt="Corvus" class="h-[34px] w-[34px] flex-none rounded-[10px]" />
         <span class="font-display text-lg font-extrabold">Corvus</span>
       </div>
       <app-icon-button class="ml-auto" icon="pi pi-bars" tamano="lg" (clicked)="menuAbierto.set(true)" />
@@ -60,7 +60,7 @@
   <ng-template #headless>
     <div class="flex h-full flex-col bg-panel px-4 py-6">
       <div class="flex items-center gap-2.5 px-2">
-        <div class="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[10px] bg-panel-dark font-display text-lg font-extrabold text-white">C</div>
+        <img src="/icons/icon-96x96.png" alt="Corvus" class="h-[34px] w-[34px] flex-none rounded-[10px]" />
         <span class="font-display text-lg font-extrabold">Corvus</span>
       </div>
       <div class="mt-6 flex-1 overflow-y-auto">
