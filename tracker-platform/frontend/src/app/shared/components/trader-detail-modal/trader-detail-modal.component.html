@@ -29,7 +29,7 @@
             <tr class="[&>th]:text-[11px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
               <th>Dirección</th>
               <th>Moneda</th>
-              <th title="En la cabecera: lo invertido en dólares en esta posición entera. En cada movimiento: la cantidad de moneda operada esa vez (no dólares)">Tamaño</th>
+              <th title="Siempre en dólares: en la cabecera, lo invertido en esta posición entera; en cada movimiento, lo que movió esa operación">Tamaño</th>
               <th>Precio</th>
               <th title="Tamaño × precio: el valor en dólares que movió esa operación">Inversión</th>
               <th>Fecha</th>
@@ -111,7 +111,7 @@
                   <td class="font-semibold">{{ verboHijo(o) }}</td>
                   <td></td>
                   <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
-                    {{ o.accion === 'Abre' ? '+' : '-' }}{{ o.sz | number: '1.0-4' }}
+                    {{ o.accion === 'Abre' ? '+' : '-' }}${{ o.notional | number: '1.0-0' }}
                   </td>
                   <td>${{ o.px | number: '1.0-2' }}</td>
                   <td [class.text-long]="o.accion === 'Abre'" [class.text-short]="o.accion !== 'Abre'">
