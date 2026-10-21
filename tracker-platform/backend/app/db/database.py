@@ -114,6 +114,19 @@ def inicializar_tablas() -> None:
             )
             """
         )
+        # suscripciones push del navegador (Notification API + Push API) --
+        # igual que Telegram, es un broadcast global a todo el que active
+        # notificaciones en su dispositivo, no por usuario/trader
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS push_suscripciones (
+                endpoint TEXT PRIMARY KEY,
+                p256dh TEXT NOT NULL,
+                auth TEXT NOT NULL,
+                creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
 
 
 def meta_get(conn: sqlite3.Connection, clave: str) -> str | None:

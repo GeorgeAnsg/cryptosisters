@@ -8,14 +8,23 @@ compartido); lo que cambia con usuarios es solo que el refresco intensivo
 unico flag 'siguiendo'.
 """
 import json
+import re
 import threading
 import time
 import traceback
 
 from app.db import database as db
-from app.services import hyperliquid, nombres, telegram
+from app.services import hyperliquid, nombres, push, telegram
 
 INTERVALO_SEGUNDOS = 5 * 60
+
+
+def _texto_plano(texto_html):
+    """Los avisos se escriben para Telegram (parse_mode HTML, multilinea con
+    la cabecera del trader debajo) -- el push solo necesita la primera linea,
+    sin etiquetas."""
+    primera_linea = texto_html.split("\n", 1)[0]
+    return re.sub(r"<[^>]+>", "", primera_linea).strip()
 
 
 def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios):
@@ -229,6 +238,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
 
     for texto, boton_id in avisos:
         telegram.enviar(texto, boton_id)
+        push.enviar_a_todos("Corvus", _texto_plano(texto))
 
 
 VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
@@ -273,6 +283,7 @@ def detectar_consenso(conn):
         flecha = "↑" if lado == "Long" else "↓"
         texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha}"
         telegram.enviar(texto)
+        push.enviar_a_todos("Corvus", _texto_plano(texto))
     conn.commit()
 
 

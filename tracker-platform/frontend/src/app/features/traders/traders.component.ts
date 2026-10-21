@@ -9,7 +9,6 @@ import { MultiSelect } from 'primeng/multiselect';
 import { Popover } from 'primeng/popover';
 import { Button } from 'primeng/button';
 import { TraderCardComponent } from '../../shared/components/trader-card/trader-card.component';
-import { IconButtonComponent } from '../../shared/components/icon-button/icon-button.component';
 import { TraderDetailModalComponent } from '../../shared/components/trader-detail-modal/trader-detail-modal.component';
 import { PosicionesComponent } from './posiciones/posiciones.component';
 import { CribadoComponent } from './cribado/cribado.component';
@@ -46,7 +45,6 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
   standalone: true,
   imports: [
     TraderCardComponent,
-    IconButtonComponent,
     TraderDetailModalComponent,
     FormsModule,
     Select,
