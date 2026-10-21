@@ -12,12 +12,16 @@ VAPID_CLAIMS = {"sub": os.environ.get("VAPID_CONTACT_EMAIL", "mailto:admin@examp
 
 def enviar_a_todos(titulo, cuerpo):
     """Broadcast a toda suscripcion push guardada -- mismo patron que
-    telegram.enviar: silencioso si no esta configurado, nunca rompe el
-    ciclo de refresco por un fallo de notificacion."""
+    telegram.enviar: silencioso si no esta configurado (desde el ciclo de
+    refresco), nunca rompe nada por un fallo de notificacion. Devuelve un
+    resumen (en vez de None) para que /push/probar pueda decirle al usuario
+    POR QUE no le ha llegado nada, en vez de fallar en silencio."""
     if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
         print("Push no configurado, me salto el aviso:", titulo)
-        return
+        return {"configurado": False, "enviados": 0, "fallidos": 0, "suscripciones": 0}
     payload = {"notification": {"title": titulo, "body": cuerpo, "icon": "icons/icon-192x192.png"}}
+    enviados = 0
+    fallidos = 0
     with db.conectar() as conn:
         suscripciones = conn.execute("SELECT endpoint, p256dh, auth FROM push_suscripciones").fetchall()
         for s in suscripciones:
@@ -31,7 +35,9 @@ def enviar_a_todos(titulo, cuerpo):
                     vapid_private_key=VAPID_PRIVATE_KEY,
                     vapid_claims=dict(VAPID_CLAIMS),
                 )
+                enviados += 1
             except WebPushException as e:
+                fallidos += 1
                 # 404/410 = el navegador invalido la suscripcion (desinstalo
                 # la app, borro datos...) -- limpiarla para no reintentar
                 # para siempre contra un endpoint muerto
@@ -40,3 +46,4 @@ def enviar_a_todos(titulo, cuerpo):
                 else:
                     print("fallo enviando push:", e)
         conn.commit()
+    return {"configurado": True, "enviados": enviados, "fallidos": fallidos, "suscripciones": len(suscripciones)}

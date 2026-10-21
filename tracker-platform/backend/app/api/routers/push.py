@@ -46,5 +46,4 @@ def desuscribirse(endpoint: str, uid: str = Depends(usuario_actual)):
 # tener que esperar a la proxima alerta real
 @router.post("/probar")
 def probar(uid: str = Depends(usuario_actual)):
-    push.enviar_a_todos("Corvus", "Esto es una notificación de prueba 🔔")
-    return {"ok": True}
+    return push.enviar_a_todos("Corvus", "Esto es una notificación de prueba 🔔")
