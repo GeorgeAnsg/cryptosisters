@@ -92,6 +92,10 @@ def inicializar_tablas() -> None:
             conn.execute("ALTER TABLE mis_posiciones ADD COLUMN monto_invertido REAL")
         except sqlite3.OperationalError:
             pass
+        try:
+            conn.execute("ALTER TABLE mis_posiciones ADD COLUMN precio_entrada REAL")
+        except sqlite3.OperationalError:
+            pass
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS alertas (

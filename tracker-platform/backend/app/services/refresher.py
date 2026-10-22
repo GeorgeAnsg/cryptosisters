@@ -252,7 +252,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
 
     for texto, boton_id, coin_push in avisos:
         telegram.enviar(texto, boton_id)
-        push.enviar_a_todos(*_titulo_cuerpo_push(texto), coin=coin_push)
+        push.enviar_a_todos(*_titulo_cuerpo_push(texto), coin=coin_push, trader_address=addr)
 
 
 VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000

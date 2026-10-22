@@ -21,6 +21,10 @@ export interface PosicionTrading {
   invertidoUsd: number;
   cuentaTrader: number;
   entrada: number;
+  // precio actual real del activo (valorPosicion/tamaño) -- para calcular el
+  // % en vivo de lo que el USUARIO invirtio a SU propio precio de entrada,
+  // no al del trader (ver MisPosicionesService.pctEnVivo)
+  precioActual: number;
   takeProfit: number | null;
   stopLoss: number | null;
   traderAddress: string;
@@ -39,6 +43,8 @@ export interface PosicionSpot {
   traderAddress: string;
   traderNombre: string;
   valorActualUsd: number;
+  // precio actual real (valorActual/tamaño) -- ver PosicionTrading.precioActual
+  precioActual: number;
   resultadoUsd: number | null;
   movimientos?: MovimientoPosicion[];
 }

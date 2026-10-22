@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.api.deps import usuario_actual
 from app.db.database import conectar
+from app.services import hyperliquid
 
 router = APIRouter(prefix="/mis-posiciones", tags=["mis-posiciones"])
 
@@ -33,7 +34,7 @@ class AjustarBody(BaseModel):
 def listar(uid: str = Depends(usuario_actual)):
     with conectar() as conn:
         filas = conn.execute(
-            "SELECT clave, trader_address, tipo, coin, lado, estado, fecha_apertura, fecha_cierre, pnl, monto_invertido "
+            "SELECT clave, trader_address, tipo, coin, lado, estado, fecha_apertura, fecha_cierre, pnl, monto_invertido, precio_entrada "
             "FROM mis_posiciones WHERE uid=? ORDER BY fecha_apertura DESC",
             (uid,),
         ).fetchall()
@@ -42,7 +43,7 @@ def listar(uid: str = Depends(usuario_actual)):
             "clave": f["clave"], "traderAddress": f["trader_address"], "tipo": f["tipo"],
             "coin": f["coin"], "lado": f["lado"], "estado": f["estado"],
             "fechaApertura": f["fecha_apertura"], "fechaCierre": f["fecha_cierre"], "pnl": f["pnl"],
-            "montoInvertido": f["monto_invertido"],
+            "montoInvertido": f["monto_invertido"], "precioEntrada": f["precio_entrada"],
         }
         for f in filas
     ]
@@ -50,14 +51,21 @@ def listar(uid: str = Depends(usuario_actual)):
 
 @router.put("/{clave}")
 def abrir(clave: str, body: AbrirBody, uid: str = Depends(usuario_actual)):
+    # precio en el instante en que el USUARIO abre su copia -- no el entryPx
+    # del trader (que puede llevar dias/semanas abierto a otro precio); si
+    # Hyperliquid no responde se guarda None, mejor sin precio que uno falso
+    try:
+        precio_entrada = hyperliquid.precio_actual(body.coin, body.tipo)
+    except Exception:
+        precio_entrada = None
     with conectar() as conn:
         conn.execute(
             """INSERT OR IGNORE INTO mis_posiciones
-               (uid, clave, trader_address, tipo, coin, lado, estado, fecha_apertura, monto_invertido)
-               VALUES (?,?,?,?,?,?, 'abierta', ?, ?)""",
-            (uid, clave, body.traderAddress, body.tipo, body.coin, body.lado, int(time.time() * 1000), body.montoInvertido),
+               (uid, clave, trader_address, tipo, coin, lado, estado, fecha_apertura, monto_invertido, precio_entrada)
+               VALUES (?,?,?,?,?,?, 'abierta', ?, ?, ?)""",
+            (uid, clave, body.traderAddress, body.tipo, body.coin, body.lado, int(time.time() * 1000), body.montoInvertido, precio_entrada),
         )
-    return {"ok": True}
+    return {"ok": True, "precioEntrada": precio_entrada}
 
 
 @router.put("/{clave}/ajustar")

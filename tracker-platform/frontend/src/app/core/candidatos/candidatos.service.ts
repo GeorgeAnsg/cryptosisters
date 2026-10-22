@@ -192,6 +192,7 @@ export class CandidatosService {
         invertidoUsd: p.valorPosicion,
         cuentaTrader: c.cuenta ?? 0,
         entrada: p.entryPx,
+        precioActual: p.tamaño ? p.valorPosicion / p.tamaño : p.entryPx,
         takeProfit: p.takeProfit,
         stopLoss: p.stopLoss,
         traderAddress: c.address,
@@ -216,6 +217,7 @@ export class CandidatosService {
         traderAddress: c.address,
         traderNombre: c.nombre,
         valorActualUsd: h.valorActual ?? 0,
+        precioActual: h.valorActual != null && h.tamaño ? h.valorActual / h.tamaño : (h.costeBase ?? 0) / (h.tamaño || 1),
         resultadoUsd: h.pnlNoRealizado,
         movimientos: movimientos.length > 0 ? movimientos : undefined,
       };

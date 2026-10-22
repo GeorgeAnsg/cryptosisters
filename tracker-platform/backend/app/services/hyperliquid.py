@@ -98,10 +98,17 @@ def etiqueta_moneda(coin):
     return ALIAS_MONEDA.get(base, base)
 
 
+_ALIAS_INVERSO = {alias: crudo for crudo, alias in ALIAS_MONEDA.items()}
+
+
 def precio_actual(coin, tipo="trading"):
+    """coin puede venir ya aliasado (ej. 'BTC' en vez del token spot real
+    'UBTC', ver etiqueta_moneda) -- si el nombre directo no esta en el
+    universo spot, se prueba con el ticker crudo que el alias esconde."""
     precios = fetch_json({"type": "allMids"})
     if tipo == "spot":
-        idx = cargar_idx_por_nombre().get(coin)
+        idx_por_nombre = cargar_idx_por_nombre()
+        idx = idx_por_nombre.get(coin) or idx_por_nombre.get(_ALIAS_INVERSO.get(coin))
         clave = f"@{idx}" if idx is not None else None
     else:
         clave = coin

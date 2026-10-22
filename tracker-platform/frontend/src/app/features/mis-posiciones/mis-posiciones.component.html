@@ -172,7 +172,11 @@
           <div class="text-xs text-fg-muted">$ invertido</div>
           <div class="font-semibold">{{ m.montoInvertido != null ? '$' + (m.montoInvertido | number: '1.0-0') : '—' }}</div>
         </div>
-        <div class="rounded-lg bg-bg px-3 py-2" [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">Precio de entrada</div>
+          <div class="font-semibold">{{ m.precioEntrada != null ? '$' + (m.precioEntrada | number: '1.0-2') : '—' }}</div>
+        </div>
+        <div class="col-span-2 rounded-lg bg-bg px-3 py-2" [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0">
           <div class="text-xs text-fg-muted">Resultado</div>
           <div class="font-semibold">
             @if (usdEnVivo(m) != null) {

@@ -16,6 +16,10 @@ export interface MiPosicion {
   fechaCierre: number | null;
   pnl: number | null;
   montoInvertido: number | null;
+  // precio del activo en el instante en que el usuario abrio esta copia
+  // (capturado por el backend, no el entryPx del trader) -- null en
+  // posiciones abiertas antes de este campo, o si Hyperliquid no respondio
+  precioEntrada: number | null;
 }
 
 // posiciones que el usuario ha "abierto" el mismo copiando a un trader que
@@ -50,17 +54,23 @@ export class MisPosicionesService {
     return this.abiertas().some((m) => m.clave === clave);
   }
 
-  // % en vivo de una posicion ABIERTA -- el del trader copiado, aplicado a
-  // lo que tu invertiste (asume misma entrada que el; es una estimacion,
-  // no un seguimiento propio de precio). Null si el trader ya no tiene esa
-  // posicion o no sabemos cuanto invertiste. Usado tanto en el resumen del
-  // Dashboard como en la tabla completa de Mis Posiciones.
+  // % en vivo de una posicion ABIERTA, a TU propio precio de entrada
+  // (precioEntrada, capturado al abrir) comparado con el precio actual real
+  // del activo -- ya no se copia el % del trader asumiendo que entraste a
+  // su mismo precio. Si no hay precioEntrada (posiciones abiertas antes de
+  // este campo, o fallo al capturarlo), cae al viejo comportamiento
+  // aproximado para no dejarlas sin ningun dato.
   pctEnVivo(m: MiPosicion): number | null {
     const p =
       m.tipo === 'trading'
         ? this.candidatos.posicionesTrading().find((x) => x.traderAddress === m.traderAddress && x.coin === m.coin && x.lado === m.lado)
         : this.candidatos.posicionesSpot().find((x) => x.traderAddress === m.traderAddress && x.coin === m.coin);
-    if (!p || p.resultadoUsd == null || !p.invertidoUsd) return null;
+    if (!p) return null;
+    if (m.precioEntrada) {
+      const signo = m.tipo === 'trading' && m.lado === 'Short' ? -1 : 1;
+      return ((p.precioActual - m.precioEntrada) / m.precioEntrada) * 100 * signo;
+    }
+    if (p.resultadoUsd == null || !p.invertidoUsd) return null;
     return (p.resultadoUsd / p.invertidoUsd) * 100;
   }
 
@@ -90,12 +100,17 @@ export class MisPosicionesService {
     lado: string | null,
     montoInvertido: number | null,
   ): Promise<void> {
-    await firstValueFrom(this.http.put(`${environment.apiUrl}/mis-posiciones/${clave}`, { traderAddress, tipo, coin, lado, montoInvertido }));
+    const res = await firstValueFrom(
+      this.http.put<{ ok: boolean; precioEntrada: number | null }>(`${environment.apiUrl}/mis-posiciones/${clave}`, {
+        traderAddress, tipo, coin, lado, montoInvertido,
+      }),
+    );
     this.lista.update((actual) => [
       ...actual,
       {
         clave, traderAddress, tipo, coin, lado: lado as MiPosicion['lado'],
         estado: 'abierta', fechaApertura: Date.now(), fechaCierre: null, pnl: null, montoInvertido,
+        precioEntrada: res.precioEntrada,
       },
     ]);
   }

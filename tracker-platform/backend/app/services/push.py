@@ -11,7 +11,7 @@ VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_CLAIMS = {"sub": os.environ.get("VAPID_CONTACT_EMAIL", "mailto:admin@example.com")}
 
 
-def enviar_a_todos(titulo, cuerpo, coin=None):
+def enviar_a_todos(titulo, cuerpo, coin=None, trader_address=None):
     """Broadcast a toda suscripcion push guardada -- mismo patron que
     telegram.enviar: silencioso si no esta configurado (desde el ciclo de
     refresco), nunca rompe nada por un fallo de notificacion. Devuelve un
@@ -20,7 +20,13 @@ def enviar_a_todos(titulo, cuerpo, coin=None):
 
     coin=None (avisos sin moneda concreta, p.ej. la prueba manual) nunca se
     filtra; si se da, cada suscripcion se salta segun la whitelist de SU
-    uid en 'ajustes' (lista vacia = sin restriccion, igual que el frontend)."""
+    uid en 'ajustes' (lista vacia = sin restriccion, igual que el frontend).
+
+    trader_address=None (p.ej. prueba manual) tampoco filtra; si se da, solo
+    llega a quien sigue a ESE trader -- antes llegaba la notificacion de
+    cualquier trader a todo el mundo (solo se filtraba por moneda), aunque
+    Notificaciones/Posiciones en la app solo muestran traders seguidos, asi
+    que la notificacion push llegaba sin que hubiera nada que ver al abrirla."""
     if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
         print("Push no configurado, me salto el aviso:", titulo)
         return {"configurado": False, "enviados": 0, "fallidos": 0, "suscripciones": 0}
@@ -29,6 +35,13 @@ def enviar_a_todos(titulo, cuerpo, coin=None):
     fallidos = 0
     with db.conectar() as conn:
         suscripciones = conn.execute("SELECT endpoint, p256dh, auth, uid FROM push_suscripciones").fetchall()
+        if trader_address is not None:
+            seguidores = {
+                fila["uid"] for fila in conn.execute(
+                    "SELECT uid FROM usuario_sigue WHERE trader_address=?", (trader_address,)
+                )
+            }
+            suscripciones = [s for s in suscripciones if s["uid"] in seguidores]
         if coin is not None:
             etiqueta = etiqueta_moneda(coin)
             whitelists = {
