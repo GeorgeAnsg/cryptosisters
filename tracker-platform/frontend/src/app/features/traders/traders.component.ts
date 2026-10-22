@@ -173,11 +173,12 @@ export class TradersComponent {
     const valorDe = (t: Trader) => (campo === 'retorno' ? t.retornoPct : campo === 'actividad' ? t.antiguedadDias : t.puntuacion);
     const dir = this.ordenAsc() ? 1 : -1;
     // especulativos siempre al final -- no tienen metrica de backtest con
-    // la que competir por orden contra el resto (igual que index.html:781);
-    // dentro de cada grupo, los que sigues primero (misma razon que arriba)
+    // la que competir por orden contra el resto (igual que index.html:781).
+    // Los que sigues NO van primero (se probo y desorienta: al seguir o
+    // dejar de seguir a alguien, su tarjeta saltaba de sitio en medio del
+    // listado -- quien lo quiera ya tiene el filtro "solo seguidos")
     return [...lista].sort((a, b) => {
       if (a.esEspeculativo !== b.esEspeculativo) return a.esEspeculativo ? 1 : -1;
-      if (a.siguiendo !== b.siguiendo) return a.siguiendo ? -1 : 1;
       return dir * ((valorDe(a) ?? -1) - (valorDe(b) ?? -1));
     });
   });
