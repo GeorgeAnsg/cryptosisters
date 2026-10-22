@@ -90,6 +90,16 @@ const CorvusPreset = definePreset(Aura, {
         },
       },
     },
+    // el spinner de carga por defecto va ciclando 4 colores (rojo, azul,
+    // verde, amarillo) -- un solo color (negro, el mismo "primary" del
+    // resto de la app) en vez de un arcoiris
+    progressspinner: {
+      colorScheme: {
+        light: {
+          root: { colorOne: '#09090b', colorTwo: '#09090b', colorThree: '#09090b', colorFour: '#09090b' },
+        },
+      },
+    },
   },
 });
 

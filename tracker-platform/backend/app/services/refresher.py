@@ -132,6 +132,10 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
     usuario en el frontend)."""
     avisos = []
     ahora = int(time.time() * 1000)
+    # quien lo hizo, en el TITULO del push -- antes solo salia en la
+    # cabecera (segunda mitad del mensaje de Telegram), que el push nunca
+    # llega a mostrar (solo usa las 2 primeras lineas, ver _titulo_cuerpo_push)
+    nombre_trader = nombres.nombre_de(addr, [r[0] for r in conn.execute("SELECT address FROM candidatos").fetchall()])
 
     def precio_de(coin_crudo, tipo="spot"):
         if tipo == "trading":
@@ -154,7 +158,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 (id_, "trading", addr, p["coin"], p["lado"], p["tamaño"], p["entryPx"], "pendiente", ahora),
             )
             avisos.append((
-                f"🟢 <b>{p['lado']} en {coin} {flecha} (nueva posición)</b>\n"
+                f"🟢 <b>{nombre_trader}: abrió {p['lado']} en {coin} {flecha}</b>\n"
                 f"Precio de entrada: ${p['entryPx']}\n"
                 f"$ invertido: ${invertido:,.0f} · % de su cartera: {pct}\n\n"
                 f"{cabecera(conn, addr, candidato, 'trading')}",
@@ -166,8 +170,9 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             conn.execute("UPDATE alertas SET tamaño=?, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (p["tamaño"], antes, p["entryPx"], ahora, id_))
             delta = (p["tamaño"] - antes) * p["entryPx"]
             signo = "+" if delta >= 0 else "-"
+            verbo = "añadió a" if delta >= 0 else "redujo"
             avisos.append((
-                f"🔵 <b>{p['lado']} en {coin} {flecha} ({signo}${abs(delta):,.0f})</b>\n"
+                f"🔵 <b>{nombre_trader}: {verbo} {p['lado']} en {coin} {flecha} ({signo}${abs(delta):,.0f})</b>\n"
                 f"Precio de entrada: ${p['entryPx']}\n"
                 f"% de su cartera: {pct}\n\n"
                 f"{cabecera(conn, addr, candidato, 'trading')}",
@@ -186,7 +191,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
         invertido_cerrado = prev["tamaño"] * precio_cierre if precio_cierre is not None else None
         conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (prev["tamaño"], precio_cierre, ahora, prev["id"]))
         avisos.append((
-            f"⚪ <b>{prev['lado']} en {coin} {flecha} (cerrada)</b>\n"
+            f"⚪ <b>{nombre_trader}: cerró {prev['lado']} en {coin} {flecha}</b>\n"
             f"{f'$ cerrado: ${invertido_cerrado:,.0f}' if invertido_cerrado is not None else 'Sin dato de precio para calcular lo cerrado'}\n\n"
             f"{cabecera(conn, addr, candidato, 'trading')}",
             None,
@@ -207,7 +212,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 (id_, "spot", addr, h["coin"], h["tamaño"], precio, h.get("costeBase"), "pendiente", ahora),
             )
             avisos.append((
-                f"🟣 <b>Nuevo en spot: {coin} ({'+'+ahora_txt if ahora_dolares is not None else 'sin dato'})</b>\n"
+                f"🟣 <b>{nombre_trader}: compró {coin} en spot ({'+'+ahora_txt if ahora_dolares is not None else 'sin dato'})</b>\n"
                 f"Precio (en ese momento): {precio_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
                 id_,
@@ -221,9 +226,9 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             aumenta = h["tamaño"] > antes
             delta_dolares = (ahora_dolares - antes_dolares) if (ahora_dolares is not None and antes_dolares is not None) else None
             delta_txt = f"{'+' if aumenta else '-'}${abs(delta_dolares):,.0f}" if delta_dolares is not None else "sin dato"
-            titulo = "Añadido en spot" if aumenta else "Reducido en spot"
+            verbo = "compró más" if aumenta else "vendió"
             avisos.append((
-                f"🟣 <b>{titulo}: {coin} ({delta_txt})</b>\n"
+                f"🟣 <b>{nombre_trader}: {verbo} {coin} en spot ({delta_txt})</b>\n"
                 f"Precio (en ese momento): {precio_txt}\n"
                 f"Antes: {antes_txt} · Ahora: {ahora_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
@@ -243,7 +248,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
         antes_txt = f"${antes_dolares:,.0f}" if antes_dolares is not None else "sin dato"
         conn.execute("UPDATE alertas SET tamaño=0, tamaño_antes=?, precio=?, detectado=? WHERE id=?", (prev["tamaño"], precio, ahora, prev["id"]))
         avisos.append((
-            f"🟣 <b>Eliminado de spot: {coin} ({f'-{antes_txt}' if antes_dolares is not None else 'sin dato'})</b>\n"
+            f"🟣 <b>{nombre_trader}: vendió todo su {coin} en spot ({f'-{antes_txt}' if antes_dolares is not None else 'sin dato'})</b>\n"
             f"Precio (en ese momento): {precio_txt}\n\n"
             f"{cabecera(conn, addr, candidato, 'spot')}",
             None,
