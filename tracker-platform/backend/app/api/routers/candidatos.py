@@ -89,7 +89,7 @@ def _movimientos_de(conn, addr: str, tipo: str) -> list[dict]:
         else:
             verbo = "Reduce" if tipo == "trading" else "Vende"
         movimientos.append({
-            "coin": f["coin"],
+            "coin": hyperliquid.etiqueta_moneda(f["coin"]),
             "lado": f["lado"],
             "fecha": _ms_a_iso(f["detectado"]),
             "verbo": verbo,
