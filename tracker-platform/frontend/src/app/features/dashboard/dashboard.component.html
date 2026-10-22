@@ -30,9 +30,9 @@
             </div>
             <span class="rounded-pill bg-white/10 px-2.5 py-0.5 text-[10px] opacity-60">{{ tiempoRelativo(fechaGrupo(g.traders)) }}</span>
           </div>
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             @for (t of g.traders; track t.address) {
-              <div class="flex flex-1 basis-[32%] items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs">
+              <div class="flex items-center gap-1.5 rounded-lg bg-white/5 px-2.5 py-1.5 text-xs sm:flex-1 sm:basis-[32%]">
                 <span
                   class="flex h-4 w-4 flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
                   [style.background]="colorTrader(t.address)"
