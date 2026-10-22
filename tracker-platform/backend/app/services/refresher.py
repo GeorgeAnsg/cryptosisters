@@ -203,8 +203,8 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
         ahora_txt = f"${ahora_dolares:,.0f}" if ahora_dolares is not None else "sin dato"
         if fila is None:
             conn.execute(
-                "INSERT INTO alertas (id, tipo, addr, coin, tamaño, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?)",
-                (id_, "spot", addr, h["coin"], h["tamaño"], h.get("costeBase"), "pendiente", ahora),
+                "INSERT INTO alertas (id, tipo, addr, coin, tamaño, precio, coste, estado, detectado) VALUES (?,?,?,?,?,?,?,?,?)",
+                (id_, "spot", addr, h["coin"], h["tamaño"], precio, h.get("costeBase"), "pendiente", ahora),
             )
             avisos.append((
                 f"🟣 <b>Nuevo en spot: {coin} ({'+'+ahora_txt if ahora_dolares is not None else 'sin dato'})</b>\n"
