@@ -1,0 +1,61 @@
+<!-- detalle completo de una posicion abierta, al tocar su tarjeta en movil -->
+<p-dialog
+  [visible]="detalle() !== null"
+  (visibleChange)="!$event && detalle.set(null)"
+  [modal]="true"
+  [header]="detalle() ? detalle()!.coin + (detalle()!.lado ? ' ' + detalle()!.lado : ' Spot') : ''"
+  [style]="{ width: '92vw', maxWidth: '420px' }"
+>
+  @if (detalle()) {
+    @let m = detalle()!;
+    <div class="flex flex-col gap-3 text-sm">
+      @if (traderCerro(m)) {
+        <div class="flex items-center gap-1.5 rounded-lg bg-bad-bg px-3 py-2 text-xs font-semibold text-bad">
+          <i class="pi pi-exclamation-circle"></i>
+          El trader ya ha cerrado esta posición -- cierra la tuya para que el resultado quede bien registrado.
+        </div>
+      }
+      <div class="flex items-center gap-2">
+        <span
+          class="flex h-6 w-6 flex-none items-center justify-center rounded-pill text-[11px] font-bold text-white"
+          [style.background]="colorTrader(m.traderAddress)"
+        >
+          {{ nombreDe(m.traderAddress).charAt(0) }}
+        </span>
+        <span class="font-semibold">{{ nombreDe(m.traderAddress) }}</span>
+        <span class="ml-auto text-xs text-fg-muted">{{ m.fechaApertura | date: 'd MMM, HH:mm' }}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">$ invertido</div>
+          <div class="font-semibold">{{ m.montoInvertido != null ? '$' + (m.montoInvertido | number: '1.0-0') : '—' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">Precio de entrada</div>
+          <div class="font-semibold">{{ m.precioEntrada != null ? '$' + (m.precioEntrada | number: '1.0-2') : '—' }}</div>
+        </div>
+        <div class="col-span-2 rounded-lg bg-bg px-3 py-2" [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0">
+          <div class="text-xs text-fg-muted">Resultado</div>
+          <div class="font-semibold">
+            @if (usdEnVivo(m) != null) {
+              {{ usdEnVivo(m)! > 0 ? '+' : '' }}${{ usdEnVivo(m) | number: '1.0-0' }} ({{ pctEnVivo(m)! > 0 ? '+' : '' }}{{ pctEnVivo(m) | number: '1.0-1' }}%)
+            } @else {
+              —
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (m.estado === 'abierta') {
+        <div class="flex flex-col gap-1.5">
+          <div class="flex gap-1.5">
+            <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, 1)" />
+            <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, -1)" />
+          </div>
+          <p-button label="Cerrar" size="small" styleClass="w-full" (onClick)="cerrar(m.clave, m.coin); detalle.set(null)" />
+        </div>
+      }
+    </div>
+  }
+</p-dialog>

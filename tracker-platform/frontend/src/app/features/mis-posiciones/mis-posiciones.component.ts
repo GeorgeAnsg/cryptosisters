@@ -1,21 +1,22 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
-import { Dialog } from 'primeng/dialog';
 import { colorTrader } from '../../shared/utils/color-trader';
+import { DetalleMiPosicionModalComponent } from '../../shared/components/detalle-mi-posicion-modal/detalle-mi-posicion-modal.component';
 import { CandidatosService } from '../../core/candidatos/candidatos.service';
-import { MiPosicion, MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
+import { MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
 
 // equivalente a renderPaginaMias() en backend/static/seguimiento.html --
 // lo que el usuario mismo ha abierto copiando a alguien que sigue (boton
 // Abrir en Posiciones), con detalle de fecha de apertura/cierre y tu
 // propio resultado -- distinto del resumen "Mis posiciones" del Dashboard,
-// que solo cuenta las abiertas.
+// que solo cuenta las abiertas. El modal de detalle (Añadir/Reducir/
+// Cerrar) vive en DetalleMiPosicionModalComponent (compartido con Dashboard).
 @Component({
   selector: 'app-mis-posiciones',
   standalone: true,
-  imports: [TableModule, ButtonModule, Dialog, DecimalPipe, DatePipe],
+  imports: [TableModule, ButtonModule, DecimalPipe, DatePipe, DetalleMiPosicionModalComponent],
   templateUrl: './mis-posiciones.component.html',
 })
 export class MisPosicionesComponent {
@@ -44,37 +45,4 @@ export class MisPosicionesComponent {
   protected readonly pctEnVivo = this.misPosiciones.pctEnVivo.bind(this.misPosiciones);
   protected readonly usdEnVivo = this.misPosiciones.usdEnVivo.bind(this.misPosiciones);
   protected readonly traderCerro = this.misPosiciones.traderCerro.bind(this.misPosiciones);
-
-  // detalle en grande al tocar una tarjeta en movil -- mismos botones que
-  // la fila de la tabla de escritorio
-  protected readonly detalle = signal<MiPosicion | null>(null);
-
-  protected abrirDetalle(m: MiPosicion): void {
-    this.detalle.set(m);
-  }
-
-  protected cerrar(clave: string, coin: string): void {
-    const texto = prompt(`¿Cuánto has ganado o perdido cerrando ${coin}? (en $, negativo si has perdido)`);
-    if (texto === null) return;
-    const pnl = parseFloat(texto.replace(',', '.'));
-    if (isNaN(pnl)) {
-      alert('Eso no es un número.');
-      return;
-    }
-    this.misPosiciones.cerrar(clave, pnl);
-  }
-
-  // Añadir/Reducir -- mismo patron que Cerrar (prompt con el monto a mano,
-  // el usuario copia lo que ve que hace el trader, no se infiere solo)
-  protected ajustar(clave: string, coin: string, signo: 1 | -1): void {
-    const verbo = signo > 0 ? 'añadir' : 'reducir';
-    const texto = prompt(`¿Cuántos $ quieres ${verbo} en ${coin}?`);
-    if (texto === null) return;
-    const monto = parseFloat(texto.replace(',', '.'));
-    if (isNaN(monto) || monto < 0) {
-      alert('Eso no es un número.');
-      return;
-    }
-    this.misPosiciones.ajustar(clave, signo * monto);
-  }
 }

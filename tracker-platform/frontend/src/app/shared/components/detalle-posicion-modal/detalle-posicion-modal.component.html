@@ -1,0 +1,102 @@
+<!-- detalle completo de una posicion, abierto al tocar su tarjeta en movil -->
+<p-dialog
+  [visible]="detalle() !== null"
+  (visibleChange)="!$event && detalle.set(null)"
+  [modal]="true"
+  [header]="detalle() ? tituloDetalle(detalle()!) : ''"
+  [style]="{ width: '92vw', maxWidth: '420px' }"
+>
+  @if (detalle()) {
+    @let d = detalle()!;
+    <div class="flex flex-col gap-3 text-sm">
+      <div class="flex items-center gap-2">
+        <span
+          class="flex h-6 w-6 flex-none items-center justify-center rounded-pill text-[11px] font-bold text-white"
+          [style.background]="colorTrader(d.p.traderAddress)"
+        >
+          {{ inicial(d.p.traderNombre) }}
+        </span>
+        <span class="font-semibold">{{ d.p.traderNombre }}</span>
+        <span class="ml-auto text-xs text-fg-muted">{{ d.p.fecha | date: 'd MMM, HH:mm' }}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">$ invertido</div>
+          <div class="font-semibold">${{ d.p.invertidoUsd | number: '1.0-0' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">% de su cartera</div>
+          <div class="font-semibold">{{ pctCartera(d.p.invertidoUsd, d.p.cuentaTrader) }}</div>
+        </div>
+        @if (esTrading(d.p)) {
+          <div class="rounded-lg bg-bg px-3 py-2">
+            <div class="text-xs text-fg-muted">Entrada</div>
+            <div class="font-semibold">${{ d.p.entrada | number: '1.0-2' }}</div>
+          </div>
+          @if (d.p.takeProfit != null || d.p.stopLoss != null) {
+            <div class="rounded-lg bg-bg px-3 py-2">
+              <div class="text-xs text-fg-muted">TP / SL</div>
+              <div class="font-semibold">
+                {{ d.p.takeProfit != null ? '$' + (d.p.takeProfit | number: '1.0-2') : '—' }} /
+                {{ d.p.stopLoss != null ? '$' + (d.p.stopLoss | number: '1.0-2') : '—' }}
+              </div>
+            </div>
+          }
+        } @else {
+          <div class="rounded-lg bg-bg px-3 py-2">
+            <div class="text-xs text-fg-muted">Valor actual</div>
+            <div class="font-semibold">${{ d.p.valorActualUsd | number: '1.0-0' }}</div>
+          </div>
+        }
+        <div class="rounded-lg bg-bg px-3 py-2" [class.text-long]="(d.p.resultadoUsd ?? 0) > 0" [class.text-short]="(d.p.resultadoUsd ?? 0) < 0">
+          <div class="text-xs text-fg-muted">Resultado</div>
+          <div class="font-semibold">
+            @if (d.p.resultadoUsd != null) {
+              {{ d.p.resultadoUsd > 0 ? '+' : '' }}${{ d.p.resultadoUsd | number: '1.0-0' }}
+              @if (d.p.invertidoUsd) {
+                ({{ d.p.resultadoUsd > 0 ? '+' : '' }}{{ (d.p.resultadoUsd / d.p.invertidoUsd) * 100 | number: '1.0-1' }}%)
+              }
+            } @else {
+              sin dato
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (d.p.movimientos?.length) {
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-semibold uppercase text-fg-muted">Historial</div>
+          @for (m of movimientosOrdenados(d.p.movimientos!); track m.fecha) {
+            <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-xs">
+              <span class="font-semibold">{{ m.verbo }}</span>
+              <span class="text-fg-muted">{{ m.fecha | date: 'd MMM, HH:mm' }}</span>
+              <span>${{ m.notionalUsd | number: '1.0-0' }}</span>
+              <span [class.text-long]="(m.pnlUsd ?? 0) > 0" [class.text-short]="(m.pnlUsd ?? 0) < 0" class="font-semibold">
+                {{ m.pnlUsd != null ? (m.pnlUsd > 0 ? '+' : '') + '$' + (m.pnlUsd | number: '1.0-2') : '—' }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+
+      <p-button
+        [label]="estaCopiada(claveDetalle(d)) ? 'Abierta' : 'Abrir'"
+        [disabled]="estaCopiada(claveDetalle(d))"
+        (onClick)="abrirDesdeDetalle(d)"
+        styleClass="w-full"
+      />
+    </div>
+  }
+</p-dialog>
+
+<p-dialog [(visible)]="montoDialogVisible" [modal]="true" header="¿Cuánto quieres invertir?" [style]="{ width: '360px' }">
+  <div class="flex flex-col gap-2">
+    <label class="text-sm text-fg-muted">$ a invertir copiando esta posición (déjalo vacío si no lo sabes todavía)</label>
+    <p-inputnumber [ngModel]="montoValor()" (ngModelChange)="montoValor.set($event)" mode="currency" currency="USD" locale="en-US" [min]="0" />
+  </div>
+  <div class="mt-4 flex justify-end gap-2">
+    <p-button label="Cancelar" severity="secondary" [outlined]="true" (onClick)="montoDialogVisible.set(false)" />
+    <p-button label="Abrir" (onClick)="confirmarAbrir()" />
+  </div>
+</p-dialog>
