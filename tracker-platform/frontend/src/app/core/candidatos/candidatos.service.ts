@@ -197,7 +197,10 @@ export class CandidatosService {
         traderAddress: c.address,
         traderNombre: c.nombre,
         resultadoUsd: p.pnlNoRealizado,
-        movimientos: movimientos.length > 1 ? movimientos : undefined,
+        // >0, no >1: una posicion recien abierta tiene exactamente 1
+        // movimiento (el de apertura) y Notificaciones necesita verlo --
+        // antes se perdia la notificacion de "abrió" de toda posicion nueva
+        movimientos: movimientos.length > 0 ? movimientos : undefined,
       };
     });
   }
@@ -214,7 +217,7 @@ export class CandidatosService {
         traderNombre: c.nombre,
         valorActualUsd: h.valorActual ?? 0,
         resultadoUsd: h.pnlNoRealizado,
-        movimientos: movimientos.length > 1 ? movimientos : undefined,
+        movimientos: movimientos.length > 0 ? movimientos : undefined,
       };
     });
   }
