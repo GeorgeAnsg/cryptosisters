@@ -69,6 +69,19 @@ export class MisPosicionesService {
     return pct == null || m.montoInvertido == null ? null : (m.montoInvertido * pct) / 100;
   }
 
+  // true si el trader copiado ya no tiene esta posicion abierta -- avisa
+  // para que el usuario cierre tambien la suya. Antes de que lleguen datos
+  // de candidatos (candidatos().length === 0) no se puede distinguir "la
+  // cerro" de "aun no hemos cargado nada", así que no se avisa en falso.
+  traderCerro(m: MiPosicion): boolean {
+    if (m.estado !== 'abierta' || !this.candidatos.candidatos().length) return false;
+    const sigueAbierta =
+      m.tipo === 'trading'
+        ? this.candidatos.posicionesTrading().some((x) => x.traderAddress === m.traderAddress && x.coin === m.coin && x.lado === m.lado)
+        : this.candidatos.posicionesSpot().some((x) => x.traderAddress === m.traderAddress && x.coin === m.coin);
+    return !sigueAbierta;
+  }
+
   async abrir(
     clave: string,
     traderAddress: string,

@@ -38,6 +38,7 @@ export class MisPosicionesComponent {
 
   protected readonly pctEnVivo = this.misPosiciones.pctEnVivo.bind(this.misPosiciones);
   protected readonly usdEnVivo = this.misPosiciones.usdEnVivo.bind(this.misPosiciones);
+  protected readonly traderCerro = this.misPosiciones.traderCerro.bind(this.misPosiciones);
 
   // detalle en grande al tocar una tarjeta en movil -- mismos botones que
   // la fila de la tabla de escritorio
