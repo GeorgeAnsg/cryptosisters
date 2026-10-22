@@ -1,14 +1,55 @@
-<div class="mb-3.5 font-display text-lg font-semibold">Mis Posiciones</div>
-<div class="mb-6 text-sm text-fg-muted">
-  Lo que tú mismo has abierto copiando a alguien que sigues (botón "Abrir" en Traders &gt; Posiciones). Cuando la cierres, el resultado que indiques alimenta Estadísticas.
-</div>
+<div class="mb-6 font-display text-lg font-semibold">Mis Posiciones</div>
 
 <div class="mb-3.5 flex items-center gap-1.5">
   <div class="font-display text-base font-semibold">Abiertas</div>
   <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ abiertas().length }}</span>
 </div>
 
-<div class="panel mb-10 overflow-hidden">
+<!-- movil: tarjeta compacta -- toca para ver el detalle completo en el modal -->
+<div class="mb-10 flex flex-col gap-1.5 sm:hidden">
+  @for (m of abiertas(); track m.clave) {
+    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-panel px-3 py-2.5 text-sm shadow-sm" (click)="abrirDetalle(m)">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="w-12 flex-none font-semibold">{{ m.coin }}</span>
+        @if (m.lado) {
+          <span
+            class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+            [class.bg-long-bg]="m.lado === 'Long'"
+            [class.text-long]="m.lado === 'Long'"
+            [class.bg-short-bg]="m.lado === 'Short'"
+            [class.text-short]="m.lado === 'Short'"
+          >
+            {{ m.lado }}
+          </span>
+        } @else {
+          <span class="w-14 flex-none rounded-pill bg-border px-2 py-0.5 text-center text-[11px] font-semibold uppercase text-fg-muted">Spot</span>
+        }
+        <span
+          class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+          [style.background]="colorTrader(m.traderAddress)"
+        >
+          {{ nombreDe(m.traderAddress).charAt(0) }}
+        </span>
+        <span class="truncate text-fg-muted">{{ nombreDe(m.traderAddress) }}</span>
+      </div>
+      <div [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0" class="flex-none font-semibold">
+        @if (usdEnVivo(m) != null) {
+          {{ usdEnVivo(m)! > 0 ? '+' : '' }}${{ usdEnVivo(m) | number: '1.0-0' }}
+          <span class="font-normal opacity-70">({{ pctEnVivo(m)! > 0 ? '+' : '' }}{{ pctEnVivo(m) | number: '1.0-1' }}%)</span>
+        } @else {
+          <span class="font-normal text-fg-muted">—</span>
+        }
+      </div>
+    </div>
+  } @empty {
+    <div class="flex flex-col items-center gap-2 py-6 text-center">
+      <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+      <span class="text-sm text-fg-muted">Todavía no has abierto ninguna. Ve a Traders &gt; Posiciones y pulsa "Abrir".</span>
+    </div>
+  }
+</div>
+
+<div class="panel mb-10 hidden overflow-hidden sm:block">
   <p-table [value]="abiertas()" styleClass="text-base">
     <ng-template #header>
       <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
@@ -82,12 +123,93 @@
   </p-table>
 </div>
 
+<!-- detalle completo de una posicion abierta, al tocar su tarjeta en movil -->
+<p-dialog
+  [visible]="detalle() !== null"
+  (visibleChange)="!$event && detalle.set(null)"
+  [modal]="true"
+  [header]="detalle() ? detalle()!.coin + (detalle()!.lado ? ' ' + detalle()!.lado : ' Spot') : ''"
+  [style]="{ width: '92vw', maxWidth: '420px' }"
+>
+  @if (detalle()) {
+    @let m = detalle()!;
+    <div class="flex flex-col gap-3 text-sm">
+      <div class="flex items-center gap-2">
+        <span
+          class="flex h-6 w-6 flex-none items-center justify-center rounded-pill text-[11px] font-bold text-white"
+          [style.background]="colorTrader(m.traderAddress)"
+        >
+          {{ nombreDe(m.traderAddress).charAt(0) }}
+        </span>
+        <span class="font-semibold">{{ nombreDe(m.traderAddress) }}</span>
+        <span class="ml-auto text-xs text-fg-muted">{{ m.fechaApertura | date: 'd MMM, HH:mm' }}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">$ invertido</div>
+          <div class="font-semibold">{{ m.montoInvertido != null ? '$' + (m.montoInvertido | number: '1.0-0') : '—' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2" [class.text-long]="(usdEnVivo(m) ?? 0) > 0" [class.text-short]="(usdEnVivo(m) ?? 0) < 0">
+          <div class="text-xs text-fg-muted">Resultado</div>
+          <div class="font-semibold">
+            @if (usdEnVivo(m) != null) {
+              {{ usdEnVivo(m)! > 0 ? '+' : '' }}${{ usdEnVivo(m) | number: '1.0-0' }} ({{ pctEnVivo(m)! > 0 ? '+' : '' }}{{ pctEnVivo(m) | number: '1.0-1' }}%)
+            } @else {
+              —
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-1.5">
+        <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, 1)" />
+        <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, -1)" />
+        <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="cerrar(m.clave, m.coin); detalle.set(null)" />
+      </div>
+    </div>
+  }
+</p-dialog>
+
 <div class="mb-3.5 flex items-center gap-1.5">
   <div class="font-display text-base font-semibold">Historial</div>
   <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ cerradas().length }}</span>
 </div>
 
-<div class="panel overflow-hidden">
+<!-- movil: tarjeta compacta, solo lectura (sin acciones que tomar en una ya cerrada) -->
+<div class="flex flex-col gap-1.5 sm:hidden">
+  @for (m of cerradas(); track m.clave) {
+    <div class="flex items-center justify-between gap-2 rounded-lg bg-panel px-3 py-2.5 text-sm shadow-sm">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="w-12 flex-none font-semibold">{{ m.coin }}</span>
+        @if (m.lado) {
+          <span
+            class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+            [class.bg-long-bg]="m.lado === 'Long'"
+            [class.text-long]="m.lado === 'Long'"
+            [class.bg-short-bg]="m.lado === 'Short'"
+            [class.text-short]="m.lado === 'Short'"
+          >
+            {{ m.lado }}
+          </span>
+        } @else {
+          <span class="w-14 flex-none rounded-pill bg-border px-2 py-0.5 text-center text-[11px] font-semibold uppercase text-fg-muted">Spot</span>
+        }
+        <span class="truncate text-fg-muted">{{ nombreDe(m.traderAddress) }}</span>
+      </div>
+      <div [class.text-long]="(m.pnl ?? 0) > 0" [class.text-short]="(m.pnl ?? 0) < 0" class="flex-none font-semibold">
+        {{ m.pnl != null ? (m.pnl > 0 ? '+' : '') + '$' + (m.pnl | number: '1.0-2') : '—' }}
+      </div>
+    </div>
+  } @empty {
+    <div class="flex flex-col items-center gap-2 py-6 text-center">
+      <i class="pi pi-history text-2xl text-fg-muted"></i>
+      <span class="text-sm text-fg-muted">Todavía no has cerrado ninguna.</span>
+    </div>
+  }
+</div>
+
+<div class="panel hidden overflow-hidden sm:block">
   <p-table [value]="cerradas()" styleClass="text-base">
     <ng-template #header>
       <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">

@@ -1,10 +1,11 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
+import { Dialog } from 'primeng/dialog';
 import { colorTrader } from '../../shared/utils/color-trader';
 import { CandidatosService } from '../../core/candidatos/candidatos.service';
-import { MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
+import { MiPosicion, MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.service';
 
 // equivalente a renderPaginaMias() en backend/static/seguimiento.html --
 // lo que el usuario mismo ha abierto copiando a alguien que sigue (boton
@@ -14,7 +15,7 @@ import { MisPosicionesService } from '../../core/mis-posiciones/mis-posiciones.s
 @Component({
   selector: 'app-mis-posiciones',
   standalone: true,
-  imports: [TableModule, ButtonModule, DecimalPipe, DatePipe],
+  imports: [TableModule, ButtonModule, Dialog, DecimalPipe, DatePipe],
   templateUrl: './mis-posiciones.component.html',
 })
 export class MisPosicionesComponent {
@@ -37,6 +38,14 @@ export class MisPosicionesComponent {
 
   protected readonly pctEnVivo = this.misPosiciones.pctEnVivo.bind(this.misPosiciones);
   protected readonly usdEnVivo = this.misPosiciones.usdEnVivo.bind(this.misPosiciones);
+
+  // detalle en grande al tocar una tarjeta en movil -- mismos botones que
+  // la fila de la tabla de escritorio
+  protected readonly detalle = signal<MiPosicion | null>(null);
+
+  protected abrirDetalle(m: MiPosicion): void {
+    this.detalle.set(m);
+  }
 
   protected cerrar(clave: string, coin: string): void {
     const texto = prompt(`¿Cuánto has ganado o perdido cerrando ${coin}? (en $, negativo si has perdido)`);
