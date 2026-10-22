@@ -37,14 +37,34 @@ def _nombre_moneda(coin: str) -> str:
 
 
 def _normalizar_monedas_top(monedas_top: list) -> list[dict]:
-    """monedas_top guarda ahora [{"nombre","categoria"}], calculado en
-    hyperliquid.monedas_mas_usadas sobre el ticker crudo (con prefijo de
-    builder-dex) -- pero filas escritas ANTES de este cambio (o el
-    fallback de abajo) siguen siendo texto plano. Para esas no se puede
-    recuperar la categoria real (el prefijo ya se perdio al guardarlas
-    aliasiadas) asi que caen en Cripto hasta su proximo ciclo de refresco,
-    que las re-escribe en el formato nuevo."""
+    """monedas_top guarda ahora [{"nombre","categoria"}] -- esto es solo un
+    cinturon de seguridad por si algun dia vuelve a colarse una fila en
+    formato antiguo (texto plano); migrar_monedas_top() ya convierte todo
+    lo que hay en la BD al arrancar, asi que en condiciones normales el
+    'if' de abajo nunca se dispara."""
     return [m if isinstance(m, dict) else {"nombre": m, "categoria": "Cripto"} for m in monedas_top]
+
+
+def migrar_monedas_top(conn) -> None:
+    """Migracion de una sola vez (guardada en 'meta'): las filas de
+    'candidatos' escritas ANTES del fix de categoria/prefijo de builder-dex
+    (ver hyperliquid.categoria_de/etiqueta_moneda) tienen monedas_top en
+    texto plano, con el nombre YA aliasiado a la vieja usanza -- pero el
+    texto original SIGUE llevando el prefijo intacto (ej. "xyz2:SP500"),
+    porque el alias viejo nunca lo tocaba. Eso permite re-derivar nombre y
+    categoria correctos sin volver a pedirle nada a Hyperliquid: no hace
+    falta esperar al proximo ciclo de descubrimiento/refresco (que puede
+    tardar hasta una semana para quien no se sigue)."""
+    if db.meta_get(conn, "migracion_monedas_top_v2"):
+        return
+    for f in conn.execute("SELECT address, monedas_top FROM candidatos").fetchall():
+        monedas_top = json.loads(f["monedas_top"] or "[]")
+        if not monedas_top or isinstance(monedas_top[0], dict):
+            continue  # vacio, o ya migrada
+        nuevo = [{"nombre": hyperliquid.etiqueta_moneda(m), "categoria": hyperliquid.categoria_de(m)} for m in monedas_top]
+        conn.execute("UPDATE candidatos SET monedas_top=? WHERE address=?", (json.dumps(nuevo, ensure_ascii=False), f["address"]))
+    db.meta_set(conn, "migracion_monedas_top_v2", "1")
+    conn.commit()
 
 
 def _movimientos_de(conn, addr: str, tipo: str) -> list[dict]:

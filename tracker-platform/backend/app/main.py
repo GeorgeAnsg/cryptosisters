@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routers import ajustes, candidatos, mis_posiciones, push, salud, usuarios
-from app.db.database import inicializar_tablas
+from app.db.database import conectar, inicializar_tablas
 from app.services import descubrimiento, refresher
 
 app = FastAPI(title="Corvus")
@@ -20,6 +20,8 @@ app.add_middleware(
 @app.on_event("startup")
 def startup():
     inicializar_tablas()
+    with conectar() as conn:
+        candidatos.migrar_monedas_top(conn)
     # motor de descubrimiento/refresco, igual que backend/main.py de la app
     # vieja -- corre en segundo plano durante toda la vida del proceso
     refresher.arrancar_en_segundo_plano()
