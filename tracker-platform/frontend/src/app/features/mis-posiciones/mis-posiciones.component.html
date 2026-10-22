@@ -188,10 +188,12 @@
         </div>
       </div>
 
-      <div class="flex gap-1.5">
-        <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, 1)" />
-        <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, -1)" />
-        <p-button label="Cerrar" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="cerrar(m.clave, m.coin); detalle.set(null)" />
+      <div class="flex flex-col gap-1.5">
+        <div class="flex gap-1.5">
+          <p-button label="Añadir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, 1)" />
+          <p-button label="Reducir" size="small" severity="secondary" [outlined]="true" styleClass="flex-1" (onClick)="ajustar(m.clave, m.coin, -1)" />
+        </div>
+        <p-button label="Cerrar" size="small" styleClass="w-full" (onClick)="cerrar(m.clave, m.coin); detalle.set(null)" />
       </div>
     </div>
   }
