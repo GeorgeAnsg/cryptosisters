@@ -29,11 +29,21 @@ export class AjustesComponent {
     Cripto: 0, Índice: 1, 'Materia prima': 2, Acción: 3, Divisa: 4,
   };
 
-  // monedas unicas (con alias BTC/UBTC etc. ya fundidos -- sin esto salian
-  // como dos opciones distintas, siendo la misma moneda) de todos los
+  // dentro de cada categoria, los activos "de referencia" van antes que el
+  // resto (que queda en orden alfabetico) -- sin esto Bitcoin se perdia
+  // alfabeticamente entre el resto de criptos
+  private static readonly PRIORIDAD_ACTIVO: Record<string, number> = {
+    BTC: 0, ETH: 1, SOL: 2, HYPE: 3,
+    SP500: 0, US500: 0, USA500: 0,
+    GOLD: 0, SILVER: 1,
+  };
+
+  // activos unicos (con alias BTC/UBTC etc. ya fundidos -- sin esto salian
+  // como dos opciones distintas, siendo el mismo activo) de todos los
   // candidatos, no solo los seguidos -- cualquiera puede llegar a seguir.
-  // Ordenadas por categoria y, dentro de cada una, alfabeticamente.
-  protected readonly monedasDisponibles = computed(() => {
+  // Agrupados por categoria (en el orden de arriba) y, dentro de cada una,
+  // por prioridad y despues alfabeticamente.
+  protected readonly grupos = computed(() => {
     const categoriaDe = new Map<string, string>();
     for (const c of this.candidatos.candidatos()) {
       for (const m of c.monedas) {
@@ -41,11 +51,20 @@ export class AjustesComponent {
         if (!categoriaDe.has(nombre)) categoriaDe.set(nombre, m.categoria);
       }
     }
-    return [...categoriaDe.keys()].sort((a, b) => {
-      const pa = AjustesComponent.ORDEN_CATEGORIA[categoriaDe.get(a)!] ?? 99;
-      const pb = AjustesComponent.ORDEN_CATEGORIA[categoriaDe.get(b)!] ?? 99;
-      return pa !== pb ? pa - pb : a.localeCompare(b);
-    });
+    const porCategoria = new Map<string, string[]>();
+    for (const [nombre, categoria] of categoriaDe) {
+      (porCategoria.get(categoria) ?? porCategoria.set(categoria, []).get(categoria)!).push(nombre);
+    }
+    return [...porCategoria.entries()]
+      .sort(([a], [b]) => (AjustesComponent.ORDEN_CATEGORIA[a] ?? 99) - (AjustesComponent.ORDEN_CATEGORIA[b] ?? 99))
+      .map(([categoria, activos]) => ({
+        categoria,
+        activos: activos.sort((a, b) => {
+          const pa = AjustesComponent.PRIORIDAD_ACTIVO[a] ?? 99;
+          const pb = AjustesComponent.PRIORIDAD_ACTIVO[b] ?? 99;
+          return pa !== pb ? pa - pb : a.localeCompare(b);
+        }),
+      }));
   });
 
   // borrador local -- se guarda explicitamente (boton), no en cada toggle,
