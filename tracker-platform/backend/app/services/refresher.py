@@ -251,9 +251,11 @@ def detectar_consenso(conn):
     ahora = int(time.time() * 1000)
     desde = ahora - VENTANA_CONSENSO_MS
     grupos = {}
+    # tamaño_antes NULL = primera vez que vemos esa posicion (podria llevar
+    # abierta meses) -- NO cuenta como "entrando", ver candidatos.py
     for fila in conn.execute(
         "SELECT coin, lado, addr FROM alertas WHERE tipo='trading' AND tamaño>0 AND detectado>=? "
-        "AND (tamaño_antes IS NULL OR tamaño>tamaño_antes)", (desde,)
+        "AND tamaño_antes IS NOT NULL AND tamaño>tamaño_antes", (desde,)
     ):
         grupos.setdefault(("entrando", fila["coin"], fila["lado"]), set()).add(fila["addr"])
     for fila in conn.execute(

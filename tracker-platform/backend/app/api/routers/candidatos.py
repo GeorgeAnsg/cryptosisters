@@ -185,9 +185,18 @@ def consenso_actual(_uid: str = Depends(usuario_actual)):
                 clave = (fila["coin"], fila["lado"], verbo)
                 grupos.setdefault(clave, {})[fila["addr"]] = fila
 
+        # OJO: tamaño_antes IS NULL significa "primera vez que vemos esta
+        # posicion", NO "la acaba de abrir" -- puede llevar abierta meses y
+        # que simplemente hoy sea la primera vez que seguimos a ese trader
+        # (o que se descubrio hoy). Contarla como "entrando" daba falsos
+        # positivos: precio de entrada antiguo + fecha de hoy = parece una
+        # perdida/ganancia imposible. Exigir tamaño_antes confirmado es mas
+        # lento en detectar una apertura GENUINAMENTE nueva (hace falta un
+        # segundo ciclo de refresco que confirme el crecimiento 0->X), pero
+        # nunca miente sobre cuando entro.
         agrupar(
             "SELECT coin, lado, addr, tamaño, precio, detectado FROM alertas WHERE tipo='trading' AND tamaño>0 "
-            "AND detectado>=? AND (tamaño_antes IS NULL OR tamaño>tamaño_antes)",
+            "AND detectado>=? AND tamaño_antes IS NOT NULL AND tamaño>tamaño_antes",
             "han entrado",
         )
         agrupar(
