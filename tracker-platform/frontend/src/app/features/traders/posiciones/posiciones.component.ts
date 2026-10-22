@@ -50,6 +50,10 @@ export class PosicionesComponent {
 
   private readonly abiertas = signal<ReadonlySet<string>>(new Set());
 
+  constructor() {
+    this.candidatos.refrescar();
+  }
+
   claveTrading(p: PosicionTrading): string {
     return `t_${p.traderAddress}_${p.coin}_${p.lado}`;
   }

@@ -26,6 +26,11 @@ export class MisPosicionesComponent {
   protected readonly abiertas = this.misPosiciones.abiertas;
   protected readonly cerradas = this.misPosiciones.cerradas;
 
+  constructor() {
+    this.candidatos.refrescar();
+    this.misPosiciones.refrescar();
+  }
+
   private readonly nombrePorDireccion = computed(() => {
     const mapa = new Map<string, string>();
     for (const c of this.candidatos.candidatos()) mapa.set(c.address, c.nombre);

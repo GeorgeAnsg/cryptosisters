@@ -29,6 +29,11 @@ export class DashboardComponent {
   private readonly candidatos = inject(CandidatosService);
   private readonly misPosiciones = inject(MisPosicionesService);
 
+  constructor() {
+    this.candidatos.refrescar();
+    this.misPosiciones.refrescar();
+  }
+
   protected readonly grupos = this.candidatos.consensoSeguido;
   protected readonly resumenTrading = computed(() => this.candidatos.posicionesTrading().slice(0, LIMITE_RESUMEN));
   protected readonly resumenSpot = computed(() => this.candidatos.posicionesSpot().slice(0, LIMITE_RESUMEN));

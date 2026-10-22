@@ -80,13 +80,8 @@ export class CandidatosService {
   // que SI cambie
   private readonly tickRefresco = signal(0);
 
-  // cada 60s mientras la app esta abierta -- antes solo se pedia UNA vez al
-  // iniciar sesion, asi que una posicion nueva/movida (o su notificacion)
-  // nunca se veia reflejada en Posiciones/Notificaciones sin recargar
-  private static readonly INTERVALO_REFRESCO_MS = 60_000;
-
   constructor() {
-    effect((onCleanup) => {
+    effect(() => {
       const uid = this.auth.uid();
       if (!uid) {
         this.lista.set([]);
@@ -95,12 +90,15 @@ export class CandidatosService {
         return;
       }
       this.refrescar();
-      const id = setInterval(() => this.refrescar(), CandidatosService.INTERVALO_REFRESCO_MS);
-      onCleanup(() => clearInterval(id));
     });
   }
 
-  private refrescar(): void {
+  // se pide una vez al iniciar sesion y ademas cada vez que una pantalla
+  // (Notificaciones, Posiciones, Mis Posiciones, Dashboard...) se abre --
+  // nunca en segundo plano ni a intervalos: si no estas mirando la pagina
+  // no tiene sentido pedir nada, y si estas en ella ya la recargaras al
+  // volver a entrar (decision explicita del usuario, no polling silencioso)
+  refrescar(): void {
     firstValueFrom(this.http.get<Candidato[]>(`${environment.apiUrl}/candidatos`))
       .then((c) => this.lista.set(c))
       .catch(() => {});

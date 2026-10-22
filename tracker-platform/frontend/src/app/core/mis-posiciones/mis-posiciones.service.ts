@@ -36,15 +36,17 @@ export class MisPosicionesService {
 
   constructor() {
     effect(() => {
-      const uid = this.auth.uid();
-      if (uid) {
-        firstValueFrom(this.http.get<MiPosicion[]>(`${environment.apiUrl}/mis-posiciones`))
-          .then((l) => this.lista.set(l))
-          .catch(() => this.lista.set([]));
-      } else {
-        this.lista.set([]);
-      }
+      if (this.auth.uid()) this.refrescar();
+      else this.lista.set([]);
     });
+  }
+
+  // se pide al iniciar sesion y de nuevo cada vez que se entra a la pantalla
+  // (ver MisPosicionesComponent) -- nunca en segundo plano
+  refrescar(): void {
+    firstValueFrom(this.http.get<MiPosicion[]>(`${environment.apiUrl}/mis-posiciones`))
+      .then((l) => this.lista.set(l))
+      .catch(() => {});
   }
 
   readonly abiertas = computed(() => this.lista().filter((m) => m.estado === 'abierta'));

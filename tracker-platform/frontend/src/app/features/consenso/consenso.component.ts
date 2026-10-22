@@ -22,6 +22,10 @@ export class ConsensoComponent {
   protected readonly fechaGrupo = fechaGrupo;
   private readonly candidatos = inject(CandidatosService);
 
+  constructor() {
+    this.candidatos.refrescar();
+  }
+
   protected readonly grupos = this.candidatos.consensoSeguido;
 
   // igual que en Posiciones -- "Abrir" copia la jugada a "mis posiciones",

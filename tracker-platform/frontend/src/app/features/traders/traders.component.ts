@@ -74,6 +74,7 @@ export class TradersComponent {
     if (!this.route.snapshot.queryParamMap.has('vista')) {
       router.navigate([], { relativeTo: this.route, queryParams: { vista: 'trading' }, replaceUrl: true });
     }
+    this.candidatos.refrescar();
   }
 
   private readonly seguidos = inject(SeguidosService);
