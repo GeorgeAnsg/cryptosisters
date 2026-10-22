@@ -74,22 +74,44 @@ export class CandidatosService {
 
   private readonly lista = signal<readonly Candidato[]>([]);
   private readonly grupos = signal<readonly GrupoConsenso[]>([]);
+  // solo para forzar a _cargarDetallesSeguidos (un effect) a re-evaluarse en
+  // cada ciclo de refresco -- un effect no se re-dispara solo porque se
+  // vacie "intentadas" (Set simple, no es una signal), necesita leer algo
+  // que SI cambie
+  private readonly tickRefresco = signal(0);
+
+  // cada 60s mientras la app esta abierta -- antes solo se pedia UNA vez al
+  // iniciar sesion, asi que una posicion nueva/movida (o su notificacion)
+  // nunca se veia reflejada en Posiciones/Notificaciones sin recargar
+  private static readonly INTERVALO_REFRESCO_MS = 60_000;
 
   constructor() {
-    effect(() => {
+    effect((onCleanup) => {
       const uid = this.auth.uid();
       if (!uid) {
         this.lista.set([]);
         this.grupos.set([]);
+        this.intentadas.clear();
         return;
       }
-      firstValueFrom(this.http.get<Candidato[]>(`${environment.apiUrl}/candidatos`))
-        .then((c) => this.lista.set(c))
-        .catch(() => this.lista.set([]));
-      firstValueFrom(this.http.get<GrupoConsenso[]>(`${environment.apiUrl}/candidatos/consenso`))
-        .then((g) => this.grupos.set(g))
-        .catch(() => this.grupos.set([]));
+      this.refrescar();
+      const id = setInterval(() => this.refrescar(), CandidatosService.INTERVALO_REFRESCO_MS);
+      onCleanup(() => clearInterval(id));
     });
+  }
+
+  private refrescar(): void {
+    firstValueFrom(this.http.get<Candidato[]>(`${environment.apiUrl}/candidatos`))
+      .then((c) => this.lista.set(c))
+      .catch(() => {});
+    firstValueFrom(this.http.get<GrupoConsenso[]>(`${environment.apiUrl}/candidatos/consenso`))
+      .then((g) => this.grupos.set(g))
+      .catch(() => {});
+    // el detalle (fills reales) de los seguidos tambien se re-pide en cada
+    // ciclo -- "intentadas" ya no significa "para siempre", solo evita
+    // pedir el mismo dos veces DENTRO del mismo ciclo
+    this.intentadas.clear();
+    this.tickRefresco.update((n) => n + 1);
   }
 
   readonly candidatos = computed(() => this.lista());
@@ -110,6 +132,7 @@ export class CandidatosService {
 
   private readonly _cargarDetallesSeguidos = effect(() => {
     const direcciones = this.seguidos.direcciones();
+    this.tickRefresco(); // leida solo para que este effect reaccione al refresco periodico
     const faltan = [...direcciones].filter((a) => !this.intentadas.has(a));
     if (!faltan.length) return;
     faltan.forEach((a) => this.intentadas.add(a));
