@@ -115,15 +115,33 @@ def inicializar_tablas() -> None:
             """
         )
         # suscripciones push del navegador (Notification API + Push API) --
-        # igual que Telegram, es un broadcast global a todo el que active
-        # notificaciones en su dispositivo, no por usuario/trader
+        # el contenido del aviso (titulo/cuerpo) sigue siendo el mismo para
+        # todos, pero necesitamos saber de QUIEN es cada suscripcion para
+        # poder aplicar su whitelist de monedas (ver ajustes) antes de
+        # mandarsela -- de ahi el uid, antes no hacia falta
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS push_suscripciones (
                 endpoint TEXT PRIMARY KEY,
                 p256dh TEXT NOT NULL,
                 auth TEXT NOT NULL,
+                uid TEXT,
                 creado_en TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+            """
+        )
+        try:
+            conn.execute("ALTER TABLE push_suscripciones ADD COLUMN uid TEXT")
+        except sqlite3.OperationalError:
+            pass
+        # preferencias por usuario -- de momento solo la whitelist de
+        # monedas que quiere que le notifiquen (lista vacia = todas, sin
+        # restriccion; asi una cuenta nueva no se queda muda por defecto)
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ajustes (
+                uid TEXT PRIMARY KEY,
+                monedas_notificar TEXT NOT NULL DEFAULT '[]'
             )
             """
         )

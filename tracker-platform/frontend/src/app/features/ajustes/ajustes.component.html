@@ -1,0 +1,33 @@
+<div class="mb-3.5 font-display text-lg font-semibold">Ajustes</div>
+
+<p-tabs value="notificaciones">
+  <p-tablist>
+    <p-tab value="notificaciones">Notificaciones</p-tab>
+    <p-tab value="cribado">Cribado</p-tab>
+  </p-tablist>
+  <p-tabpanels>
+    <p-tabpanel value="notificaciones">
+      <div class="panel max-w-xl p-panel">
+        <div class="mb-1 font-display text-base font-semibold">Monedas que te interesan</div>
+        <div class="mb-3.5 text-sm text-fg-muted">
+          Elige las monedas que quieres ver -- se aplica a todo (Dashboard, Posiciones, Consenso, Notificaciones y los avisos del móvil), no solo al push. Vacío = sin restricción, lo ves todo.
+        </div>
+        <p-multiselect
+          [options]="opcionesMonedas()"
+          [ngModel]="seleccion()"
+          (ngModelChange)="seleccion.set($event)"
+          placeholder="Todas las monedas"
+          [filter]="true"
+          display="chip"
+          styleClass="w-full"
+        />
+        <div class="mt-4">
+          <p-button label="Guardar" [loading]="guardando()" (onClick)="guardar()" />
+        </div>
+      </div>
+    </p-tabpanel>
+    <p-tabpanel value="cribado">
+      <app-cribado />
+    </p-tabpanel>
+  </p-tabpanels>
+</p-tabs>

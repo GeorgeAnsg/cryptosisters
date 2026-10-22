@@ -159,6 +159,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 f"$ invertido: ${invertido:,.0f} · % de su cartera: {pct}\n\n"
                 f"{cabecera(conn, addr, candidato, 'trading')}",
                 id_,
+                coin,
             ))
         elif abs(fila["tamaño"] - p["tamaño"]) > max(1e-9, p["tamaño"] * 0.001):
             antes = fila["tamaño"]
@@ -171,6 +172,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 f"% de su cartera: {pct}\n\n"
                 f"{cabecera(conn, addr, candidato, 'trading')}",
                 None,
+                coin,
             ))
 
     posiciones_actuales = {(p["coin"], p["lado"]) for p in posicion_actual}
@@ -188,6 +190,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             f"{f'$ cerrado: ${invertido_cerrado:,.0f}' if invertido_cerrado is not None else 'Sin dato de precio para calcular lo cerrado'}\n\n"
             f"{cabecera(conn, addr, candidato, 'trading')}",
             None,
+            coin,
         ))
 
     for h in holdings_spot:
@@ -208,6 +211,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 f"Precio (en ese momento): {precio_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
                 id_,
+                coin,
             ))
         elif abs(fila["tamaño"] - h["tamaño"]) > max(1e-9, h["tamaño"] * 0.001):
             antes = fila["tamaño"]
@@ -224,6 +228,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
                 f"Antes: {antes_txt} · Ahora: {ahora_txt}\n\n"
                 f"{cabecera(conn, addr, candidato, 'spot')}",
                 None,
+                coin,
             ))
 
     monedas_actuales = {h["coin"] for h in holdings_spot}
@@ -242,11 +247,12 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
             f"Precio (en ese momento): {precio_txt}\n\n"
             f"{cabecera(conn, addr, candidato, 'spot')}",
             None,
+            coin,
         ))
 
-    for texto, boton_id in avisos:
+    for texto, boton_id, coin_push in avisos:
         telegram.enviar(texto, boton_id)
-        push.enviar_a_todos(*_titulo_cuerpo_push(texto))
+        push.enviar_a_todos(*_titulo_cuerpo_push(texto), coin=coin_push)
 
 
 VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
@@ -293,7 +299,7 @@ def detectar_consenso(conn):
         flecha = "↑" if lado == "Long" else "↓"
         texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha}"
         telegram.enviar(texto)
-        push.enviar_a_todos(*_titulo_cuerpo_push(texto))
+        push.enviar_a_todos(*_titulo_cuerpo_push(texto), coin=coin)
     conn.commit()
 
 

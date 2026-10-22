@@ -41,7 +41,6 @@ export class ShellComponent {
         { etiqueta: 'Trading', vista: 'trading' },
         { etiqueta: 'Spot', vista: 'spot' },
         { etiqueta: 'Posiciones', vista: 'posiciones' },
-        { etiqueta: 'Cribado', vista: 'cribado' },
       ],
     },
     { ruta: '/mis-posiciones', etiqueta: 'Mis Posiciones', icono: 'pi pi-wallet' },
@@ -49,6 +48,7 @@ export class ShellComponent {
     { ruta: '/mercado', etiqueta: 'Mercado', icono: 'pi pi-chart-line' },
     { ruta: '/estadisticas', etiqueta: 'Estadísticas', icono: 'pi pi-chart-bar' },
     { ruta: '/notificaciones', etiqueta: 'Notificaciones', icono: 'pi pi-bell' },
+    { ruta: '/ajustes', etiqueta: 'Ajustes', icono: 'pi pi-cog' },
   ];
 
   protected readonly menuAbierto = signal(false);

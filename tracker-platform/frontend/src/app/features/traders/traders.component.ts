@@ -11,13 +11,12 @@ import { Button } from 'primeng/button';
 import { TraderCardComponent } from '../../shared/components/trader-card/trader-card.component';
 import { TraderDetailModalComponent } from '../../shared/components/trader-detail-modal/trader-detail-modal.component';
 import { PosicionesComponent } from './posiciones/posiciones.component';
-import { CribadoComponent } from './cribado/cribado.component';
 import { CategoriaMercado, Trader } from '../../shared/models/trader';
 import { SeguidosService } from '../../core/seguidos/seguidos.service';
 import { Candidato, CandidatosService } from '../../core/candidatos/candidatos.service';
 
 type CampoOrden = 'puntuacion' | 'retorno' | 'actividad';
-type Vista = 'trading' | 'spot' | 'posiciones' | 'cribado';
+type Vista = 'trading' | 'spot' | 'posiciones';
 
 const CATEGORIAS: { label: string; value: CategoriaMercado | null }[] = [
   { label: 'Todas las categorías', value: null },
@@ -38,8 +37,8 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
 // contenido segun subVistaTraders/vista, con el submenu ahora en el sidebar
 // en vez de pestañas dentro de la pagina. Trading/Spot comparten la misma
 // rejilla de tarjetas (con datos de mentira, TRADERS_MOCK, por ahora);
-// Posiciones y Cribado son componentes propios, bastante distintos en
-// forma (tabla / fichas de solo lectura) como para no forzarlos aqui dentro.
+// Posiciones es un componente propio, bastante distinto en forma (tabla)
+// como para no forzarlo aqui dentro (Cribado se movio a Ajustes).
 @Component({
   selector: 'app-traders',
   standalone: true,
@@ -53,7 +52,6 @@ const CAMPOS_ORDEN: { label: string; value: CampoOrden }[] = [
     Popover,
     Button,
     PosicionesComponent,
-    CribadoComponent,
   ],
   templateUrl: './traders.component.html',
 })

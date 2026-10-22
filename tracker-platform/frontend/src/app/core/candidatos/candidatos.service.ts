@@ -9,6 +9,7 @@ import { GrupoConsenso } from '../../features/consenso/consenso.model';
 import { FilaMercadoSpot, FilaMercadoTrading } from '../../features/mercado/mercado.model';
 import { agruparEpisodios, construirBloques, FillCrudo, marcarCierres } from '../../shared/utils/episodios';
 import { SeguidosService } from '../seguidos/seguidos.service';
+import { AjustesService } from '../ajustes/ajustes.service';
 
 export interface PosicionCandidato {
   coin: string;
@@ -69,6 +70,7 @@ export class CandidatosService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
   private readonly seguidos = inject(SeguidosService);
+  private readonly ajustes = inject(AjustesService);
 
   private readonly lista = signal<readonly Candidato[]>([]);
   private readonly grupos = signal<readonly GrupoConsenso[]>([]);
@@ -170,6 +172,7 @@ export class CandidatosService {
   // Consenso y Notificaciones repetian la misma logica.
   readonly consensoSeguido = computed(() =>
     this.grupos()
+      .filter((g) => this.ajustes.pasaFiltro(g.coin))
       .map((g) => ({ ...g, traders: g.traders.filter((t) => this.seguidos.estaSiguiendo(t.address)) }))
       .filter((g) => g.traders.length >= 2),
   );
@@ -177,7 +180,7 @@ export class CandidatosService {
   // mapeo de un candidato a sus filas de Posiciones -- compartido entre
   // posicionesTrading/posicionesSpot (acotados a seguidos)
   private mapTrading(c: Candidato): PosicionTrading[] {
-    return c.posicionActual.map((p) => {
+    return c.posicionActual.filter((p) => this.ajustes.pasaFiltro(p.coin)).map((p) => {
       // movimientos reales (fills, con Añade/Reduce de verdad) si ya
       // tenemos el detalle del trader; si no, el recorte de "alertas"
       // (puede estar vacio recien desplegado, ver movimientosTrading)
@@ -200,7 +203,7 @@ export class CandidatosService {
   }
 
   private mapSpot(c: Candidato): PosicionSpot[] {
-    return c.holdingsSpot.map((h) => {
+    return c.holdingsSpot.filter((h) => this.ajustes.pasaFiltro(h.coin)).map((h) => {
       const movimientos = this.movimientosReales(c.address, h.coin, 'Spot') ?? c.movimientosSpot.filter((m) => m.coin === h.coin);
       return {
         fecha: movimientos[0]?.fecha ?? new Date().toISOString(),

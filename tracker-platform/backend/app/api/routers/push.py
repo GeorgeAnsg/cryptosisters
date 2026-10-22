@@ -22,16 +22,15 @@ def clave_publica():
     return {"clave": VAPID_PUBLIC_KEY}
 
 
-# no hay uid en la tabla -- el aviso es un broadcast global (igual que
-# Telegram), guardar quien es solo serviria para "quien tiene activado",
-# que no se usa todavia; usuario_actual se exige solo para que no la pueda
-# rellenar cualquiera sin loguear
+# el contenido del aviso sigue siendo el mismo para todos, pero guardamos
+# el uid para poder aplicarle su whitelist de monedas (ver ajustes.py)
+# antes de mandarle cada push -- usuario_actual exige login de paso
 @router.post("/suscribirse")
 def suscribirse(s: Suscripcion, uid: str = Depends(usuario_actual)):
     with conectar() as conn:
         conn.execute(
-            "INSERT OR REPLACE INTO push_suscripciones (endpoint, p256dh, auth) VALUES (?, ?, ?)",
-            (s.endpoint, s.p256dh, s.auth),
+            "INSERT OR REPLACE INTO push_suscripciones (endpoint, p256dh, auth, uid) VALUES (?, ?, ?, ?)",
+            (s.endpoint, s.p256dh, s.auth, uid),
         )
     return {"ok": True}
 

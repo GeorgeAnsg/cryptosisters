@@ -4,18 +4,23 @@ import os
 from pywebpush import WebPushException, webpush
 
 from app.db import database as db
+from app.services.hyperliquid import etiqueta_moneda
 
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_CLAIMS = {"sub": os.environ.get("VAPID_CONTACT_EMAIL", "mailto:admin@example.com")}
 
 
-def enviar_a_todos(titulo, cuerpo):
+def enviar_a_todos(titulo, cuerpo, coin=None):
     """Broadcast a toda suscripcion push guardada -- mismo patron que
     telegram.enviar: silencioso si no esta configurado (desde el ciclo de
     refresco), nunca rompe nada por un fallo de notificacion. Devuelve un
     resumen (en vez de None) para que /push/probar pueda decirle al usuario
-    POR QUE no le ha llegado nada, en vez de fallar en silencio."""
+    POR QUE no le ha llegado nada, en vez de fallar en silencio.
+
+    coin=None (avisos sin moneda concreta, p.ej. la prueba manual) nunca se
+    filtra; si se da, cada suscripcion se salta segun la whitelist de SU
+    uid en 'ajustes' (lista vacia = sin restriccion, igual que el frontend)."""
     if not VAPID_PRIVATE_KEY or not VAPID_PUBLIC_KEY:
         print("Push no configurado, me salto el aviso:", titulo)
         return {"configurado": False, "enviados": 0, "fallidos": 0, "suscripciones": 0}
@@ -23,7 +28,17 @@ def enviar_a_todos(titulo, cuerpo):
     enviados = 0
     fallidos = 0
     with db.conectar() as conn:
-        suscripciones = conn.execute("SELECT endpoint, p256dh, auth FROM push_suscripciones").fetchall()
+        suscripciones = conn.execute("SELECT endpoint, p256dh, auth, uid FROM push_suscripciones").fetchall()
+        if coin is not None:
+            etiqueta = etiqueta_moneda(coin)
+            whitelists = {
+                fila["uid"]: json.loads(fila["monedas_notificar"])
+                for fila in conn.execute("SELECT uid, monedas_notificar FROM ajustes")
+            }
+            suscripciones = [
+                s for s in suscripciones
+                if not whitelists.get(s["uid"]) or etiqueta in whitelists[s["uid"]]
+            ]
         for s in suscripciones:
             try:
                 webpush(

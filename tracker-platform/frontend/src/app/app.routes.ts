@@ -45,6 +45,10 @@ export const routes: Routes = [
         path: 'notificaciones',
         loadComponent: () => import('./features/notificaciones/notificaciones.component').then((m) => m.NotificacionesComponent),
       },
+      {
+        path: 'ajustes',
+        loadComponent: () => import('./features/ajustes/ajustes.component').then((m) => m.AjustesComponent),
+      },
     ],
   },
 ];
