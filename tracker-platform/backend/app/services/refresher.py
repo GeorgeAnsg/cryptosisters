@@ -19,15 +19,20 @@ from app.services import hyperliquid, nombres, push, telegram
 INTERVALO_SEGUNDOS = 5 * 60
 
 
-def _texto_plano(texto_html):
+def _titulo_cuerpo_push(texto_html):
     """Los avisos se escriben para Telegram (parse_mode HTML, multilinea con
-    la cabecera del trader debajo) -- el push usa el titulo + la linea de
-    tamaño/precio (la cabecera del trader de despues no aporta nada al
-    push), sin etiquetas. Antes solo se cogia la primera linea y se perdia
-    el tamaño/precio -- por eso el push no decia nada util."""
-    lineas = texto_html.split("\n")
-    cuerpo = [l for l in lineas[:2] if l.strip()]
-    return re.sub(r"<[^>]+>", "", " · ".join(cuerpo)).strip()
+    la cabecera del trader debajo) -- el push usa la primera linea (el
+    titulo del aviso, ej. "Long en ETH (nueva posicion)") como TITULO de la
+    notificacion, y la linea de tamaño/precio como cuerpo, sin etiquetas.
+    Antes el titulo era siempre el fijo "Corvus", lo que en movil se veia
+    duplicado como "Corvus / from Corvus" (el "from Corvus" lo añade el
+    propio sistema operativo, no se puede quitar) -- un titulo real evita
+    la repeticion y aprovecha ese espacio para decir algo util."""
+    lineas = [l for l in texto_html.split("\n") if l.strip()][:2]
+    sin_html = [re.sub(r"<[^>]+>", "", l).strip() for l in lineas]
+    titulo = sin_html[0] if sin_html else "Corvus"
+    cuerpo = sin_html[1] if len(sin_html) > 1 else ""
+    return titulo, cuerpo
 
 
 def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios):
@@ -241,7 +246,7 @@ def detectar_alertas(conn, addr, posicion_actual, holdings_spot, candidato, idx_
 
     for texto, boton_id in avisos:
         telegram.enviar(texto, boton_id)
-        push.enviar_a_todos("Corvus", _texto_plano(texto))
+        push.enviar_a_todos(*_titulo_cuerpo_push(texto))
 
 
 VENTANA_CONSENSO_MS = 72 * 60 * 60 * 1000
@@ -288,7 +293,7 @@ def detectar_consenso(conn):
         flecha = "↑" if lado == "Long" else "↓"
         texto = f"🟠 Consenso: {n} traders {lado} {verbos[tipo_grupo]} {etiqueta} {flecha}"
         telegram.enviar(texto)
-        push.enviar_a_todos("Corvus", _texto_plano(texto))
+        push.enviar_a_todos(*_titulo_cuerpo_push(texto))
     conn.commit()
 
 
