@@ -266,7 +266,7 @@ def posicion_actual_de(address):
             else:
                 take_profit = trigger_px
         posiciones.append({
-            "coin": p.get("coin"), "lado": lado,
+            "coin": etiqueta_moneda(p.get("coin")), "lado": lado,
             "tamaño": round(abs(szi), 8), "entryPx": entry_px,
             "pnlNoRealizado": round(float(p.get("unrealizedPnl", 0) or 0), 2),
             "valorPosicion": round(abs(float(p.get("positionValue", 0) or 0)), 2),
@@ -293,7 +293,7 @@ def holdings_spot_de(address, idx_por_nombre, precios):
         if valor_actual is not None and valor_actual < MIN_VALOR_HOLDING_SPOT:
             continue
         holdings.append({
-            "coin": b["coin"], "tamaño": round(total, 8),
+            "coin": etiqueta_moneda(b["coin"]), "tamaño": round(total, 8),
             "costeBase": round(coste, 2) if coste > 1e-9 else None,
             "valorActual": round(valor_actual, 2) if valor_actual is not None else None,
             "pnlNoRealizado": round(valor_actual - coste, 2) if (valor_actual is not None and coste > 1e-9) else None,
