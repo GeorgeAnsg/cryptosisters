@@ -8,7 +8,7 @@
 <!-- movil: tarjeta compacta, como en el Dashboard -- toca para ver el detalle completo en el modal -->
 <div class="mb-10 flex flex-col gap-1.5 sm:hidden">
   @for (p of trading(); track claveTrading(p)) {
-    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2.5 text-sm" (click)="abrirDetalle(p, 'trading')">
+    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-panel px-3 py-2.5 text-sm shadow-sm" (click)="abrirDetalle(p, 'trading')">
       <div class="flex min-w-0 items-center gap-2">
         <span class="w-12 flex-none font-semibold">{{ p.coin }}</span>
         <span
@@ -178,7 +178,7 @@
 
 <div class="flex flex-col gap-1.5 sm:hidden">
   @for (p of spot(); track claveSpot(p)) {
-    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2.5 text-sm" (click)="abrirDetalle(p, 'spot')">
+    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-panel px-3 py-2.5 text-sm shadow-sm" (click)="abrirDetalle(p, 'spot')">
       <div class="flex min-w-0 items-center gap-2">
         <span class="w-12 flex-none font-semibold">{{ p.coin }}</span>
         <span
