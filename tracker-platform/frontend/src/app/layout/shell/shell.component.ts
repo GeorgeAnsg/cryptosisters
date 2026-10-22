@@ -46,6 +46,7 @@ export class ShellComponent {
     { ruta: '/mis-posiciones', etiqueta: 'Mis Posiciones', icono: 'pi pi-wallet' },
     { ruta: '/consenso', etiqueta: 'Consenso', icono: 'pi pi-bolt' },
     { ruta: '/mercado', etiqueta: 'Mercado', icono: 'pi pi-chart-line' },
+    { ruta: '/freldi', etiqueta: 'Freldi', icono: 'pi pi-gauge' },
     { ruta: '/estadisticas', etiqueta: 'Estadísticas', icono: 'pi pi-chart-bar' },
     { ruta: '/notificaciones', etiqueta: 'Notificaciones', icono: 'pi pi-bell' },
     { ruta: '/ajustes', etiqueta: 'Ajustes', icono: 'pi pi-cog' },

@@ -14,7 +14,7 @@ import time
 import traceback
 
 from app.db import database as db
-from app.services import hyperliquid, nombres, push, telegram
+from app.services import freldi, hyperliquid, nombres, push, telegram
 
 INTERVALO_SEGUNDOS = 5 * 60
 
@@ -371,6 +371,30 @@ def ciclo_backtest_diario():
         time.sleep(INTERVALO_BACKTEST_SEGUNDOS)
 
 
+def ciclo_freldi():
+    """Snapshot de Multivac (ver freldi.py) -- independiente de si alguien
+    sigue a algun trader, se pide como mucho una vez al dia, global para
+    toda la app (no es un dato por usuario)."""
+    conn = db.conectar()
+    ultima = db.meta_get(conn, "freldi_actualizado")
+    conn.close()
+    if ultima:
+        falta = freldi.INTERVALO_SEGUNDOS - (time.time() - float(ultima))
+        if falta > 0:
+            time.sleep(falta)
+
+    while True:
+        try:
+            conn = db.conectar()
+            freldi.refrescar_cache(conn)
+            conn.close()
+        except Exception:
+            print("fallo refrescando freldi:")
+            traceback.print_exc()
+        time.sleep(freldi.INTERVALO_SEGUNDOS)
+
+
 def arrancar_en_segundo_plano():
     threading.Thread(target=ciclo_refresco, daemon=True).start()
     threading.Thread(target=ciclo_backtest_diario, daemon=True).start()
+    threading.Thread(target=ciclo_freldi, daemon=True).start()

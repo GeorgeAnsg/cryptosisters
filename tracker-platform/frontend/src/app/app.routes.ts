@@ -46,6 +46,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/notificaciones/notificaciones.component').then((m) => m.NotificacionesComponent),
       },
       {
+        path: 'freldi',
+        loadComponent: () => import('./features/freldi/freldi.component').then((m) => m.FreldiComponent),
+      },
+      {
         path: 'ajustes',
         loadComponent: () => import('./features/ajustes/ajustes.component').then((m) => m.AjustesComponent),
       },

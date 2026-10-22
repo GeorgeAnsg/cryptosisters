@@ -1,0 +1,94 @@
+<div class="mb-3.5 flex items-center justify-between gap-2">
+  <div>
+    <div class="font-display text-lg font-semibold">Freldi</div>
+    <div class="text-xs text-fg-muted">Índice compuesto de sentimiento y salud macro (F-R-E-D-L-I-X) -- calculado una vez al día.</div>
+  </div>
+  <div class="flex items-center gap-2">
+    @if (freldi.actualizado()) {
+      <span class="text-xs text-fg-muted">Actualizado: {{ freldi.actualizado() | date: 'd MMM, HH:mm' }}</span>
+    }
+    <p-button icon="pi pi-refresh" size="small" severity="secondary" [outlined]="true" [loading]="freldi.estaCargando()" (onClick)="freldi.refrescar()" />
+  </div>
+</div>
+
+@if (freldi.huboError() && !freldi.datos()) {
+  <div class="panel bg-bad-bg p-panel text-sm text-bad">No se pudo cargar Freldi.</div>
+} @else if (!freldi.datos()) {
+  <div class="panel p-panel text-sm text-fg-muted">
+    @if (freldi.estaCargando()) { Cargando... } @else { Todavía no hay datos de Freldi. }
+  </div>
+} @else {
+  <div class="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+    <!-- total -->
+    <div class="panel p-panel">
+      <div class="mb-3.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">Índice Freldi</div>
+      <div class="flex items-end gap-2">
+        <div class="font-display text-5xl font-bold">{{ total100() ?? '—' }}</div>
+        <div class="pb-1.5 text-xs font-semibold uppercase text-fg-muted">/100</div>
+      </div>
+      <div class="mt-2 text-sm font-semibold">{{ etiquetaTotal() }}</div>
+      @if (freldi.datos()!.scores?.buySignal) {
+        <span class="mt-2 inline-block rounded-pill bg-border px-2.5 py-0.5 text-xs font-semibold">{{ etiquetaSenal() }}</span>
+      }
+      <div class="mt-5 h-2 w-full rounded-pill bg-border">
+        <div class="h-2 rounded-pill bg-fg" [style.width.%]="total100() ?? 0"></div>
+      </div>
+      <div class="mt-1.5 flex justify-between text-[10px] uppercase text-fg-muted">
+        <span>Distribución</span><span>Neutral</span><span>Acumulación</span>
+      </div>
+    </div>
+
+    <!-- datos clave -->
+    <div class="panel p-panel">
+      <div class="mb-3.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">Datos clave</div>
+      <div class="grid grid-cols-2 gap-2.5">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">Fear &amp; Greed</div>
+          <div class="font-semibold">{{ freldi.datos()!.fearAndGreed?.value ?? '—' }}/100</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">RSI diario</div>
+          <div class="font-semibold">{{ freldi.datos()!.rsi?.daily?.value | number: '1.0-1' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">DXY</div>
+          <div class="font-semibold">{{ freldi.datos()!.dxy?.value ?? 'N/A' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">Liquidez</div>
+          <div class="font-semibold">{{ freldi.datos()!.liquidity?.value ?? 'N/A' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">VIX</div>
+          <div class="font-semibold">{{ freldi.datos()!.vix?.value ?? 'N/A' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">Interés (Google)</div>
+          <div class="font-semibold">{{ freldi.datos()!.googleInterest ?? 'N/A' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- componentes -->
+    <div class="panel p-panel lg:col-span-2">
+      <div class="mb-3.5 text-xs font-semibold uppercase tracking-wide text-fg-muted">Componentes</div>
+      <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        @for (c of tarjetas(); track c.clave) {
+          <div class="rounded-lg bg-bg px-3 py-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <span class="font-display text-2xl font-bold opacity-80">{{ c.titulo }}</span>
+              <div class="text-right">
+                <div class="text-[10px] uppercase text-fg-muted">{{ c.subtitulo }}</div>
+                <div class="text-sm font-semibold">{{ c.score10 }}/10</div>
+              </div>
+            </div>
+            <div class="mt-2 h-1 w-full rounded-pill bg-border">
+              <div class="h-1 rounded-pill bg-fg" [style.width.%]="barraPct(c.score10)"></div>
+            </div>
+            <p class="mt-1.5 line-clamp-2 text-[11px] italic text-fg-muted">{{ c.rationale }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
