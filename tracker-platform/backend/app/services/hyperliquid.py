@@ -90,7 +90,12 @@ ALIAS_MONEDA = {"UBTC": "BTC", "UETH": "ETH", "USOL": "SOL"}
 
 
 def etiqueta_moneda(coin):
-    return ALIAS_MONEDA.get(coin, coin)
+    # "xyz2:SP500", "hyna:BTC"... el prefijo es solo de que builder-dex
+    # (HIP-3) lista ese mercado -- routing interno, nunca info util para
+    # quien lo ve (ver CATEGORIA_* mas abajo para el mismo prefijo)
+    _prefijo, _, base = coin.partition(":")
+    base = base or coin
+    return ALIAS_MONEDA.get(base, base)
 
 
 def precio_actual(coin, tipo="trading"):
@@ -135,30 +140,24 @@ CATEGORIA_INDICES = {
 }
 
 
-def cargar_categorias_mercado():
-    """{ticker_tal_como_aparece_en_fills: 'Cripto'|'Acción'|'Materia prima'|
-    'Divisa'|'Índice'} para TODO lo que se puede operar en Hyperliquid hoy --
-    perp nativo, spot, y todos los perps de terceros via HIP-3."""
-    universo_cripto = {u["name"] for u in fetch_json({"type": "meta"})["universe"]}
-    universo_cripto |= set(cargar_spot_meta().values())
-    categorias = {t: "Cripto" for t in universo_cripto}
-
-    for dex in fetch_json({"type": "perpDexs"}):
-        if not dex:
-            continue
-        for ticker_completo, _cap in dex["assetToStreamingOiCap"]:
-            _prefijo, _, base = ticker_completo.partition(":")
-            if base in universo_cripto:
-                categorias[ticker_completo] = "Cripto"
-            elif base in CATEGORIA_MATERIAS_PRIMAS:
-                categorias[ticker_completo] = "Materia prima"
-            elif base in CATEGORIA_DIVISAS:
-                categorias[ticker_completo] = "Divisa"
-            elif base in CATEGORIA_INDICES:
-                categorias[ticker_completo] = "Índice"
-            else:
-                categorias[ticker_completo] = "Acción"
-    return categorias
+def categoria_de(coin):
+    """Clasifica un ticker (crudo, tal cual llega en los fills -- con o sin
+    prefijo de builder-dex) en Cripto/Materia prima/Divisa/Índice/Acción,
+    sin llamadas a Hyperliquid: si NO lleva prefijo ("xyz2:", "hyna:"...),
+    es un mercado nativo de Hyperliquid, y eso es cripto el 100% de las
+    veces hoy. Si lleva prefijo, se clasifica por palabra clave sobre el
+    ticker base contra las listas de arriba; lo que no encaja en ninguna
+    es Acción, que es la inmensa mayoria de lo que listan los builders."""
+    _prefijo, separador, base = coin.partition(":")
+    if not separador:
+        return "Cripto"
+    if base in CATEGORIA_MATERIAS_PRIMAS:
+        return "Materia prima"
+    if base in CATEGORIA_DIVISAS:
+        return "Divisa"
+    if base in CATEGORIA_INDICES:
+        return "Índice"
+    return "Acción"
 
 
 def cargar_idx_por_nombre():
@@ -214,15 +213,22 @@ def monedas_mas_usadas(operaciones_backtest, posicion_actual, holdings_spot, spo
     backtest, no solo los 2000 fills guardados) -- las que tiene abiertas
     ahora mismo van primero, da igual su frecuencia, y dentro de cada grupo
     se ordena por nº de operaciones. Esto es lo que se enseña como "tags"
-    en el listado masivo de traders (ver candidatos.py _candidato_dict)."""
+    en el listado masivo de traders (ver candidatos.py _candidato_dict).
+
+    La categoria hay que calcularla AQUI, sobre el ticker crudo (con su
+    prefijo de builder-dex si lo tiene, ej. "xyz2:SP500") -- etiqueta_moneda
+    ya lo quita para mostrar, y categoria_de necesita verlo para distinguir
+    Nvidia/Gold/SP500 de una cripto nativa."""
     frecuencia: dict[str, int] = {}
+    categorias: dict[str, str] = {}
     for o in operaciones_backtest:
-        nombre = spot_nombres.get(o["coin"], o["coin"]) if o["lado"] == "Spot" else o["coin"]
-        nombre = etiqueta_moneda(nombre)
+        crudo = spot_nombres.get(o["coin"], o["coin"]) if o["lado"] == "Spot" else o["coin"]
+        nombre = etiqueta_moneda(crudo)
         frecuencia[nombre] = frecuencia.get(nombre, 0) + 1
+        categorias.setdefault(nombre, categoria_de(crudo))
     abiertas = {etiqueta_moneda(p["coin"]) for p in posicion_actual} | {etiqueta_moneda(h["coin"]) for h in holdings_spot}
     ordenadas = sorted(frecuencia, key=lambda m: (m not in abiertas, -frecuencia[m]))
-    return ordenadas[:n]
+    return [{"nombre": m, "categoria": categorias[m]} for m in ordenadas[:n]]
 
 
 def tpsl_por_moneda(address):

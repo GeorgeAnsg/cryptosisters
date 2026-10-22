@@ -22,15 +22,30 @@ export class AjustesComponent {
   private readonly candidatos = inject(CandidatosService);
   protected readonly ajustes = inject(AjustesService);
 
+  // orden de prioridad para agrupar la rejilla -- cripto primero (lo que
+  // de verdad se sigue dia a dia), luego indices/materias primas (SP500,
+  // oro...), acciones y divisas al final
+  private static readonly ORDEN_CATEGORIA: Record<string, number> = {
+    Cripto: 0, Índice: 1, 'Materia prima': 2, Acción: 3, Divisa: 4,
+  };
+
   // monedas unicas (con alias BTC/UBTC etc. ya fundidos -- sin esto salian
   // como dos opciones distintas, siendo la misma moneda) de todos los
-  // candidatos, no solo los seguidos -- cualquiera puede llegar a seguir
+  // candidatos, no solo los seguidos -- cualquiera puede llegar a seguir.
+  // Ordenadas por categoria y, dentro de cada una, alfabeticamente.
   protected readonly monedasDisponibles = computed(() => {
-    const vistas = new Set<string>();
+    const categoriaDe = new Map<string, string>();
     for (const c of this.candidatos.candidatos()) {
-      for (const m of c.monedas) vistas.add(etiquetaMoneda(m.nombre));
+      for (const m of c.monedas) {
+        const nombre = etiquetaMoneda(m.nombre);
+        if (!categoriaDe.has(nombre)) categoriaDe.set(nombre, m.categoria);
+      }
     }
-    return [...vistas].sort();
+    return [...categoriaDe.keys()].sort((a, b) => {
+      const pa = AjustesComponent.ORDEN_CATEGORIA[categoriaDe.get(a)!] ?? 99;
+      const pb = AjustesComponent.ORDEN_CATEGORIA[categoriaDe.get(b)!] ?? 99;
+      return pa !== pb ? pa - pb : a.localeCompare(b);
+    });
   });
 
   // borrador local -- se guarda explicitamente (boton), no en cada toggle,

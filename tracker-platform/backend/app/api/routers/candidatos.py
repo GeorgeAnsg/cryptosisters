@@ -36,11 +36,15 @@ def _nombre_moneda(coin: str) -> str:
     return _spot_nombres().get(coin, coin)
 
 
-def _categoria_de(coin: str) -> str:
-    # el pool de descubrimiento de Hyperliquid es todo cripto; sin una fuente
-    # real de categoria por moneda, todo cae en "Cripto" -- correcto para el
-    # 100% de los casos reales hoy, se ajusta si algun dia hay otra cosa
-    return "Cripto"
+def _normalizar_monedas_top(monedas_top: list) -> list[dict]:
+    """monedas_top guarda ahora [{"nombre","categoria"}], calculado en
+    hyperliquid.monedas_mas_usadas sobre el ticker crudo (con prefijo de
+    builder-dex) -- pero filas escritas ANTES de este cambio (o el
+    fallback de abajo) siguen siendo texto plano. Para esas no se puede
+    recuperar la categoria real (el prefijo ya se perdio al guardarlas
+    aliasiadas) asi que caen en Cripto hasta su proximo ciclo de refresco,
+    que las re-escribe en el formato nuevo."""
+    return [m if isinstance(m, dict) else {"nombre": m, "categoria": "Cripto"} for m in monedas_top]
 
 
 def _movimientos_de(conn, addr: str, tipo: str) -> list[dict]:
@@ -107,7 +111,8 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicio
     if not monedas_top:
         # fallback para candidatos descubiertos antes de monedas_top (o aun
         # sin su primer ciclo de backtest): mejor esto que no mostrar nada
-        monedas_top = sorted({p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot})
+        crudos = sorted({p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot})
+        monedas_top = [{"nombre": hyperliquid.etiqueta_moneda(c), "categoria": hyperliquid.categoria_de(c)} for c in crudos]
     return {
         "address": f["address"],
         "nombre": nombres.nombre_de(f["address"], todas),
@@ -130,7 +135,7 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicio
         "winRateSpot": f["win_rate_spot"],
         "retornoPctSpot": f["retorno_pct_spot"],
         "profitFactorSpot": f["profit_factor_spot"],
-        "monedas": [{"nombre": m, "categoria": _categoria_de(m)} for m in monedas_top],
+        "monedas": _normalizar_monedas_top(monedas_top),
         "desestimado": (
             {"motivo": f["desestimado_motivo"], "fecha": _ms_a_iso(f["desestimado_fecha"])}
             if f["desestimado_motivo"] else None

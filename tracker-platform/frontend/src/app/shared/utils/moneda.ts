@@ -5,5 +5,9 @@
 const ALIAS_MONEDA: Record<string, string> = { UBTC: 'BTC', UETH: 'ETH', USOL: 'SOL' };
 
 export function etiquetaMoneda(coin: string): string {
-  return ALIAS_MONEDA[coin] ?? coin;
+  // "xyz2:SP500", "hyna:BTC"... el prefijo es de que builder-dex (HIP-3)
+  // lista ese mercado -- igual que etiqueta_moneda() en el backend, nunca
+  // es info util para quien lo ve
+  const base = coin.includes(':') ? coin.split(':')[1] : coin;
+  return ALIAS_MONEDA[base] ?? base;
 }
