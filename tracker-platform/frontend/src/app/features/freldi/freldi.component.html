@@ -18,6 +18,17 @@
     @if (freldi.estaCargando()) { Cargando... } @else { Todavía no hay datos de Freldi. }
   </div>
 } @else {
+  @if (hayAvisoDatos()) {
+    <div class="panel mb-3.5 bg-bad-bg p-panel text-bad">
+      <div class="text-xs font-semibold uppercase tracking-wide">Aviso de datos</div>
+      <div class="mt-1 text-sm">
+        Alguna fuente de Multivac no se ha actualizado correctamente. Se muestran datos en caché para mantener la experiencia estable.
+      </div>
+      @if (fuentesAfectadas()) {
+        <div class="mt-1.5 text-xs opacity-80"><span class="font-semibold">Fuentes afectadas:</span> {{ fuentesAfectadas() }}</div>
+      }
+    </div>
+  }
   <div class="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
     <!-- total -->
     <div class="panel p-panel">

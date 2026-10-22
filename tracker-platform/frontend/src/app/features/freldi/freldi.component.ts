@@ -76,4 +76,27 @@ export class FreldiComponent {
   protected barraPct(score10: number): number {
     return Math.max(0, Math.min(100, score10 * 10));
   }
+
+  // aviso cuando Multivac sirve algun dato cacheado/caido -- mismo criterio
+  // que la pagina original de Multivac (status degradado, o alguna fuente != 'ok')
+  protected readonly hayAvisoDatos = computed(() => {
+    const snap = this.freldi.datos();
+    if (!snap) return false;
+    if (snap.status === 'degraded') return true;
+    const h = snap.sourcesHealth;
+    return !!h && Object.values(h).some((x) => x?.status && x.status !== 'ok');
+  });
+
+  protected readonly fuentesAfectadas = computed(() => {
+    const h = this.freldi.datos()?.sourcesHealth;
+    if (!h) return '';
+    return Object.entries(h)
+      .filter(([, v]) => v?.status && v.status !== 'ok')
+      .map(([k, v]) => {
+        const edad = typeof v.ageHours === 'number' ? `${Math.round(v.ageHours)}h` : null;
+        const cola = [edad, (v.message || '').trim()].filter(Boolean).join(' · ');
+        return cola ? `${k} (${v.status} · ${cola})` : `${k} (${v.status})`;
+      })
+      .join(' · ');
+  });
 }

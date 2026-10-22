@@ -23,6 +23,12 @@ export interface FreldiScores {
   confidence: string;
 }
 
+export interface FreldiSourceHealth {
+  status: 'ok' | 'cached' | 'stale' | 'blocked';
+  ageHours?: number | null;
+  message?: string | null;
+}
+
 export interface FreldiSnapshot {
   fearAndGreed?: { value: number; zone: string; trend: string };
   rsi?: { daily?: { value: number }; weekly?: { value: number } };
@@ -32,6 +38,7 @@ export interface FreldiSnapshot {
   googleInterest?: number;
   scores?: FreldiScores;
   status?: 'ok' | 'degraded';
+  sourcesHealth?: Record<string, FreldiSourceHealth>;
 }
 
 // snapshot del indice FRELDI(X) -- lo calcula otra app del usuario
