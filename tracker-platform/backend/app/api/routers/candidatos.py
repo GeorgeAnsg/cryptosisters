@@ -116,7 +116,8 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicio
     confirmar" en una posicion que sigue abierta de verdad ahora mismo."""
     posicion_actual = posicion_actual_vivo if posicion_actual_vivo is not None else json.loads(f["posicion_actual"] or "[]")
     holdings_spot = holdings_spot_vivo if holdings_spot_vivo is not None else json.loads(f["holdings_spot"] or "[]")
-    operaciones_recientes = json.loads(f["operaciones_recientes"] or "[]") if con_operaciones else []
+    operaciones_recientes_crudas = json.loads(f["operaciones_recientes"] or "[]")
+    operaciones_recientes = operaciones_recientes_crudas if con_operaciones else []
     # los fills de spot traen el coin como "@idx" (indice interno de
     # Hyperliquid), no el ticker -- las posiciones/holdings en vivo ya vienen
     # traducidos (ver hyperliquid.py), solo los fills crudos necesitan esto
@@ -129,8 +130,18 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicio
     # que es como estaba antes y dejaba traders activos sin ninguna tag
     monedas_top = json.loads(f["monedas_top"] or "[]")
     if not monedas_top:
-        # fallback para candidatos descubiertos antes de monedas_top (o aun
-        # sin su primer ciclo de backtest): mejor esto que no mostrar nada
+        # fallback: candidatos no seguidos por nadie solo recalculan
+        # monedas_top en su descubrimiento inicial (el refresco de 5min/24h
+        # solo corre para los seguidos, ver refresher.ciclo_refresco) -- si
+        # ese primer calculo salio vacio (ops aun no disponibles en ese
+        # instante) se queda vacio para siempre aunque luego si tenga
+        # historial. Se reconstruye aqui con los fills ya guardados
+        # (operaciones_recientes, sin pedir nada nuevo a Hyperliquid) antes
+        # de caer al ultimo recurso de "lo que tiene abierto ahora mismo"
+        monedas_top = hyperliquid.monedas_mas_usadas(
+            operaciones_recientes_crudas, posicion_actual, holdings_spot, _spot_nombres(),
+        )
+    if not monedas_top:
         crudos = sorted({p["coin"] for p in posicion_actual} | {h["coin"] for h in holdings_spot})
         monedas_top = [{"nombre": hyperliquid.etiqueta_moneda(c), "categoria": hyperliquid.categoria_de(c)} for c in crudos]
     return {
