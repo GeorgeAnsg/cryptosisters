@@ -103,7 +103,24 @@ def _ms_a_iso(ms: int) -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(ms / 1000))
 
 
-def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicion_actual_vivo=None, holdings_spot_vivo=None) -> dict:
+def _fusionar_fills_recientes(guardados: list, vivos: list | None) -> list:
+    """guardados (BD, solo se recalcula en el backtest diario) + vivos
+    (pedido fresco en este mismo instante, solo la ventana reciente) --
+    sin esto, un fill de hace 5 minutos no aparecia en el modal ni en
+    Notificaciones hasta el backtest de las 24h. Dedupe por (ts, coin),
+    el mas reciente primero, recortado al mismo limite que se guarda."""
+    if not vivos:
+        return guardados
+    vistos = {(o["ts"], o["coin"]) for o in vivos}
+    combinados = vivos + [o for o in guardados if (o["ts"], o["coin"]) not in vistos]
+    combinados.sort(key=lambda o: -o["ts"])
+    return combinados[: hyperliquid.MAX_FILLS_GUARDADOS]
+
+
+def _candidato_dict(
+    conn, f, todas: list[str], *, con_operaciones: bool,
+    posicion_actual_vivo=None, holdings_spot_vivo=None, fills_recientes_vivos=None,
+) -> dict:
     """con_operaciones=False (listado masivo): sin operacionesRecientes --
     hasta 2000 fills x cada candidato hacia que /candidatos pesara
     20+ MB con 80 candidatos y se atascara en el navegador. Solo el detalle
@@ -116,7 +133,7 @@ def _candidato_dict(conn, f, todas: list[str], *, con_operaciones: bool, posicio
     confirmar" en una posicion que sigue abierta de verdad ahora mismo."""
     posicion_actual = posicion_actual_vivo if posicion_actual_vivo is not None else json.loads(f["posicion_actual"] or "[]")
     holdings_spot = holdings_spot_vivo if holdings_spot_vivo is not None else json.loads(f["holdings_spot"] or "[]")
-    operaciones_recientes_crudas = json.loads(f["operaciones_recientes"] or "[]")
+    operaciones_recientes_crudas = _fusionar_fills_recientes(json.loads(f["operaciones_recientes"] or "[]"), fills_recientes_vivos)
     operaciones_recientes = operaciones_recientes_crudas if con_operaciones else []
     # los fills de spot traen el coin como "@idx" (indice interno de
     # Hyperliquid), no el ticker -- las posiciones/holdings en vivo ya vienen
@@ -283,4 +300,22 @@ def detalle_candidato(address: str, _uid: str = Depends(usuario_actual)):
             posiciones, holdings = hyperliquid.posicion_y_holdings_de(address, idx_por_nombre, precios)
         except Exception:
             posiciones = holdings = None  # Hyperliquid no responde: cae al dato cacheado, mejor que romper el modal
-        return _candidato_dict(conn, f, todas, con_operaciones=True, posicion_actual_vivo=posiciones, holdings_spot_vivo=holdings)
+        fills_recientes_vivos = None
+        try:
+            # operaciones_recientes en BD solo se recalcula en el backtest
+            # DIARIO -- sin esto, un fill de hace 5 minutos (que SI genero
+            # alerta/push al instante) no aparecia en el modal/Notificaciones
+            # hasta 24h despues. Solo se pide la ventana reciente (no el año
+            # completo del backtest), barato de pedir en cada apertura.
+            desde_ms = int(time.time() * 1000) - VENTANA_MOVIMIENTOS_MS
+            fills_recientes_vivos = [
+                hyperliquid.convertir_fill(fl) for fl in hyperliquid.obtener_fills(address, desde_ms)
+                if fl.get("dir") != "Spot Dust Conversion"
+            ]
+        except Exception:
+            pass
+        return _candidato_dict(
+            conn, f, todas, con_operaciones=True,
+            posicion_actual_vivo=posiciones, holdings_spot_vivo=holdings,
+            fills_recientes_vivos=fills_recientes_vivos,
+        )
