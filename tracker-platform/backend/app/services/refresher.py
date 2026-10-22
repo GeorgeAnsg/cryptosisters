@@ -21,10 +21,13 @@ INTERVALO_SEGUNDOS = 5 * 60
 
 def _texto_plano(texto_html):
     """Los avisos se escriben para Telegram (parse_mode HTML, multilinea con
-    la cabecera del trader debajo) -- el push solo necesita la primera linea,
-    sin etiquetas."""
-    primera_linea = texto_html.split("\n", 1)[0]
-    return re.sub(r"<[^>]+>", "", primera_linea).strip()
+    la cabecera del trader debajo) -- el push usa el titulo + la linea de
+    tamaño/precio (la cabecera del trader de despues no aporta nada al
+    push), sin etiquetas. Antes solo se cogia la primera linea y se perdia
+    el tamaño/precio -- por eso el push no decia nada util."""
+    lineas = texto_html.split("\n")
+    cuerpo = [l for l in lineas[:2] if l.strip()]
+    return re.sub(r"<[^>]+>", "", " · ".join(cuerpo)).strip()
 
 
 def actualizar_datos_y_puntuacion(conn, addr, spot_nombres, idx_por_nombre, precios):

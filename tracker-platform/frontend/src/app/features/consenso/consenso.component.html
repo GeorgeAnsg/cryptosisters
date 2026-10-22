@@ -28,35 +28,36 @@
 
         <div class="flex flex-col gap-2">
           @for (t of ordenados(g.traders); track t.address) {
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white/5 px-3.5 py-2.5 text-xs">
-              <div class="flex min-w-0 flex-wrap items-center gap-2">
+            <div class="flex flex-col gap-2 rounded-lg bg-white/5 px-3.5 py-2.5 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+              <div class="flex min-w-0 items-center gap-2">
                 <span
                   class="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-pill text-[9px] font-bold text-white"
                   [style.background]="colorTrader(t.address)"
                 >
                   {{ inicial(t.nombre) }}
                 </span>
-                <span class="font-semibold">{{ t.nombre }}</span>
-                <span class="opacity-60">· {{ tiempoRelativo(t.fecha) }}</span>
-                <span class="opacity-60">· Tamaño ${{ t.invertidoUsd | number: '1.0-0' }} · {{ g.verbo === 'han entrado' ? 'Entrada' : 'Salida' }} ${{ t.precio | number: '1.0-0' }}</span>
+                <span class="truncate font-semibold">{{ t.nombre }}</span>
+                <span class="ml-auto flex-none opacity-60 sm:ml-0">{{ tiempoRelativo(t.fecha) }}</span>
               </div>
-              <div class="flex flex-none items-center gap-3">
+              <div class="flex items-center justify-between gap-3 sm:min-w-0 sm:flex-1 sm:justify-start">
+                <span class="opacity-60">Tamaño ${{ t.invertidoUsd | number: '1.0-0' }} · {{ g.verbo === 'han entrado' ? 'Entrada' : 'Salida' }} ${{ t.precio | number: '1.0-0' }}</span>
                 @if (t.pnlPct != null) {
-                  <span [class.text-long]="t.pnlPct > 0" [class.text-short]="t.pnlPct < 0" class="font-semibold">
+                  <span [class.text-long]="t.pnlPct > 0" [class.text-short]="t.pnlPct < 0" class="flex-none font-semibold">
                     {{ t.pnlPct > 0 ? '+' : '' }}{{ t.pnlPct }}%
                   </span>
                 }
-                @if (g.verbo === 'han entrado') {
-                  <p-button
-                    [label]="estaCopiada(clave(g.coin, g.lado, t.address)) ? 'Abierta' : 'Abrir'"
-                    size="small"
-                    severity="secondary"
-                    [outlined]="true"
-                    [disabled]="estaCopiada(clave(g.coin, g.lado, t.address))"
-                    (onClick)="abrirPosicion(clave(g.coin, g.lado, t.address))"
-                  />
-                }
               </div>
+              @if (g.verbo === 'han entrado') {
+                <p-button
+                  [label]="estaCopiada(clave(g.coin, g.lado, t.address)) ? 'Abierta' : 'Abrir'"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  [disabled]="estaCopiada(clave(g.coin, g.lado, t.address))"
+                  (onClick)="abrirPosicion(clave(g.coin, g.lado, t.address))"
+                  styleClass="w-full sm:w-auto"
+                />
+              }
             </div>
           }
         </div>

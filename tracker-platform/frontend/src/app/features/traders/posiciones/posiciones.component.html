@@ -5,7 +5,49 @@
   <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ trading().length }}</span>
 </div>
 
-<div class="panel mb-10 overflow-hidden">
+<!-- movil: tarjeta compacta, como en el Dashboard -- toca para ver el detalle completo en el modal -->
+<div class="mb-10 flex flex-col gap-1.5 sm:hidden">
+  @for (p of trading(); track claveTrading(p)) {
+    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2.5 text-sm" (click)="abrirDetalle(p, 'trading')">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="w-12 flex-none font-semibold">{{ p.coin }}</span>
+        <span
+          class="w-14 flex-none rounded-pill px-2 py-0.5 text-center text-[11px] font-semibold uppercase"
+          [class.bg-long-bg]="p.lado === 'Long'"
+          [class.text-long]="p.lado === 'Long'"
+          [class.bg-short-bg]="p.lado === 'Short'"
+          [class.text-short]="p.lado === 'Short'"
+        >
+          {{ p.lado }}
+        </span>
+        <span
+          class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+          [style.background]="colorTrader(p.traderAddress)"
+        >
+          {{ inicial(p.traderNombre) }}
+        </span>
+        <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+      </div>
+      <div [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+        @if (p.resultadoUsd != null) {
+          {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+          @if (p.invertidoUsd) {
+            <span class="font-normal opacity-70">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+          }
+        } @else {
+          <span class="font-normal text-fg-muted">sin dato</span>
+        }
+      </div>
+    </div>
+  } @empty {
+    <div class="flex flex-col items-center gap-2 py-6 text-center">
+      <i class="pi pi-chart-line text-2xl text-fg-muted"></i>
+      <span class="text-sm text-fg-muted">Nadie que sigas tiene trading abierto ahora mismo.</span>
+    </div>
+  }
+</div>
+
+<div class="panel mb-10 hidden overflow-hidden sm:block">
   <p-table [value]="trading()" styleClass="text-base">
     <ng-template #header>
       <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
@@ -134,7 +176,39 @@
   <span class="rounded-pill bg-border px-2.5 py-0.5 text-xs font-bold text-fg-muted">{{ spot().length }}</span>
 </div>
 
-<div class="panel overflow-hidden">
+<div class="flex flex-col gap-1.5 sm:hidden">
+  @for (p of spot(); track claveSpot(p)) {
+    <div class="flex cursor-pointer items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2.5 text-sm" (click)="abrirDetalle(p, 'spot')">
+      <div class="flex min-w-0 items-center gap-2">
+        <span class="w-12 flex-none font-semibold">{{ p.coin }}</span>
+        <span
+          class="flex h-5 w-5 flex-none items-center justify-center rounded-pill text-[10px] font-bold text-white"
+          [style.background]="colorTrader(p.traderAddress)"
+        >
+          {{ inicial(p.traderNombre) }}
+        </span>
+        <span class="truncate text-fg-muted">{{ p.traderNombre }}</span>
+      </div>
+      <div [class.text-long]="(p.resultadoUsd ?? 0) > 0" [class.text-short]="(p.resultadoUsd ?? 0) < 0" class="flex-none font-semibold">
+        @if (p.resultadoUsd != null) {
+          {{ p.resultadoUsd > 0 ? '+' : '' }}${{ p.resultadoUsd | number: '1.0-0' }}
+          @if (p.invertidoUsd) {
+            <span class="font-normal opacity-70">({{ p.resultadoUsd > 0 ? '+' : '' }}{{ (p.resultadoUsd / p.invertidoUsd) * 100 | number: '1.0-1' }}%)</span>
+          }
+        } @else {
+          <span class="font-normal text-fg-muted">sin dato</span>
+        }
+      </div>
+    </div>
+  } @empty {
+    <div class="flex flex-col items-center gap-2 py-6 text-center">
+      <i class="pi pi-wallet text-2xl text-fg-muted"></i>
+      <span class="text-sm text-fg-muted">Nadie que sigas tiene nada en spot ahora mismo.</span>
+    </div>
+  }
+</div>
+
+<div class="panel hidden overflow-hidden sm:block">
   <p-table [value]="spot()" styleClass="text-base">
     <ng-template #header>
       <tr class="[&>th]:text-[12px] [&>th]:font-bold [&>th]:uppercase [&>th]:tracking-wide [&>th]:text-fg-muted">
@@ -229,6 +303,97 @@
     </ng-template>
   </p-table>
 </div>
+
+<!-- detalle completo de una posicion, abierto al tocar su tarjeta en movil -->
+<p-dialog
+  [visible]="detalle() !== null"
+  (visibleChange)="!$event && detalle.set(null)"
+  [modal]="true"
+  [header]="detalle() ? tituloDetalle(detalle()!) : ''"
+  [style]="{ width: '92vw', maxWidth: '420px' }"
+>
+  @if (detalle()) {
+    @let d = detalle()!;
+    <div class="flex flex-col gap-3 text-sm">
+      <div class="flex items-center gap-2">
+        <span
+          class="flex h-6 w-6 flex-none items-center justify-center rounded-pill text-[11px] font-bold text-white"
+          [style.background]="colorTrader(d.p.traderAddress)"
+        >
+          {{ inicial(d.p.traderNombre) }}
+        </span>
+        <span class="font-semibold">{{ d.p.traderNombre }}</span>
+        <span class="ml-auto text-xs text-fg-muted">{{ d.p.fecha | date: 'd MMM, HH:mm' }}</span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">$ invertido</div>
+          <div class="font-semibold">${{ d.p.invertidoUsd | number: '1.0-0' }}</div>
+        </div>
+        <div class="rounded-lg bg-bg px-3 py-2">
+          <div class="text-xs text-fg-muted">% de su cartera</div>
+          <div class="font-semibold">{{ pctCartera(d.p.invertidoUsd, d.p.cuentaTrader) }}</div>
+        </div>
+        @if (esTrading(d.p)) {
+          <div class="rounded-lg bg-bg px-3 py-2">
+            <div class="text-xs text-fg-muted">Entrada</div>
+            <div class="font-semibold">${{ d.p.entrada | number: '1.0-2' }}</div>
+          </div>
+          @if (d.p.takeProfit != null || d.p.stopLoss != null) {
+            <div class="rounded-lg bg-bg px-3 py-2">
+              <div class="text-xs text-fg-muted">TP / SL</div>
+              <div class="font-semibold">
+                {{ d.p.takeProfit != null ? '$' + (d.p.takeProfit | number: '1.0-2') : '—' }} /
+                {{ d.p.stopLoss != null ? '$' + (d.p.stopLoss | number: '1.0-2') : '—' }}
+              </div>
+            </div>
+          }
+        } @else {
+          <div class="rounded-lg bg-bg px-3 py-2">
+            <div class="text-xs text-fg-muted">Valor actual</div>
+            <div class="font-semibold">${{ d.p.valorActualUsd | number: '1.0-0' }}</div>
+          </div>
+        }
+        <div class="rounded-lg bg-bg px-3 py-2" [class.text-long]="(d.p.resultadoUsd ?? 0) > 0" [class.text-short]="(d.p.resultadoUsd ?? 0) < 0">
+          <div class="text-xs text-fg-muted">Resultado</div>
+          <div class="font-semibold">
+            @if (d.p.resultadoUsd != null) {
+              {{ d.p.resultadoUsd > 0 ? '+' : '' }}${{ d.p.resultadoUsd | number: '1.0-0' }}
+              @if (d.p.invertidoUsd) {
+                ({{ d.p.resultadoUsd > 0 ? '+' : '' }}{{ (d.p.resultadoUsd / d.p.invertidoUsd) * 100 | number: '1.0-1' }}%)
+              }
+            } @else {
+              sin dato
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (d.p.movimientos?.length) {
+        <div class="flex flex-col gap-1.5">
+          <div class="text-xs font-semibold uppercase text-fg-muted">Historial</div>
+          @for (m of movimientosOrdenados(d.p.movimientos!); track m.fecha) {
+            <div class="flex items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-xs">
+              <span class="font-semibold">{{ m.verbo }}</span>
+              <span class="text-fg-muted">{{ m.fecha | date: 'd MMM, HH:mm' }}</span>
+              <span>${{ m.notionalUsd | number: '1.0-0' }}</span>
+              <span [class.text-long]="(m.pnlUsd ?? 0) > 0" [class.text-short]="(m.pnlUsd ?? 0) < 0" class="font-semibold">
+                {{ m.pnlUsd != null ? (m.pnlUsd > 0 ? '+' : '') + '$' + (m.pnlUsd | number: '1.0-2') : '—' }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+
+      <p-button
+        [label]="estaCopiada(claveDetalle(d)) ? 'Abierta' : 'Abrir'"
+        [disabled]="estaCopiada(claveDetalle(d))"
+        (onClick)="abrirDesdeDetalle(d)"
+      />
+    </div>
+  }
+</p-dialog>
 
 <p-dialog [(visible)]="montoDialogVisible" [modal]="true" header="¿Cuánto quieres invertir?" [style]="{ width: '360px' }">
   <div class="flex flex-col gap-2">
